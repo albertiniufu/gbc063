@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GBC063 · S1 · O que é Inteligência Artificial?</title>
+<meta name="author" content="Prof. Marcelo Keese Albertini · FACOM · UFU">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #1B2430;
+  --paper: #F5F6F8;
+  --ink: #1B2430;
+  --board: #20262E;
+  --chalk: #EAEFF5;
+  --c0: #1F77B4;
+  --c1: #FF7F0E;
+  --c2: #2CA02C;
+  --c3: #D62728;
+  --c4: #9467BD;
+  --c5: #8C564B;
+  --radius: 8px;
+  --shadow: 0 2px 12px rgba(0,0,0,0.15);
+}
+
+body {
+  font-family: 'Source Serif 4', Georgia, serif;
+  background: var(--paper);
+  color: var(--ink);
+  line-height: 1.7;
+  font-size: 1.1rem;
+}
+
+/* ── Layout ── */
+.container { max-width: 860px; margin: 0 auto; padding: 1.5rem 2rem 4rem; }
+
+/* ── Header ── */
+.material-header {
+  background: var(--bg);
+  color: var(--chalk);
+  padding: 3rem 2rem 2.5rem;
+  margin-bottom: 2.5rem;
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+.material-header .meta {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  opacity: 0.7;
+  margin-bottom: 0.5rem;
+}
+.material-header h1 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 2.2rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 0.5rem;
+}
+.material-header .author {
+  font-size: 0.85rem;
+  opacity: 0.65;
+  margin-bottom: 1.2rem;
+}
+.material-header .guiding-question {
+  background: var(--c0);
+  color: #fff;
+  padding: 1rem 1.5rem;
+  border-radius: var(--radius);
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 500;
+  margin-top: 1.5rem;
+}
+.material-header .prereqs {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  opacity: 0.7;
+}
+.material-header .prereqs a { color: var(--c2); }
+
+/* ── Section blocks ── */
+section { margin-bottom: 3rem; }
+section h2 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.55rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: var(--c0);
+  border-bottom: 2px solid var(--c0);
+  padding-bottom: 0.35rem;
+}
+
+/* ── Box components ── */
+.box {
+  padding: 1.25rem 1.5rem;
+  border-radius: var(--radius);
+  margin: 1.5rem 0;
+  border-left: 4px solid;
+}
+.box-intuicao     { background: #EDF4FA; border-color: var(--c0); }
+.box-intuicao::before { content: "💡 Intuição"; display: block; font-family: 'Space Grotesk', sans-serif; font-weight: 600; color: var(--c0); margin-bottom: 0.5rem; font-size: 0.9rem; }
+.box-quadro       { background: var(--board); color: var(--chalk); border-color: var(--chalk); }
+.box-quadro::before { content: "🧮 Quadro-negro"; display: block; font-family: 'Space Grotesk', sans-serif; font-weight: 600; color: var(--chalk); margin-bottom: 0.5rem; font-size: 0.9rem; }
+.box-codigo       { background: #1E1E2E; color: #CDD6F4; border-color: var(--c4); }
+.box-codigo::before { content: "⌨️ Código"; display: block; font-family: 'Space Grotesk', sans-serif; font-weight: 600; color: var(--c4); margin-bottom: 0.5rem; font-size: 0.9rem; }
+.box-armadilha    { background: #FFF4E6; border-color: var(--c1); }
+.box-armadilha::before { content: "⚠️ Armadilha"; display: block; font-family: 'Space Grotesk', sans-serif; font-weight: 600; color: var(--c1); margin-bottom: 0.5rem; font-size: 0.9rem; }
+.box-ponte        { background: #E8F5E9; border-color: var(--c2); }
+.box-ponte::before { content: "🌉 Ponte para o Deep Learning"; display: block; font-family: 'Space Grotesk', sans-serif; font-weight: 600; color: var(--c2); margin-bottom: 0.5rem; font-size: 0.9rem; }
+
+details.curiosidade {
+  background: #F0F0F0; border: 1px dashed #999; border-radius: var(--radius);
+  padding: 0.75rem 1rem; margin: 1rem 0; cursor: pointer;
+}
+details.curiosidade summary {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600; font-size: 0.95rem; color: #555;
+}
+details.curiosidade summary::before { content: "🏛️ "; }
+details.curiosidade .inner { padding-top: 0.75rem; font-size: 0.95rem; }
+
+/* ── Timeline ── */
+.timeline-container {
+  position: relative;
+  overflow-x: auto;
+  padding: 1.5rem 0;
+  margin: 1rem 0;
+  -webkit-overflow-scrolling: touch;
+}
+.timeline-track {
+  display: flex;
+  gap: 0;
+  min-width: 1800px;
+  position: relative;
+}
+.timeline-line {
+  position: absolute;
+  top: 50%; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #999 0%, #999 55%, var(--c2) 60%, var(--c2) 100%);
+  transform: translateY(-50%);
+}
+.timeline-node {
+  flex: 0 0 160px;
+  text-align: center;
+  position: relative;
+  z-index: 2;
+  cursor: pointer;
+  padding: 0.5rem 0.3rem;
+}
+.timeline-node .dot {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  margin: 0 auto 0.5rem;
+  border: 3px solid;
+  background: var(--paper);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.timeline-node:hover .dot { transform: scale(1.4); box-shadow: 0 0 12px rgba(0,0,0,0.3); }
+.timeline-node .year {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700; font-size: 0.95rem;
+  margin-bottom: 0.2rem;
+}
+.timeline-node .label {
+  font-size: 0.78rem;
+  line-height: 1.3;
+  opacity: 0.8;
+}
+/* color coding */
+.timeline-node.symbolic .dot { border-color: #999; background: #ddd; }
+.timeline-node.winter .dot   { border-color: var(--c1); background: #FFE0B2; }
+.timeline-node.modern .dot   { border-color: var(--c2); background: #C8E6C9; }
+.timeline-node.pivot .dot    { border-color: var(--c0); }
+
+.timeline-detail {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  margin-top: 1rem;
+  box-shadow: var(--shadow);
+  display: none;
+}
+.timeline-detail.active { display: block; }
+.timeline-detail h3 { font-family: 'Space Grotesk', sans-serif; color: var(--c0); margin-bottom: 0.5rem; }
+.timeline-detail .verdict {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 12px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+.verdict.survives { background: #C8E6C9; color: #2E7D32; }
+.verdict.crashed  { background: #FFCDD2; color: #C62828; }
+.verdict.evolving { background: #BBDEFB; color: #1565C0; }
+
+/* ── ELIZA ── */
+.eliza-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+@media (max-width: 640px) { .eliza-container { grid-template-columns: 1fr; } }
+.eliza-chat, .eliza-trace {
+  border: 1px solid #ddd;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.eliza-chat-header, .eliza-trace-header {
+  padding: 0.6rem 1rem;
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600; font-size: 0.85rem;
+  color: #fff;
+}
+.eliza-chat-header { background: var(--c0); }
+.eliza-trace-header { background: var(--board); color: var(--chalk); }
+.eliza-messages {
+  height: 260px;
+  overflow-y: auto;
+  padding: 0.75rem;
+  background: #fff;
+  font-size: 0.9rem;
+}
+.eliza-messages .msg { margin-bottom: 0.5rem; padding: 0.4rem 0.7rem; border-radius: 12px; max-width: 85%; }
+.eliza-messages .msg.user   { background: #E3F2FD; margin-left: auto; text-align: right; }
+.eliza-messages .msg.bot    { background: #F5F5F5; }
+.eliza-trace-content {
+  height: 260px;
+  overflow-y: auto;
+  padding: 0.75rem;
+  background: var(--board);
+  color: var(--chalk);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+.eliza-input-row {
+  display: flex;
+  border-top: 1px solid #ddd;
+}
+.eliza-input-row input {
+  flex: 1;
+  border: none;
+  padding: 0.6rem 0.75rem;
+  font-family: 'Source Serif 4', serif;
+  font-size: 0.9rem;
+}
+.eliza-input-row button {
+  border: none;
+  background: var(--c0);
+  color: #fff;
+  padding: 0.6rem 1.2rem;
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+}
+.eliza-input-row button:hover { opacity: 0.85; }
+.eliza-input-row button.break { background: var(--c1); }
+.eliza-speed {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.4rem 0.75rem; background: #F5F5F5;
+  font-size: 0.8rem;
+}
+
+/* ── Matrix ── */
+.matrix-4v {
+  display: grid;
+  grid-template-columns: 120px 1fr 1fr;
+  gap: 2px;
+  margin: 1.5rem 0;
+  font-size: 0.9rem;
+}
+.matrix-4v > div {
+  padding: 1rem 0.8rem;
+  display: flex; align-items: center; justify-content: center;
+  text-align: center;
+}
+.matrix-4v .corner { background: var(--board); color: var(--chalk); font-family: 'Space Grotesk', sans-serif; font-weight: 600; }
+.matrix-4v .hdr    { background: var(--board); color: var(--chalk); font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 0.85rem; }
+.matrix-4v .rhdr   { background: var(--board); color: var(--chalk); font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 0.85rem; writing-mode: vertical-lr; }
+.matrix-4v .cell   { background: #fff; border: 1px solid #eee; cursor: pointer; transition: background 0.2s; }
+.matrix-4v .cell:hover, .matrix-4v .cell.highlight { background: #E3F2FD; border-color: var(--c0); }
+.matrix-4v .cell.highlight { box-shadow: 0 0 0 2px var(--c0); }
+
+/* ── Code ── */
+pre {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  overflow-x: auto;
+  border-radius: var(--radius);
+  padding: 1rem;
+  background: #1E1E2E;
+  color: #CDD6F4;
+}
+pre .keyword { color: #CBA6F7; }
+pre .string  { color: #A6E3A1; }
+pre .comment { color: #6C7086; }
+pre .number  { color: #FAB387; }
+pre .builtin { color: #89B4FA; }
+pre .highlight-line {
+  display: block;
+  background: rgba(255,127,14,0.2);
+  border-left: 3px solid var(--c1);
+  padding-left: 0.5rem;
+  margin-left: -0.5rem;
+}
+
+/* ── Bitter Lesson Graph ── */
+#bitter-graph {
+  width: 100%;
+  height: 320px;
+  margin: 1rem 0;
+}
+.bitter-legend {
+  display: flex; gap: 2rem; justify-content: center;
+  font-family: 'Space Grotesk', sans-serif; font-size: 0.85rem;
+}
+.bitter-legend span { display: flex; align-items: center; gap: 0.4rem; }
+
+/* ── Experiment ── */
+.experiment-controls {
+  display: flex; flex-wrap: wrap; gap: 0.75rem;
+  align-items: center;
+  margin: 1rem 0;
+  padding: 1rem;
+  background: #fff;
+  border-radius: var(--radius);
+}
+.experiment-controls label {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.85rem; font-weight: 600;
+}
+.experiment-controls input[type=range] { width: 120px; }
+
+/* ── Course preview ── */
+.preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.75rem;
+  margin: 1.5rem 0;
+}
+.preview-card {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: var(--radius);
+  padding: 1rem;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  text-align: center;
+}
+.preview-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+.preview-card .week-badge {
+  display: inline-block;
+  background: var(--c0);
+  color: #fff;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 10px;
+  margin-bottom: 0.5rem;
+}
+.preview-card .card-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 0.35rem;
+}
+.preview-card .card-desc {
+  font-size: 0.8rem;
+  opacity: 0.7;
+  line-height: 1.4;
+}
+
+/* ── Links ── */
+.link-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+.link-card {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: var(--radius);
+  padding: 1rem;
+  text-decoration: none;
+  color: var(--ink);
+  transition: box-shadow 0.15s;
+}
+.link-card:hover { box-shadow: var(--shadow); }
+.link-card::before { content: "🔗 "; }
+.link-card .card-label {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.link-card .card-hint {
+  font-size: 0.8rem;
+  opacity: 0.65;
+  margin-top: 0.25rem;
+}
+
+/* ── Footer ── */
+.material-footer {
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #ddd;
+  font-size: 0.8rem;
+  opacity: 0.6;
+  text-align: center;
+}
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .container { padding: 0.75rem 1rem 2rem; }
+  .material-header { padding: 1.5rem 1rem; }
+  .material-header h1 { font-size: 1.5rem; }
+  .matrix-4v { grid-template-columns: 80px 1fr 1fr; font-size: 0.75rem; }
+  .matrix-4v > div { padding: 0.5rem 0.3rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+</style>
+</head>
+<body>
+
+<div class="material-header">
+  <div class="meta">GBC063 · Semana 1 · Material de Estudo</div>
+  <h1>O que é Inteligência Artificial?</h1>
+  <div class="author">Prof. Marcelo Keese Albertini · Faculdade de Computação · Universidade Federal de Uberlândia</div>
+  <div class="guiding-question">
+    ❓ <strong>Pergunta condutora:</strong> Por que, depois de 80 anos tentando, a IA funciona <em>agora</em>?
+  </div>
+  <div class="prereqs">
+    Pré-requisitos: programação básica em Python ·
+    <a href="https://colab.research.google.com/github/albertiniufu/gbc063/blob/main/semana01/notebook_introducao_ia.ipynb" target="_blank">Abrir notebook no Colab ↗</a>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ════════════════ BLOCO 1: MOTIVAÇÃO ════════════════ -->
+<section>
+  <h2>1. Motivação</h2>
+
+  <p>Em 2010, um sistema de IA conseguia reconhecer dígitos escritos à mão — e isso era considerado
+  impressionante. Em 2025, sistemas de IA escrevem código, traduzem entre centenas de idiomas,
+  raciocinam sobre artigos científicos e aprendem a jogar videogames só olhando a tela.</p>
+
+  <p>O que mudou em 15 anos? Não foi um algoritmo mágico. Não foi uma nova teoria da inteligência.
+  Foi a convergência de <strong>três forças</strong> que este material vai desvendar:</p>
+
+  <div class="box box-intuicao">
+    <strong>Dados massivos</strong> (a internet produziu mais texto do que a humanidade escreveu em toda a história) ·
+    <strong>Computação barata</strong> (GPUs, TPUs, clusters) ·
+    <strong>Algoritmos que escalam</strong> (gradiente descendente, backpropagation, atenção)
+  </div>
+
+  <p>Mas a história completa — a história que explica <em>por que demorou tanto</em> — começa em 1943,
+  com dois neurocientistas tentando entender como neurônios disparam.</p>
+</section>
+
+<!-- ════════════════ BLOCO 2: INTUIÇÃO VISUAL ════════════════ -->
+<section>
+  <h2>2. Linha do Tempo Interativa</h2>
+  <p>Cada círculo é um momento decisivo. <strong>Clique</strong> para expandir a história.
+  As cores contam o destino de cada ideia:
+  <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#999;margin:0 2px 0 1rem;"></span> IA simbólica,
+  <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--c1);margin:0 2px 0 0.5rem;"></span> inverno/fracasso,
+  <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--c0);margin:0 2px 0 0.5rem;"></span> ponto de virada,
+  <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--c2);margin:0 2px 0 0.5rem;"></span> era moderna.</p>
+
+  <div class="timeline-container" id="timeline">
+    <div class="timeline-track" id="timelineTrack"></div>
+    <div class="timeline-line"></div>
+  </div>
+
+  <div class="timeline-detail" id="timelineDetail">
+    <h3 id="tdTitle"></h3>
+    <span class="verdict" id="tdVerdict"></span>
+    <p id="tdBody"></p>
+  </div>
+</section>
+
+<!-- ════════════════ ELIZA CHATBOT SIMULATION ════════════════ -->
+<section>
+  <h2>Simulação: ELIZA, a primeira "chatbot" (1966)</h2>
+  <p>Joseph Weizenbaum criou ELIZA para demonstrar a <strong>superficialidade</strong> da comunicação
+  homem-máquina. O programa não entendia nada — apenas casava padrões e reaplicava pronomes.
+  Weizenbaum ficou horrorizado quando pessoas passaram a confiar nela. <strong>Experimente:</strong></p>
+
+  <div class="eliza-container">
+    <div class="eliza-chat">
+      <div class="eliza-chat-header">💬 ELIZA (psicoterapeuta rogeriana)</div>
+      <div class="eliza-messages" id="elizaMessages">
+        <div class="msg bot">Olá. Como posso ajudá-lo hoje?</div>
+      </div>
+      <div class="eliza-speed">
+        <label for="elizaSpeed">Velocidade:</label>
+        <input type="range" id="elizaSpeed" min="1" max="5" value="3" style="width:80px;">
+        <span id="elizaSpeedLabel">média</span>
+      </div>
+      <div class="eliza-input-row">
+        <input type="text" id="elizaInput" placeholder="Diga algo..." autocomplete="off">
+        <button onclick="sendToEliza()">Enviar</button>
+        <button class="break" onclick="breakEliza()" title="Tente quebrar a ELIZA">💥</button>
+      </div>
+    </div>
+
+    <div class="eliza-trace">
+      <div class="eliza-trace-header">🔍 O que está acontecendo</div>
+      <div class="eliza-trace-content" id="elizaTrace">
+        <div>Aguardando entrada...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="box box-intuicao">
+    ELIZA é o exemplo perfeito de <strong>conhecimento embutido à mão que não escala</strong>.
+    Funciona para frases que casam com seus padrões pré-programados — e falha completamente
+    para qualquer outra coisa. Em 1966 isso parecia mágica; hoje é um alerta sobre os limites
+    da IA simbólica.
+  </div>
+</section>
+
+<!-- ════════════════ DEMO: MOTOR DE INFERÊNCIA ════════════════ -->
+<section>
+  <h2>Demonstração: O motor que roda regras</h2>
+
+  <p>ELIZA casava padrões de texto. <strong>Motores de inferência</strong> são o próximo degrau:
+  aplicam regras lógicas a uma base de fatos para <strong>derivar novo conhecimento</strong>.
+  O algoritmo é simples: enquanto houver regras cujas premissas são satisfeitas por fatos
+  conhecidos, adicione a conclusão aos fatos. Repita até não haver mais nada a deduzir.</p>
+
+  <p>Abaixo está um motor vivo. As regras modelam um domínio minúsculo — classificação de
+  animais domésticos. <strong>Clique em "Passo" para ver o encadeamento em ação.</strong></p>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1.5rem 0;">
+    <div>
+      <div style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:0.85rem;margin-bottom:0.4rem;color:var(--c0);">📋 Base de Regras</div>
+      <pre style="font-size:0.82rem;padding:0.8rem;">regras = [
+    ({"tem_pelo"},              "mamifero"),
+    ({"mamifero", "mia"},       "gato"),
+    ({"gato"},                  "carnivoro"),
+    ({"carnivoro", "domestico"},"come_racao"),
+]</pre>
+    </div>
+    <div>
+      <div style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:0.85rem;margin-bottom:0.4rem;color:var(--c0);">🧠 Fatos Conhecidos</div>
+      <pre style="font-size:0.82rem;padding:0.8rem;">fatos = {"tem_pelo", "mia", "domestico"}</pre>
+    </div>
+  </div>
+
+  <div id="inferenceEngine" style="background:#fff;border:1px solid #ddd;border-radius:var(--radius);overflow:hidden;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:0.6rem 1rem;background:#f8f8f8;border-bottom:1px solid #ddd;">
+      <span style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:0.85rem;">⚙️ Execução passo a passo</span>
+      <div style="display:flex;gap:0.4rem;">
+        <button id="ieStep" onclick="inferenceStep()" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:0.78rem;padding:0.3rem 0.7rem;cursor:pointer;background:var(--c0);color:#fff;border:none;border-radius:4px;">▸ Passo</button>
+        <button id="ieRun" onclick="inferenceRunAll()" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:0.78rem;padding:0.3rem 0.7rem;cursor:pointer;background:var(--c2);color:#fff;border:none;border-radius:4px;">⏩ Rodar tudo</button>
+        <button id="ieReset" onclick="inferenceReset()" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:0.78rem;padding:0.3rem 0.7rem;cursor:pointer;background:#eee;border:1px solid #ccc;border-radius:4px;">⟲ Reiniciar</button>
+      </div>
+    </div>
+    <div id="ieDisplay" style="padding:0.8rem 1rem;min-height:180px;font-family:'JetBrains Mono',monospace;font-size:0.8rem;line-height:1.7;">
+      <div style="color:#999;">Clique em <strong>▸ Passo</strong> para iniciar o encadeamento.</div>
+    </div>
+    <div id="ieFatos" style="padding:0.5rem 1rem;background:#fafafa;border-top:1px solid #eee;font-family:'JetBrains Mono',monospace;font-size:0.78rem;">
+      <span style="opacity:0.5;">fatos =</span> <span id="ieFatosSet">{tem_pelo, mia, domestico}</span>
+    </div>
+  </div>
+
+  <div class="box box-armadilha" style="margin-top:1.5rem;">
+    <strong>O que acontece quando adicionamos mais regras?</strong> Este exemplo tem 4 regras e funciona perfeitamente.
+    Um sistema real teria centenas ou milhares. Cada regra nova interage com <em>todas as outras</em> — o número
+    de interações cresce quadraticamente. Regras contraditórias ("mia → gato" e "mia → felino selvagem"?) exigem
+    resolução de conflitos. E o pior: <strong>alguém precisa escrever cada regra à mão</strong>, conhecendo o
+    domínio profundamente. Este é o <strong>gargalo de aquisição de conhecimento</strong> — o muro contra o
+    qual toda a IA simbólica se chocou.
+  </div>
+
+  <div class="box box-ponte">
+    <strong>O que um modelo de ML faria no lugar?</strong> Em vez de 4 regras escritas por um humano,
+    um classificador veria 10.000 exemplos de animais com características (tem_pelo?, mia?, domestico?)
+    e aprenderia <em>sozinho</em> que a combinação {pelo, mia, doméstico} ⇒ come_ração. Sem uma única
+    regra explícita. Sem um engenheiro de conhecimento. Apenas gradiente descendente — que você
+    implementará na <strong>Semana 8</strong>.
+  </div>
+</section>
+
+<!-- ════════════════ BLOCO 3: FORMALIZAÇÃO ════════════════ -->
+<section>
+  <h2>3. O que é "Inteligência Artificial"?</h2>
+
+  <p>Não existe uma definição única. O campo se organiza em <strong>quatro visões</strong>,
+  dependendo do que se quer alcançar e de como se mede o sucesso:</p>
+
+  <div class="matrix-4v" id="matrix4v">
+    <div class="corner"></div>
+    <div class="hdr">Humana</div>
+    <div class="hdr">Racional</div>
+    <div class="rhdr">Pensar</div>
+    <div class="cell" data-quadrant="pensar-humana">"Fazer computadores pensarem como humanos"<br><small>Ciência Cognitiva</small></div>
+    <div class="cell" data-quadrant="pensar-racional">"Fazer computadores pensarem logicamente"<br><small>Lógica, Filosofia</small></div>
+    <div class="rhdr">Agir</div>
+    <div class="cell highlight" data-quadrant="agir-humana">"Fazer computadores agirem como humanos"<br><small>Teste de Turing</small></div>
+    <div class="cell highlight" data-quadrant="agir-racional">"Fazer computadores agirem racionalmente"<br><small>Agentes Racionais ← <strong>nosso foco</strong></small></div>
+  </div>
+
+  <div class="box box-quadro">
+    <strong>Definição operacional do curso (Russell &amp; Norvig):</strong><br><br>
+    Um <strong>agente racional</strong> é aquele que, para cada percepção possível, seleciona a ação
+    que maximiza a métrica de desempenho esperada, dados a sua percepção e qualquer conhecimento
+    prévio embutido.<br><br>
+    Em código, a interface que usaremos da <strong>Semana 2 à Semana 16</strong> é:
+    <pre>obs = env.reset()
+while not done:
+    acao = agente.decidir(obs)
+    obs, recompensa, done = env.step(acao)</pre>
+  </div>
+
+  <div class="box box-intuicao">
+    <strong>Por que agentes racionais?</strong> As outras três visões dependem de replicar
+    processos humanos (que nem sempre são ótimos) ou de lógica pura (que não lida com incerteza).
+    O paradigma do agente racional funciona em qualquer ambiente, com qualquer métrica de sucesso,
+    com ou sem conhecimento humano embutido. É o que permite a um mesmo framework descrever
+    um termostato e o AlphaGo.
+  </div>
+</section>
+
+<!-- ════════════════ BLOCO 4: CÓDIGO DO ZERO ════════════════ -->
+<section>
+  <h2>4. O agente mais simples do mundo</h2>
+
+  <p>Antes de qualquer teoria sofisticada, vamos implementar o padrão que unifica o curso inteiro
+  — <strong>percepção → decisão → ação</strong> — em duas versões:</p>
+
+  <div class="box box-codigo">
+    <strong>Agente 1: Termostato</strong> (agente reativo simples)
+    <pre><span class="comment"># O agente mais simples do mundo: um termostato</span>
+<span class="keyword">def</span> <span class="builtin">agente_termostato</span>(temperatura_atual, alvo=22):
+    <span class="keyword">if</span> temperatura_atual < alvo:
+        <span class="keyword">return</span> <span class="string">"LIGAR_AQUECEDOR"</span>
+    <span class="keyword">elif</span> temperatura_atual > alvo:
+        <span class="keyword">return</span> <span class="string">"LIGAR_AR_CONDICIONADO"</span>
+    <span class="keyword">return</span> <span class="string">"DESLIGAR"</span>  <span class="comment"># manter</span></pre>
+  </div>
+
+  <div class="box box-codigo">
+    <strong>Agente 2: Aspirador de pó</strong> (agente reativo com memória mínima)
+    <pre><span class="comment"># Notebook 01 — o agente aspirador</span>
+<span class="keyword">def</span> <span class="builtin">agente_aspirador</span>(percepcao):
+    posicao, sujo = percepcao
+<span class="highlight-line">    <span class="keyword">if</span> sujo: <span class="keyword">return</span> <span class="string">"ASPIRAR"</span>     <span class="comment"># a decisão mais importante</span></span>
+    <span class="keyword">if</span> posicao == <span class="string">"A"</span>: <span class="keyword">return</span> <span class="string">"DIREITA"</span>
+    <span class="keyword">return</span> <span class="string">"ESQUERDA"</span></pre>
+  </div>
+
+  <p><a href="https://colab.research.google.com/github/albertiniufu/gbc063/blob/main/semana01/notebook_introducao_ia.ipynb" target="_blank" style="color:var(--c0);">▶ Abrir notebook completo no Colab</a></p>
+</section>
+
+<!-- ════════════════ BLOCO 5: EXPERIMENTO GUIADO ════════════════ -->
+<section>
+  <h2>5. Experimento Guiado: Quebrando o agente</h2>
+
+  <p><strong>Pergunta:</strong> o que acontece quando mudamos as regras do mundo?
+  Use os controles abaixo para variar o ambiente e observe como o comportamento do agente muda.</p>
+
+  <div class="experiment-controls">
+    <label for="numRooms">Quantos cômodos?</label>
+    <input type="range" id="numRooms" min="2" max="5" value="2" step="1">
+    <span id="numRoomsLabel">2</span>
+
+    <label for="sensorNoise">Ruído no sensor (%):</label>
+    <input type="range" id="sensorNoise" min="0" max="50" value="0" step="5">
+    <span id="sensorNoiseLabel">0%</span>
+
+    <button id="resetExperiment" style="font-family:'Space Grotesk',sans-serif;font-weight:600;padding:0.3rem 0.8rem;cursor:pointer;">⟲ Reiniciar</button>
+  </div>
+
+  <div id="experimentOutput" style="background:#fff;border:1px solid #ddd;border-radius:var(--radius);padding:1rem;min-height:120px;font-family:'JetBrains Mono',monospace;font-size:0.82rem;line-height:1.6;white-space:pre-wrap;"></div>
+
+  <div class="box box-armadilha">
+    <strong>Pergunta verificável:</strong> Com 3 cômodos e ruído de 30%, o agente aspirador
+    ainda funciona? Por quê? O que precisaríamos adicionar ao agente para que ele lidasse
+    com incerteza? (Dica: isso é o que faremos na <strong>Semana 7 — Probabilidade</strong>.)
+  </div>
+</section>
+
+<!-- ════════════════ BLOCO 6: PONTE ════════════════ -->
+<section>
+  <h2>6. 🌉 A Lição Amarga (The Bitter Lesson)</h2>
+
+  <p>Richard Sutton, um dos pais do aprendizado por reforço, publicou em 2019 um ensaio de duas
+  páginas que resume <strong>tudo o que você precisa entender sobre a história da IA</strong>:</p>
+
+  <div class="box box-quadro">
+    <em>"A maior lição que pode ser lida de 70 anos de pesquisa em IA é que métodos gerais que
+    alavancam computação são, em última instância, os mais efetivos — e por uma grande margem.
+    (...) Pesquisadores buscam construir conhecimento em seus agentes. Isso ajuda no curto prazo
+    e é pessoalmente satisfatório, mas no longo prazo atinge um platô e até inibe o progresso
+    futuro. E o progresso eventualmente os ultrapassa através de forças opostas baseadas em
+    busca e aprendizado em escala."</em><br>
+    — Richard Sutton, "The Bitter Lesson", 2019
+  </div>
+
+  <p><strong>O gráfico abaixo conta essa história visualmente.</strong> Cada método de IA que
+  discutimos na linha do tempo está em uma das duas curvas:</p>
+
+  <canvas id="bitter-graph"></canvas>
+  <div class="bitter-legend">
+    <span><span style="display:inline-block;width:16px;height:16px;background:#999;border-radius:3px;"></span> Métodos baseados em conhecimento artesanal</span>
+    <span><span style="display:inline-block;width:16px;height:16px;background:var(--c2);border-radius:3px;"></span> Métodos que alavancam computação + dados</span>
+  </div>
+
+  <div class="box box-ponte">
+    <strong>Este curso é a curva verde.</strong> Cada módulo que você estudará nas próximas
+    15 semanas — busca informada, gradiente descendente, redes neurais, Q-learning — é um
+    capítulo da história de como métodos gerais que escalam venceram. Ao final, você entenderá
+    não apenas <em>como</em> a IA moderna funciona, mas <em>por que</em> esta arquitetura de
+    ideias — e não outra — domina o mundo hoje.
+  </div>
+</section>
+
+<!-- ════════════════ BLOCO 7: APROFUNDAMENTO ════════════════ -->
+<section>
+  <h2>7. Aprofundamento e Conexões</h2>
+
+  <h3>🔗 Links Curados</h3>
+  <div class="link-cards">
+    <a class="link-card" href="http://www.incompleteideas.net/IncIdeas/BitterLesson.html" target="_blank">
+      <div class="card-label">The Bitter Lesson — Sutton (2019)</div>
+      <div class="card-hint">Leitura obrigatória. 2 páginas que valem mais que livros inteiros.</div>
+    </a>
+    <a class="link-card" href="https://www.3blue1brown.com/topics/neural-networks" target="_blank">
+      <div class="card-label">3Blue1Brown — Redes Neurais</div>
+      <div class="card-hint">A melhor intuição visual que existe sobre o tema.</div>
+    </a>
+    <a class="link-card" href="https://playground.tensorflow.org/" target="_blank">
+      <div class="card-label">TensorFlow Playground</div>
+      <div class="card-hint">Treine redes neurais no navegador. Experimente arquiteturas.</div>
+    </a>
+    <a class="link-card" href="https://distill.pub/" target="_blank">
+      <div class="card-label">Distill.pub</div>
+      <div class="card-hint">Artigos interativos sobre aprendizado de máquina.</div>
+    </a>
+    <a class="link-card" href="https://seeing-theory.brown.edu/" target="_blank">
+      <div class="card-label">Seeing Theory (Brown Univ.)</div>
+      <div class="card-hint">Probabilidade interativa — será essencial na Semana 7.</div>
+    </a>
+    <a class="link-card" href="https://gymnasium.farama.org/" target="_blank">
+      <div class="card-label">Gymnasium (Farama Foundation)</div>
+      <div class="card-hint">Ambientes de RL. Usaremos da Semana 10 em diante.</div>
+    </a>
+  </div>
+
+  <h3>🏛️ Curiosidades Históricas</h3>
+
+  <details class="curiosidade">
+    <summary>ELIZA e o "efeito ELIZA" (1966)</summary>
+    <div class="inner">
+      <p>Joseph Weizenbaum criou ELIZA no MIT para demonstrar que comunicação homem-máquina era
+      superficial. Ele usou a metáfora de um psicoterapeuta rogeriano porque o estilo "devolver
+      a pergunta" exigia zero compreensão real. O choque: sua secretária pediu para ficar a sós
+      com o programa. Pessoas atribuíam inteligência onde só havia casamento de padrões.
+      Weizenbaum passou o resto da carreira alertando sobre os perigos éticos da IA — em 1966.</p>
+    </div>
+  </details>
+
+  <details class="curiosidade">
+    <summary>O inverno da IA e o livro Perceptrons (1969)</summary>
+    <div class="inner">
+      <p>Marvin Minsky e Seymour Papert publicaram <em>Perceptrons</em> provando que o perceptron
+      simples de Rosenblatt não conseguia resolver o XOR. A prova era matematicamente correta,
+      mas a conclusão que o campo tirou — "redes neurais não funcionam" — estava errada. Bastava
+      <strong>empilhar</strong> perceptrons (redes multilayer). Isso levou 17 anos para ser
+      redescoberto com o backpropagation (Rumelhart, Hinton &amp; Williams, 1986). Hoje,
+      empilhamos centenas de camadas e chamamos de deep learning.</p>
+    </div>
+  </details>
+
+  <details class="curiosidade">
+    <summary>O projeto CYC e o sonho do conhecimento artesanal (1984–hoje)</summary>
+    <div class="inner">
+      <p>Doug Lenat iniciou o CYC em 1984 com um objetivo ambicioso: codificar <strong>todo o
+      senso comum humano</strong> em regras lógicas. Depois de 35+ anos e milhões de regras
+      escritas à mão, o sistema ainda não raciocina como uma criança de 5 anos. Enquanto isso,
+      GPT-4 — que nunca recebeu uma única regra explícita sobre o mundo — passou no exame da
+      ordem dos advogados. A Bitter Lesson em forma de projeto.</p>
+    </div>
+  </details>
+</section>
+
+<!-- ════════════════ PREVIEW: O QUE VEM POR AÍ ════════════════ -->
+<section>
+  <h2>O que vem por aí: o mapa do curso</h2>
+
+  <p>Cada módulo responde a uma versão mais sofisticada da pergunta condutora.
+  Clique em um card para ver uma prévia animada do que você construirá.</p>
+
+  <div class="preview-grid" id="previewGrid"></div>
+</section>
+
+<!-- ════════════════ FOOTER ════════════════ -->
+<div class="material-footer">
+  <p><strong>Pergunta condutora respondida:</strong> Por que a IA funciona agora? Porque, depois
+  de 70 anos tentando programar inteligência à mão, o campo aprendeu — da maneira mais difícil —
+  que métodos gerais que aprendem de dados e escalam com computação vencem. Este curso é a
+  engenharia dessa frase.</p>
+  <p style="margin-top:1rem;">Prof. Marcelo Keese Albertini · FACOM · UFU · GBC063 · Semana 1</p>
+</div>
+
+</div><!-- /.container -->
+
+<script>
+// ═══════════════════════════ TIMELINE DATA ═══════════════════════════
+const timelineData = [
+  {year:"1943",label:"McCulloch & Pitts",type:"pivot",
+   title:"O primeiro modelo de neurônio artificial",
+   verdict:"survives",verdictLabel:"Fundação",
+   body:"Warren McCulloch (neurocientista) e Walter Pitts (lógico) publicaram 'A Logical Calculus of Ideas Immanent in Nervous Activity' — o primeiro modelo matemático de um neurônio. Mostraram que redes de neurônios artificiais podiam computar qualquer função lógica. Este paper fundou duas tradições: redes neurais (conexionismo) e a ideia de que o cérebro é um computador. 80 anos depois, a arquitetura básica — entradas ponderadas → soma → ativação — ainda é o tijolo fundamental do deep learning."},
+  {year:"1950",label:"Teste de Turing",type:"symbolic",
+   title:"Turing propõe o 'Jogo da Imitação'",
+   verdict:"evolving",verdictLabel:"Influente",
+   body:"Alan Turing publicou 'Computing Machinery and Intelligence' e propôs uma pergunta que persegue o campo até hoje: pode uma máquina conversar tão bem que um humano não consiga distingui-la de outro humano? O Teste de Turing foi uma provocação filosófica, não um objetivo de engenharia. Em 2025, LLMs passam no teste em conversas curtas — mas será que 'conversar' é o mesmo que 'pensar'?"},
+  {year:"1956",label:"Dartmouth",type:"pivot",
+   title:"Nasce o termo 'Inteligência Artificial'",
+   verdict:"survives",verdictLabel:"Fundação",
+   body:"John McCarthy cunhou o termo 'Inteligência Artificial' na conferência de verão de Dartmouth. Estavam lá: Marvin Minsky, Claude Shannon, Herbert Simon, Allen Newell. A proposta era ambiciosa: 'Todo aspecto do aprendizado ou qualquer outra característica da inteligência pode ser descrito com tanta precisão que uma máquina pode ser feita para simulá-lo.' Eles acreditavam que o problema seria resolvido em um verão. Durou 70 anos — e contando."},
+  {year:"1959",label:"Perceptron",type:"pivot",
+   title:"Rosenblatt cria o perceptron",
+   verdict:"survives",verdictLabel:"Fundação",
+   body:"Frank Rosenblatt construiu o Mark I Perceptron — uma máquina física com 400 fotocélulas e pesos ajustáveis por parafusos elétricos. O algoritmo de aprendizado era simples: para cada exemplo, ajustar pesos proporcionalmente ao erro. O New York Times noticiou que seria 'o embrião de um computador eletrônico que a Marinha espera que possa andar, falar, ver, escrever, reproduzir-se e ter consciência de sua existência.' O hype preparou o tombo."},
+  {year:"1966",label:"ELIZA",type:"symbolic",
+   title:"Weizenbaum cria ELIZA",
+   verdict:"crashed",verdictLabel:"Superficial",
+   body:"ELIZA simulava um psicoterapeuta usando casamento de padrões e regras de reescrita. Zero compreensão, 100% teatro. Mas o público — incluindo a secretária de Weizenbaum — acreditou que o programa entendia. Weizenbaum ficou horrorizado: 'Eu não tinha percebido que exposições extremamente curtas a um programa de computador relativamente simples poderiam induzir pensamento delirante em pessoas perfeitamente normais.' Este 'efeito ELIZA' — atribuir inteligência onde há script — é uma armadilha que o campo visita até hoje."},
+  {year:"1969",label:"Perceptrons\n(livro)",type:"winter",
+   title:"Minsky & Papert: Perceptrons têm limites",
+   verdict:"crashed",verdictLabel:"Inverno 1",
+   body:"O livro 'Perceptrons' de Minsky e Papert provou matematicamente que o perceptron simples não podia resolver o XOR. A prova estava correta — mas a conclusão que o campo tirou ('redes neurais são um beco sem saída') estava errada. O que o livro não enfatizou: bastava empilhar perceptrons para resolver o XOR. O financiamento para pesquisa em redes neurais secou. Começava o primeiro inverno da IA."},
+  {year:"1970s",label:"SHRDLU\nWinograd",type:"symbolic",
+   title:"SHRDLU: o mundo dos blocos",
+   verdict:"crashed",verdictLabel:"Não escalou",
+   body:"Terry Winograd criou SHRDLU, um programa que manipulava blocos virtuais em um 'micromundo' e respondia perguntas em inglês: 'Find a block which is taller than the one you are holding and put it into the box.' Funcionava perfeitamente — dentro do micromundo de 10 objetos. Fora dele, zero. SHRDLU é a demonstração definitiva do problema central da IA simbólica: sistemas que funcionam em domínios fechados não generalizam. Não é um bug — é uma propriedade fundamental."},
+  {year:"1980s",label:"Sistemas\nEspecialistas",type:"symbolic",
+   title:"A era de ouro (breve) dos sistemas especialistas",
+   verdict:"crashed",verdictLabel:"Não escalou",
+   body:"Empresas investiram bilhões em sistemas especialistas: centenas de regras SE-ENTÃO codificando conhecimento de especialistas humanos. MYCIN diagnosticava infecções bacterianas melhor que médicos juniores. Mas cada regra era escrita à mão por engenheiros de conhecimento. Adicionar conhecimento significava adicionar regras — que interagiam de formas imprevistas. O gargalo de aquisição de conhecimento era intransponível. No fim dos anos 80, a bolha estourou: segundo inverno da IA."},
+  {year:"1986",label:"Back-\npropagation",type:"pivot",
+   title:"Rumelhart, Hinton & Williams: backpropagation",
+   verdict:"survives",verdictLabel:"Fundação",
+   body:"O algoritmo de retropropagação permitiu treinar redes neurais de múltiplas camadas — resolvendo o XOR que Minsky e Papert haviam apontado como impossível 17 anos antes. O backpropagation é simplesmente a regra da cadeia do cálculo aplicada à função de perda da rede: o gradiente flui da saída para a entrada, ajustando cada peso. Este é, ainda hoje, o algoritmo que treina o GPT. David Rumelhart, Geoffrey Hinton e Ronald Williams não 'inventaram' o backpropagation — eles mostraram que ele funcionava para redes neurais."},
+  {year:"1997",label:"Deep Blue\nvs Kasparov",type:"symbolic",
+   title:"Deep Blue vence Kasparov",
+   verdict:"crashed",verdictLabel:"Força bruta",
+   body:"A IBM construiu um supercomputador que venceu o campeão mundial de xadrez. Impressionante — mas o Deep Blue era basicamente busca em árvore com uma função de avaliação artesanalmente ajustada por grandes mestres. Não aprendia nada. Não funcionava para Go (onde as árvores são 10^100 vezes maiores). Era o canto do cisne da abordagem 'conhecimento artesanal + busca', não o futuro da IA."},
+  {year:"2012",label:"AlexNet\nImageNet",type:"modern",
+   title:"AlexNet vence o ImageNet por 10%",
+   verdict:"survives",verdictLabel:"Revolução",
+   body:"Alex Krizhevsky, Ilya Sutskever e Geoffrey Hinton treinaram uma rede neural convolucional profunda em GPUs e reduziram o erro do ImageNet de 26% para 16% — uma melhora de 10 pontos percentuais que nenhum método simbólico ou 'feature engineering' chegava perto. Três ingredientes: (1) dados massivos (ImageNet, 1.2M imagens), (2) computação paralela (GPUs NVIDIA), (3) algoritmos que escalam (CNN + ReLU + dropout). Este é o momento em que a curva verde da IA moderna decola."},
+  {year:"2017",label:"Trans-\nformers",type:"modern",
+   title:"'Attention Is All You Need'",
+   verdict:"survives",verdictLabel:"Revolução",
+   body:"Pesquisadores do Google publicaram o Transformer — uma arquitetura baseada puramente em mecanismos de atenção, substituindo as redes recorrentes que dominavam o processamento de linguagem. A ideia-chave: cada token 'presta atenção' a todos os outros tokens da sequência, aprendendo quais são relevantes. O Transformer escala melhor com computação do que qualquer arquitetura anterior. Em 7 anos, deu origem ao BERT, GPT-3, GPT-4, Claude, Gemini — basicamente todo LLM que existe hoje."},
+  {year:"2023",label:"LLMs\ngeneralistas",type:"modern",
+   title:"Modelos de linguagem como sistemas de propósito geral",
+   verdict:"survives",verdictLabel:"Era atual",
+   body:"GPT-4, Claude, Gemini e outros LLMs demonstraram capacidades que surpreenderam até seus criadores: raciocínio matemático, geração de código, tradução entre dezenas de idiomas, análise de imagens, e até teoria da mente rudimentar. Nenhuma dessas capacidades foi programada explicitamente — todas emergiram do treinamento supervisionado em escala (prever o próximo token, bilhões de vezes). É a Bitter Lesson em sua forma mais pura: computação + dados > conhecimento artesanal. E este curso termina exatamente aqui: na Semana 15, você vai desmontar um LLM conceitualmente e entender cada peça."}
+];
+
+// ── Render timeline ──
+const track = document.getElementById('timelineTrack');
+timelineData.forEach((ev, i) => {
+  const node = document.createElement('div');
+  node.className = 'timeline-node ' + ev.type;
+  node.innerHTML = `<div class="dot"></div><div class="year">${ev.year}</div><div class="label">${ev.label.replace(/\n/g,'<br>')}</div>`;
+  node.addEventListener('click', () => showTimelineDetail(i));
+  track.appendChild(node);
+});
+
+function showTimelineDetail(i) {
+  const ev = timelineData[i];
+  document.getElementById('tdTitle').textContent = ev.year + ' — ' + ev.title;
+  const v = document.getElementById('tdVerdict');
+  v.textContent = ev.verdictLabel;
+  v.className = 'verdict ' + ev.verdict;
+  document.getElementById('tdBody').textContent = ev.body;
+  document.getElementById('timelineDetail').classList.add('active');
+}
+
+// ── ELIZA engine ──
+const elizaRules = [
+  {pattern: /i feel (.*)/i, responses: ["Why do you feel $1?", "How long have you felt $1?"]},
+  {pattern: /i am (.*)/i, responses: ["Why are you $1?", "How long have you been $1?"]},
+  {pattern: /i (.*) you/i, responses: ["Why do you $1 me?"]},
+  {pattern: /you are (.*)/i, responses: ["What makes you think I am $1?"]},
+  {pattern: /i (.*) my (.*)/i, responses: ["Why do you $1 your $2?", "Tell me more about your $2."]},
+  {pattern: /because (.*)/i, responses: ["Is that the real reason?"]},
+  {pattern: /i (don't|dont|cannot|can't) (.*)/i, responses: ["Why don't you $2?", "What would it mean if you could $2?"]},
+  {pattern: /(.*) mother (.*)/i, responses: ["Tell me more about your mother.", "How does that relate to your mother?"]},
+  {pattern: /(.*) father (.*)/i, responses: ["Tell me more about your father."]},
+  {pattern: /(.*) sorry (.*)/i, responses: ["There's no need to apologize."]},
+  {pattern: /(.*) dream (.*)/i, responses: ["What does that dream suggest to you?"]},
+  {pattern: /(hello|hi|hey)/i, responses: ["Hello. How are you feeling today?"]},
+  {pattern: /(.*) (yes|yeah)/i, responses: ["Tell me more.", "Why do you say yes?"]},
+  {pattern: /(.*) (no|not)/i, responses: ["Why not?"]},
+  {pattern: /(.*)\?/, responses: ["Why do you ask?", "What do you think?"]},
+  {pattern: /bye|goodbye/i, responses: ["Goodbye. Take care of yourself."]},
+  {pattern: /(.*)/, responses: ["Tell me more.", "I see.", "Go on.", "How does that make you feel?"]}
+];
+
+const reflections = {
+  "i": "you", "me": "you", "my": "your", "am": "are",
+  "you": "me", "your": "my", "are": "am", "i'm": "you're",
+  "i've": "you've", "i'll": "you'll", "myself": "yourself"
+};
+
+function reflect(text) {
+  return text.replace(/\b(\w+('\w+)?)\b/g, (m) => reflections[m.toLowerCase()] || m);
+}
+
+function elizaResponse(input) {
+  const steps = [];
+  steps.push(`Entrada: "${input}"`);
+  input = input.trim().toLowerCase();
+
+  for (const rule of elizaRules) {
+    const match = input.match(rule.pattern);
+    if (match) {
+      steps.push(`✓ Match: /${rule.pattern.source}/`);
+      steps.push(`  Grupos capturados: [${match.slice(1).filter(Boolean).join(', ')}]`);
+      const response = rule.responses[Math.floor(Math.random() * rule.responses.length)];
+      const reflected = match.slice(1).map(g => reflect(g || ''));
+      steps.push(`  Reflexão: pronomes trocados`);
+      let out = response;
+      reflected.forEach((r, i) => { out = out.replace('$' + (i+1), r); });
+      steps.push(`  Resposta gerada: "${out}"`);
+      return {message: out, steps};
+    } else {
+      steps.push(`✗ Sem match: /${rule.pattern.source}/`);
+    }
+  }
+  const fallback = "Tell me more.";
+  steps.push(`→ Fallback: "${fallback}"`);
+  return {message: fallback, steps};
+}
+
+async function sendToEliza() {
+  const input = document.getElementById('elizaInput');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+
+  const msgs = document.getElementById('elizaMessages');
+  msgs.innerHTML += `<div class="msg user">${text}</div>`;
+
+  const speed = parseInt(document.getElementById('elizaSpeed').value);
+  const delay = [600, 400, 250, 120, 50][speed - 1];
+
+  const trace = document.getElementById('elizaTrace');
+  trace.innerHTML = '';
+
+  await new Promise(r => setTimeout(r, delay / 2));
+
+  const {message, steps} = elizaResponse(text);
+
+  for (const step of steps) {
+    trace.innerHTML += `<div>${step}</div>`;
+    trace.scrollTop = trace.scrollHeight;
+    await new Promise(r => setTimeout(r, delay / steps.length));
+  }
+
+  await new Promise(r => setTimeout(r, delay / 2));
+  msgs.innerHTML += `<div class="msg bot">${message}</div>`;
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function breakEliza() {
+  const breakInputs = ["2+2=?", "The sky is blue today.", "x = 5; y = 3; print(x*y)", "42", "What is the derivative of sin(x)?"];
+  const text = breakInputs[Math.floor(Math.random() * breakInputs.length)];
+  const trace = document.getElementById('elizaTrace');
+  trace.innerHTML = '';
+  const {message, steps} = elizaResponse(text);
+  for (const step of steps) {
+    trace.innerHTML += `<div>${step}</div>`;
+  }
+  trace.innerHTML += `<div style="color:var(--c1);margin-top:0.5rem;">⚠️ Nenhum padrão capturou semântica real. ELIZA não entende aritmética, lógica ou fatos do mundo. É puro casamento de strings.</div>`;
+  trace.scrollTop = trace.scrollHeight;
+  const msgs = document.getElementById('elizaMessages');
+  msgs.innerHTML += `<div class="msg user">${text} <small>(💥 quebrar)</small></div>`;
+  msgs.innerHTML += `<div class="msg bot">${message}</div>`;
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+document.getElementById('elizaSpeed').addEventListener('input', function() {
+  const labels = ['muito lento','lento','médio','rápido','instantâneo'];
+  document.getElementById('elizaSpeedLabel').textContent = labels[this.value - 1];
+});
+
+document.getElementById('elizaInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') sendToEliza();
+});
+
+// ── Bitter Lesson Graph ──
+function drawBitterGraph() {
+  const canvas = document.getElementById('bitter-graph');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width = canvas.parentElement.clientWidth;
+  const H = canvas.height = 320;
+  const pad = {top: 30, right: 40, bottom: 60, left: 80};
+  const pw = W - pad.left - pad.right;
+  const ph = H - pad.top - pad.bottom;
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Axes
+  ctx.strokeStyle = '#999'; ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(pad.left, pad.top); ctx.lineTo(pad.left, pad.top + ph);
+  ctx.lineTo(pad.left + pw, pad.top + ph);
+  ctx.stroke();
+
+  // Labels
+  ctx.fillStyle = '#555'; ctx.font = '0.8rem "Space Grotesk", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('Computação + Dados →', pad.left + pw/2, pad.top + ph + 40);
+  ctx.save();
+  ctx.translate(pad.left - 55, pad.top + ph/2);
+  ctx.rotate(-Math.PI/2);
+  ctx.fillText('Performance →', 0, 0);
+  ctx.restore();
+
+  // Crafted curve (plateaus early)
+  ctx.strokeStyle = '#999'; ctx.lineWidth = 3;
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  const craftX = [0, 0.08, 0.25, 0.35, 0.50, 0.52, 0.53, 0.54];
+  const craftY = [0.05, 0.20, 0.45, 0.55, 0.62, 0.64, 0.65, 0.66];
+  ctx.moveTo(pad.left, pad.top + ph);
+  for (let i = 0; i < craftX.length; i++) {
+    ctx.lineTo(pad.left + craftX[i]*pw, pad.top + ph - craftY[i]*ph);
+  }
+  ctx.stroke();
+
+  // Crafted labels
+  ctx.fillStyle = '#777'; ctx.font = '0.65rem "Space Grotesk", sans-serif';
+  ctx.fillText('Sistemas Especialistas', pad.left + 0.42*pw, pad.top + ph - 0.64*ph - 8);
+  ctx.fillText('Deep Blue', pad.left + 0.48*pw, pad.top + ph - 0.65*ph - 8);
+
+  // Learned curve (keeps climbing)
+  ctx.strokeStyle = '#2CA02C'; ctx.lineWidth = 3;
+  ctx.beginPath();
+  const learnX = [0, 0.10, 0.20, 0.32, 0.50, 0.60, 0.78, 0.90, 0.95];
+  const learnY = [0.03, 0.08, 0.12, 0.22, 0.35, 0.50, 0.72, 0.88, 0.94];
+  ctx.moveTo(pad.left, pad.top + ph);
+  for (let i = 0; i < learnX.length; i++) {
+    ctx.lineTo(pad.left + learnX[i]*pw, pad.top + ph - learnY[i]*ph);
+  }
+  ctx.stroke();
+
+  // Learned labels
+  ctx.fillStyle = '#2E7D32'; ctx.font = '0.65rem "Space Grotesk", sans-serif';
+  ctx.fillText('AlexNet (2012)', pad.left + 0.55*pw, pad.top + ph - 0.48*ph + 14);
+  ctx.fillText('Transformers (2017)', pad.left + 0.72*pw, pad.top + ph - 0.72*ph - 8);
+  ctx.fillText('LLMs (2023)', pad.left + 0.88*pw, pad.top + ph - 0.92*ph - 8);
+
+  // Annotations
+  ctx.fillStyle = '#888'; ctx.font = 'italic 0.7rem "Source Serif 4", serif';
+  ctx.fillText('platô', pad.left + 0.52*pw + 5, pad.top + ph - 0.6*ph);
+  ctx.fillText('decola', pad.left + 0.60*pw, pad.top + ph - 0.45*ph);
+}
+window.addEventListener('load', drawBitterGraph);
+window.addEventListener('resize', drawBitterGraph);
+
+// ── Experiment ──
+function runExperiment() {
+  const nRooms = parseInt(document.getElementById('numRooms').value);
+  const noise = parseInt(document.getElementById('sensorNoise').value) / 100;
+  const rooms = Array(nRooms).fill(false);
+  rooms[Math.floor(Math.random() * nRooms)] = true; // one random room dirty
+  let pos = 0;
+  const log = [];
+  log.push(`Ambiente: ${nRooms} cômodos [${rooms.map(r=>r?'sujo':'limpo').join(', ')}], ruído ${(noise*100).toFixed(0)}%`);
+  log.push(`Posição inicial: ${pos}`);
+
+  for (let step = 0; step < 10; step++) {
+    let sensor = rooms[pos];
+    if (Math.random() < noise) sensor = !sensor; // flip
+
+    const action = sensor ? 'ASPIRAR' : (pos < nRooms - 1 ? 'DIREITA' : 'ESQUERDA');
+    log.push(`Passo ${step+1}: sensor=${sensor?'sujo':'limpo'} → ${action}`);
+
+    if (action === 'ASPIRAR') rooms[pos] = false;
+    else if (action === 'DIREITA') pos++;
+    else if (action === 'ESQUERDA' && pos > 0) pos--;
+
+    if (rooms.every(r => !r)) { log.push('✓ Todos os cômodos limpos!'); break; }
+  }
+  if (!rooms.every(r => !r)) log.push(`⚠️ Após 10 passos: [${rooms.map(r=>r?'sujo':'limpo').join(', ')}]`);
+
+  document.getElementById('experimentOutput').textContent = log.join('\n');
+}
+
+document.getElementById('numRooms').addEventListener('input', function() {
+  document.getElementById('numRoomsLabel').textContent = this.value;
+  runExperiment();
+});
+document.getElementById('sensorNoise').addEventListener('input', function() {
+  document.getElementById('sensorNoiseLabel').textContent = this.value + '%';
+  runExperiment();
+});
+document.getElementById('resetExperiment').addEventListener('click', runExperiment);
+runExperiment();
+
+// ── Course preview cards ──
+const previewData = [
+  {week:"3-4",title:"Busca: BFS, DFS, A*",desc:"Agentes que encontram caminhos — com e sem informação. A* com heurísticas que você mesmo projeta."},
+  {week:"5",title:"Jogos: Minimax e α-β",desc:"Agentes que jogam contra você. Poda alfa-beta em ação: a árvore queima ramos inúteis em tempo real."},
+  {week:"6",title:"IA Simbólica: Autópsia",desc:"Por que regras escritas à mão não escalam — e o que aprendemos com esse fracasso."},
+  {week:"7",title:"Probabilidade e Bayes",desc:"A matemática da incerteza. Naive Bayes classifica spam em 25 linhas de NumPy."},
+  {week:"8",title:"Gradiente Descendente",desc:"O algoritmo mais importante do deep learning. Uma bola descendo a montanha da perda."},
+  {week:"9",title:"Classificação e Perceptron",desc:"O XOR que parou a IA por 17 anos — e a rede neural que resolveu."},
+  {week:"10-11",title:"MDPs e Bellman",desc:"O formalismo da decisão sequencial. Valores 'escorrem' pelo grid como água."},
+  {week:"12",title:"MC e TD",desc:"Aprender sem modelo do mundo. O erro TD: a equação mais importante do RL."},
+  {week:"13",title:"Q-learning e SARSA",desc:"Controle sem modelo. CliffWalking: o seguro vs o ótimo — uma linha de código de diferença."},
+  {week:"14",title:"Deep RL",desc:"De tabelas Q a redes neurais. O DQN que jogou Atari em nível humano."},
+  {week:"15",title:"AlphaGo, LLMs, RLHF",desc:"Todas as peças do curso montadas. O AlphaGo explicado com o que você já sabe."}
+];
+
+document.getElementById('previewGrid').innerHTML = previewData.map(p =>
+  `<div class="preview-card">
+    <div class="week-badge">Semana ${p.week}</div>
+    <div class="card-title">${p.title}</div>
+    <div class="card-desc">${p.desc}</div>
+  </div>`
+).join('');
+
+// ── 4-views matrix interactivity ──
+document.querySelectorAll('.matrix-4v .cell').forEach(cell => {
+  cell.addEventListener('click', () => {
+    document.querySelectorAll('.matrix-4v .cell').forEach(c => c.classList.remove('highlight'));
+    cell.classList.add('highlight');
+  });
+});
+
+// ── Select first timeline node by default ──
+showTimelineDetail(0);
+
+// ── Forward-chaining inference engine ──
+const ieRules = [
+  {prem: new Set(["tem_pelo"]),                    concl: "mamifero",   label: '{"tem_pelo"} → mamifero'},
+  {prem: new Set(["mamifero", "mia"]),             concl: "gato",       label: '{"mamifero", "mia"} → gato'},
+  {prem: new Set(["gato"]),                        concl: "carnivoro",  label: '{"gato"} → carnivoro'},
+  {prem: new Set(["carnivoro", "domestico"]),      concl: "come_racao", label: '{"carnivoro", "domestico"} → come_racao'},
+];
+let ieFatos = new Set(["tem_pelo", "mia", "domestico"]);
+let ieStepIdx = 0;
+let ieDone = false;
+
+function renderFatos() {
+  document.getElementById('ieFatosSet').textContent =
+    '{' + [...ieFatos].join(', ') + '}';
+}
+
+function inferenceStep() {
+  const display = document.getElementById('ieDisplay');
+  if (ieDone) {
+    display.innerHTML += `<div style="color:var(--c2);margin-top:0.4rem;">✓ Encadeamento concluído. Nenhuma regra nova dispara.</div>`;
+    return;
+  }
+  ieStepIdx++;
+  let fired = false;
+  for (const rule of ieRules) {
+    const satisfied = [...rule.prem].every(p => ieFatos.has(p));
+    const alreadyKnown = ieFatos.has(rule.concl);
+    if (satisfied) {
+      if (alreadyKnown) {
+        display.innerHTML += `<div style="color:#999;">Passo ${ieStepIdx}: ${rule.label} — conclusão já conhecida, ignora.</div>`;
+        display.scrollTop = display.scrollHeight;
+        fired = true; break;
+      }
+      ieFatos.add(rule.concl);
+      display.innerHTML += `<div style="color:var(--c0);">Passo ${ieStepIdx}: <strong>${rule.label}</strong> ✓ dispara!</div>`;
+      display.innerHTML += `<div style="color:var(--c2);margin-left:1rem;">→ novo fato: <strong>${rule.concl}</strong></div>`;
+      display.scrollTop = display.scrollHeight;
+      renderFatos();
+      fired = true; break;
+    }
+  }
+  if (!fired) {
+    ieDone = true;
+    display.innerHTML += `<div style="color:var(--c1);margin-top:0.4rem;">⚠️ Nenhuma regra dispara — motor para.</div>`;
+    display.innerHTML += `<div style="color:var(--c2);margin-top:0.3rem;">✓ Fatos finais: {${[...ieFatos].join(', ')}}</div>`;
+  }
+  display.scrollTop = display.scrollHeight;
+}
+
+function inferenceRunAll() {
+  const display = document.getElementById('ieDisplay');
+  display.innerHTML = '';
+  ieFatos = new Set(["tem_pelo", "mia", "domestico"]);
+  ieStepIdx = 0;
+  ieDone = false;
+  renderFatos();
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const rule of ieRules) {
+      const satisfied = [...rule.prem].every(p => ieFatos.has(p));
+      if (satisfied && !ieFatos.has(rule.concl)) {
+        ieFatos.add(rule.concl);
+        ieStepIdx++;
+        display.innerHTML += `<div style="color:var(--c0);">Passo ${ieStepIdx}: <strong>${rule.label}</strong> ✓ dispara!</div>`;
+        display.innerHTML += `<div style="color:var(--c2);margin-left:1rem;">→ novo fato: <strong>${rule.concl}</strong></div>`;
+        changed = true;
+      }
+    }
+  }
+  display.innerHTML += `<div style="color:var(--c2);margin-top:0.5rem;">✓ Encadeamento completo. Fatos finais: {${[...ieFatos].join(', ')}}</div>`;
+  display.innerHTML += `<div style="color:#999;margin-top:0.3rem;">4 regras bastaram. Mas e se fossem 10.000?</div>`;
+  ieDone = true;
+  display.scrollTop = display.scrollHeight;
+  renderFatos();
+}
+
+function inferenceReset() {
+  ieFatos = new Set(["tem_pelo", "mia", "domestico"]);
+  ieStepIdx = 0;
+  ieDone = false;
+  document.getElementById('ieDisplay').innerHTML =
+    `<div style="color:#999;">Clique em <strong>▸ Passo</strong> para iniciar o encadeamento.</div>`;
+  renderFatos();
+}
+</script>
+
+</body>
+</html>
