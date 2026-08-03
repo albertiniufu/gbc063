@@ -10,441 +10,418 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --board: #20262E;
-  --chalk: #EAEFF5;
-  --c0: #1F77B4;
-  --c1: #FF7F0E;
-  --c2: #2CA02C;
-  --c3: #D62728;
-  --c4: #9467BD;
-  --slide-w: 1280px;
-  --slide-h: 720px;
+  --board: #20262E; --chalk: #EAEFF5;
+  --c0: #1F77B4; --c1: #FF7F0E; --c2: #2CA02C; --c3: #D62728; --c4: #9467BD;
+  --slide-w: 1280px; --slide-h: 720px;
 }
 
 body {
-  background: #111;
-  font-family: 'Space Grotesk', sans-serif;
-  overflow: hidden;
-  height: 100vh;
-  width: 100vw;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  user-select: none;
-  -webkit-user-select: none;
+  background: #111; font-family: 'Space Grotesk', sans-serif;
+  overflow: hidden; height: 100vh; width: 100vw;
+  display: flex; align-items: center; justify-content: center;
+  user-select: none; -webkit-user-select: none;
 }
 
-/* ── Slide container ── */
 #slideContainer {
-  width: var(--slide-w);
-  height: var(--slide-h);
-  position: relative;
-  transform-origin: center center;
-  background: var(--board);
-  color: var(--chalk);
-  border-radius: 4px;
-  overflow: hidden;
+  width: var(--slide-w); height: var(--slide-h);
+  position: relative; transform-origin: center center;
+  background: var(--board); color: var(--chalk);
+  border-radius: 4px; overflow: hidden;
   box-shadow: 0 0 60px rgba(0,0,0,0.6);
 }
 .slide {
-  position: absolute;
-  inset: 0;
-  display: none;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 3rem 4rem;
-  text-align: center;
+  position: absolute; inset: 0; display: none;
+  flex-direction: column; align-items: center; justify-content: center;
+  padding: 2.5rem 3.5rem; text-align: center;
 }
 .slide.active { display: flex; }
 
-/* Typography */
-.slide h1 { font-size: 3.2rem; font-weight: 700; line-height: 1.15; margin-bottom: 1rem; }
-.slide h2 { font-size: 2.2rem; font-weight: 600; line-height: 1.2; margin-bottom: 0.75rem; color: var(--c0); }
-.slide h3 { font-size: 1.5rem; font-weight: 500; margin-bottom: 0.5rem; }
-.slide p  { font-family: 'Source Serif 4', serif; font-size: 1.25rem; line-height: 1.6; max-width: 900px; margin-bottom: 0.75rem; }
-.slide .big-number { font-size: 8rem; font-weight: 700; line-height: 1; color: var(--c1); }
-.slide .tagline { font-size: 1.6rem; font-weight: 400; opacity: 0.75; }
+.slide h1 { font-size: 2.8rem; font-weight: 700; line-height: 1.2; margin-bottom: 0.8rem; max-width: 1000px; }
+.slide h2 { font-size: 2rem; font-weight: 600; line-height: 1.2; margin-bottom: 0.6rem; color: var(--c0); max-width: 950px; }
+.slide h3 { font-size: 1.35rem; font-weight: 500; margin-bottom: 0.5rem; }
+.slide p  { font-family: 'Source Serif 4', serif; font-size: 1.15rem; line-height: 1.55; max-width: 900px; margin-bottom: 0.6rem; }
 
-/* Fragments (revealed progressively) */
 .fragment { opacity: 0; transition: opacity 0.35s ease; }
 .fragment.visible { opacity: 1; }
 
-/* ── Specific slide styles ── */
-.slide-cold-open {
-  background: radial-gradient(ellipse at center, #1a1a2e 0%, #0a0a0f 100%);
-}
-.slide-cold-open .curve-area {
-  position: relative;
-  width: 90%;
-  height: 60%;
-}
+.slide-cold-open { background: radial-gradient(ellipse at center, #1a1a2e 0%, #0a0a0f 100%); }
 
-.slide-quote {
-  font-family: 'Source Serif 4', serif;
-  font-size: 1.8rem;
-  font-style: italic;
-  line-height: 1.5;
-  max-width: 850px;
-}
-.slide-quote::before { content: '“'; font-size: 5rem; color: var(--c1); display: block; line-height: 0.3; }
-.slide-quote .attr { font-size: 1rem; font-style: normal; opacity: 0.6; margin-top: 1rem; }
+.hist-slide { flex-direction: row; gap: 2.5rem; padding: 2.5rem 4rem; }
+.hist-photo-frame { flex: 0 0 300px; height: 380px; border: 2px solid var(--c0); border-radius: 8px; overflow: hidden; background: #1a1a25; position: relative; display: flex; align-items: center; justify-content: center; }
+.hist-photo-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.hist-photo-frame .fallback { display: none; width: 100%; height: 100%; align-items: center; justify-content: center; flex-direction: column; color: #555; font-size: 4rem; }
+.hist-photo-frame .credit { position: absolute; bottom: 0.4rem; right: 0.6rem; font-size: 0.5rem; opacity: 0.4; }
+.hist-info { flex: 1; text-align: left; display: flex; flex-direction: column; justify-content: center; }
+.hist-info .hist-name { font-size: 2.2rem; font-weight: 700; color: var(--chalk); margin-bottom: 0.3rem; }
+.hist-info .hist-dates { font-size: 1.1rem; opacity: 0.5; margin-bottom: 1rem; }
+.hist-info .hist-legacy { font-size: 1.3rem; line-height: 1.5; color: var(--c2); border-left: 3px solid var(--c1); padding-left: 1rem; max-width: 500px; }
 
-/* Timeline slide */
-.timeline-slide { padding: 2rem; }
-.timeline-horiz {
-  display: flex;
-  align-items: flex-end;
-  gap: 0;
-  width: 100%;
-  height: 400px;
-  position: relative;
-  overflow-x: auto;
-}
-.timeline-item {
-  flex: 0 0 100px;
-  text-align: center;
-  position: relative;
-  cursor: pointer;
-  padding-bottom: 1.5rem;
-}
-.timeline-item .dot {
-  width: 14px; height: 14px;
-  border-radius: 50%;
-  margin: 0 auto 0.4rem;
-  background: #555;
-  transition: transform 0.2s;
-}
+.slide-quote { font-family: 'Source Serif 4', serif; font-size: 1.7rem; font-style: italic; line-height: 1.5; max-width: 850px; }
+.slide-quote::before { content: '\201C'; font-size: 5rem; color: var(--c1); display: block; line-height: 0.3; }
+.slide-quote .attr { font-size: 0.95rem; font-style: normal; opacity: 0.6; margin-top: 1rem; }
+
+.timeline-slide { padding: 1.5rem 2rem; }
+.timeline-horiz { display: flex; align-items: flex-end; gap: 0; width: 100%; height: 350px; position: relative; overflow-x: auto; }
+.timeline-item { flex: 0 0 82px; text-align: center; position: relative; cursor: pointer; padding-bottom: 1.2rem; }
+.timeline-item .dot { width: 12px; height: 12px; border-radius: 50%; margin: 0 auto 0.3rem; background: #555; transition: transform 0.2s; }
 .timeline-item:hover .dot { transform: scale(1.6); }
-.timeline-item .yr { font-size: 0.8rem; font-weight: 700; }
-.timeline-item .lb { font-size: 0.65rem; opacity: 0.6; line-height: 1.2; }
+.timeline-item .yr { font-size: 0.72rem; font-weight: 700; }
+.timeline-item .lb { font-size: 0.58rem; opacity: 0.6; line-height: 1.2; }
 
-/* Matrix on slide */
-.matrix-2x2 {
-  display: grid;
-  grid-template-columns: 120px 320px 320px;
-  gap: 3px;
-  margin: 1rem 0;
+/* Timeline tooltip */
+.timeline-tooltip {
+  position: fixed;
+  display: none;
+  width: 340px;
+  background: #12121c;
+  border: 1.5px solid #666;
+  border-radius: 10px;
+  padding: 0;
+  z-index: 200;
+  pointer-events: none;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.8);
+  overflow: hidden;
 }
-.matrix-2x2 > div {
-  padding: 1.2rem 0.8rem;
-  display: flex; align-items: center; justify-content: center;
-  text-align: center; font-size: 1rem;
+.timeline-tooltip.visible { display: block; }
+.timeline-tooltip .tt-img {
+  height: 170px;
+  background: #0a0a10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
 }
+.timeline-tooltip .tt-img img {
+  width: 100%; height: 100%;
+  object-fit: contain;
+  display: block;
+  background: #0a0a10;
+}
+.timeline-tooltip .tt-img .tt-fallback {
+  display: none;
+}
+.timeline-tooltip .tt-body {
+  padding: 0.8rem 0.9rem;
+}
+.timeline-tooltip .tt-year {
+  font-size: 0.62rem; color: #99a; letter-spacing: 0.06em; font-weight: 600;
+}
+.timeline-tooltip .tt-title {
+  font-size: 0.95rem; font-weight: 700; margin: 0.15rem 0 0.4rem; color: #f0f0f0;
+}
+.timeline-tooltip .tt-desc {
+  font-family: 'Source Serif 4', serif;
+  font-size: 0.72rem; line-height: 1.45; color: #ccc;
+}
+
+.matrix-2x2 { display: grid; grid-template-columns: 100px 300px 300px; gap: 3px; margin: 1rem 0; }
+.matrix-2x2 > div { padding: 1.2rem 0.8rem; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 1rem; flex-direction: column; line-height: 1.3; }
 .matrix-2x2 .mcorner { background: #333; }
 .matrix-2x2 .mhdr { background: #333; font-weight: 600; }
 .matrix-2x2 .mcell { background: #2a2a35; border: 1px solid #444; }
+.matrix-2x2 .mcell small { display: block; margin-top: 0.4rem; font-size: 0.78rem; color: #bcc; opacity: 0.85; line-height: 1.3; }
 .matrix-2x2 .mcell.hl { border-color: var(--c0); box-shadow: 0 0 0 2px var(--c0); background: #1a2a40; }
+.matrix-2x2 .mcell.hl small { color: #9cf; }
 
-/* ELIZA in deck */
-.eliza-compact {
-  display: flex; gap: 1rem; width: 100%; max-width: 1000px;
-}
-.eliza-compact .chat-box {
-  flex: 1;
-  background: #1a1a25;
-  border: 1px solid #444;
-  border-radius: 6px;
-  overflow: hidden;
-}
-.eliza-compact .chat-header {
-  background: var(--c0);
-  padding: 0.4rem 0.8rem;
-  font-size: 0.8rem; font-weight: 600;
-}
-.eliza-compact .chat-msgs {
-  height: 200px;
-  overflow-y: auto;
-  padding: 0.5rem;
-  font-family: 'Source Serif 4', serif;
-  font-size: 0.85rem;
-  text-align: left;
-}
+.eliza-compact { display: flex; gap: 1rem; width: 100%; max-width: 1000px; }
+.eliza-compact .chat-box { flex: 1; background: #1a1a25; border: 1px solid #444; border-radius: 6px; overflow: hidden; }
+.eliza-compact .chat-header { background: var(--c0); padding: 0.4rem 0.8rem; font-size: 0.8rem; font-weight: 600; }
+.eliza-compact .chat-msgs { height: 180px; overflow-y: auto; padding: 0.5rem; font-family: 'Source Serif 4', serif; font-size: 0.85rem; text-align: left; }
 .eliza-compact .chat-msgs .bmsg { color: #aaa; margin-bottom: 0.3rem; }
 .eliza-compact .chat-msgs .umsg { color: var(--c0); margin-bottom: 0.3rem; text-align: right; }
-.eliza-compact .chat-input-row {
-  display: flex;
-  border-top: 1px solid #444;
-}
-.eliza-compact .chat-input-row input {
-  flex: 1; background: transparent; border: none; color: #fff;
-  padding: 0.4rem 0.6rem; font-family: 'Source Serif 4', serif; font-size: 0.85rem;
-}
-.eliza-compact .chat-input-row button {
-  background: var(--c0); border: none; color: #fff;
-  padding: 0.4rem 0.8rem; cursor: pointer; font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 0.75rem;
-}
-.eliza-compact .trace-box {
-  flex: 1;
-  background: #0d0d15;
-  border: 1px solid #444;
-  border-radius: 6px;
-  overflow: hidden;
-}
-.eliza-compact .trace-box .trace-header {
-  background: #333;
-  padding: 0.4rem 0.8rem;
-  font-size: 0.8rem; font-weight: 600;
-}
-.eliza-compact .trace-content {
-  height: 200px;
-  overflow-y: auto;
-  padding: 0.5rem;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.68rem;
-  line-height: 1.5;
-  text-align: left;
-  color: #aaa;
-}
+.eliza-compact .chat-input-row { display: flex; border-top: 1px solid #444; }
+.eliza-compact .chat-input-row input { flex: 1; background: transparent; border: none; color: #fff; padding: 0.4rem 0.6rem; font-family: 'Source Serif 4', serif; font-size: 0.85rem; }
+.eliza-compact .chat-input-row button { background: var(--c0); border: none; color: #fff; padding: 0.4rem 0.8rem; cursor: pointer; font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 0.75rem; }
+.eliza-compact .trace-box { flex: 1; background: #0d0d15; border: 1px solid #444; border-radius: 6px; overflow: hidden; }
+.eliza-compact .trace-box .trace-header { background: #333; padding: 0.4rem 0.8rem; font-size: 0.8rem; font-weight: 600; }
+.eliza-compact .trace-content { height: 180px; overflow-y: auto; padding: 0.5rem; font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; line-height: 1.5; text-align: left; color: #aaa; }
 
-/* Code on slides */
-.slide-code {
-  text-align: left;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 1.05rem;
-  line-height: 1.6;
-  background: #0d0d15;
-  border: 1px solid #333;
-  border-radius: 6px;
-  padding: 1.2rem 1.5rem;
-  max-width: 850px;
-}
-.slide-code .kw { color: #CBA6F7; }
-.slide-code .co { color: #6C7086; }
-.slide-code .st { color: #A6E3A1; }
-.slide-code .bu { color: #89B4FA; }
+.slide-code { text-align: left; font-family: 'JetBrains Mono', monospace; font-size: 1rem; line-height: 1.6; background: #0d0d15; border: 1px solid #333; border-radius: 6px; padding: 1rem 1.3rem; max-width: 850px; }
+.slide-code .kw { color: #CBA6F7; } .slide-code .co { color: #6C7086; } .slide-code .st { color: #A6E3A1; } .slide-code .bu { color: #89B4FA; }
 .slide-code .hl { background: rgba(255,127,14,0.25); display: inline-block; padding: 0 0.3rem; border-radius: 3px; }
 
-/* Preview grid */
-.preview-mini-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.5rem;
-  width: 100%; max-width: 1100px;
-}
-.preview-mini-card {
-  background: #1a1a2a;
-  border: 1px solid #333;
-  border-radius: 6px;
-  padding: 0.8rem 0.6rem;
-  cursor: pointer;
-  text-align: center;
-  transition: border-color 0.15s;
-}
-.preview-mini-card:hover { border-color: var(--c0); }
-.preview-mini-card .pw { font-size: 1.5rem; font-weight: 700; color: var(--c2); }
-.preview-mini-card .pt { font-size: 0.8rem; font-weight: 600; }
-.preview-mini-card .pd { font-size: 0.65rem; opacity: 0.5; margin-top: 0.2rem; }
+.def-box { background: #1a2a35; border-left: 4px solid var(--c0); border-radius: 0 8px 8px 0; padding: 1rem 1.3rem; text-align: left; max-width: 900px; font-family: 'JetBrains Mono', monospace; font-size: 1.15rem; line-height: 1.7; margin: 0.8rem 0; }
 
-/* Controls */
-#controls {
-  position: fixed; bottom: 0.75rem; left: 50%; transform: translateX(-50%);
-  display: flex; gap: 0.5rem; align-items: center;
-  z-index: 100;
-  background: rgba(0,0,0,0.7);
-  padding: 0.4rem 0.8rem;
-  border-radius: 20px;
-  font-family: 'Space Grotesk', sans-serif;
-  font-size: 0.8rem;
-}
-#controls button {
-  background: transparent; border: 1px solid #555; color: #ccc;
-  width: 36px; height: 36px; border-radius: 50%;
-  cursor: pointer; font-size: 1rem; display: flex; align-items: center; justify-content: center;
-}
+.systems-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; width: 100%; max-width: 1050px; }
+.system-card { background: #1a1a25; border: 1px solid #444; border-radius: 8px; padding: 1.2rem 1rem; text-align: center; }
+.system-card .sc-icon { font-size: 3rem; margin-bottom: 0.5rem; }
+.system-card .sc-name { font-size: 1.3rem; font-weight: 700; }
+.system-card .sc-date { font-size: 0.85rem; opacity: 0.5; margin: 0.3rem 0; }
+.system-card .sc-line { font-size: 0.8rem; line-height: 1.3; opacity: 0.7; }
+
+.preview-mini-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; width: 100%; max-width: 1100px; }
+.preview-mini-card { background: #1a1a2a; border: 1px solid #333; border-radius: 6px; padding: 0.7rem 0.5rem; cursor: pointer; text-align: center; transition: border-color 0.15s; }
+.preview-mini-card:hover { border-color: var(--c0); }
+.preview-mini-card .pw { font-size: 1.3rem; font-weight: 700; color: var(--c2); }
+.preview-mini-card .pt { font-size: 0.75rem; font-weight: 600; }
+.preview-mini-card .pd { font-size: 0.6rem; opacity: 0.5; margin-top: 0.15rem; }
+
+#controls { position: fixed; bottom: 0.75rem; left: 50%; transform: translateX(-50%); display: flex; gap: 0.5rem; align-items: center; z-index: 100; background: rgba(0,0,0,0.7); padding: 0.4rem 0.8rem; border-radius: 20px; font-family: 'Space Grotesk', sans-serif; font-size: 0.8rem; }
+#controls button { background: transparent; border: 1px solid #555; color: #ccc; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 1rem; display: flex; align-items: center; justify-content: center; }
 #controls button:hover { border-color: #fff; color: #fff; }
 #controls .slide-num { color: #999; min-width: 70px; text-align: center; }
 #controls .btn-notes { width: auto; border-radius: 14px; padding: 0 0.8rem; font-size: 0.75rem; }
 
-/* Presenter notes */
-#presenterNotes {
-  display: none;
-  position: fixed; bottom: 4rem; right: 1rem;
-  width: 380px; max-height: 300px;
-  background: rgba(0,0,0,0.9);
-  border: 1px solid #555;
-  border-radius: 8px;
-  padding: 1rem;
-  color: #ddd;
-  font-family: 'Source Serif 4', serif;
-  font-size: 0.85rem;
-  line-height: 1.5;
-  overflow-y: auto;
-  z-index: 101;
-}
+#presenterNotes { display: none; position: fixed; bottom: 4rem; right: 1rem; width: 380px; max-height: 300px; background: rgba(0,0,0,0.9); border: 1px solid #555; border-radius: 8px; padding: 1rem; color: #ddd; font-family: 'Source Serif 4', serif; font-size: 0.85rem; line-height: 1.5; overflow-y: auto; z-index: 101; }
 #presenterNotes.visible { display: block; }
-#presenterNotes .note-label {
-  font-family: 'Space Grotesk', sans-serif;
-  font-weight: 600; color: var(--c1); font-size: 0.7rem;
-  margin-bottom: 0.4rem;
-}
-#presenterNotes .next-slide-preview {
-  margin-top: 0.8rem; padding-top: 0.6rem; border-top: 1px solid #444;
-  font-size: 0.75rem; opacity: 0.6;
-}
+#presenterNotes .note-label { font-family: 'Space Grotesk', sans-serif; font-weight: 600; color: var(--c1); font-size: 0.7rem; margin-bottom: 0.4rem; }
+#presenterNotes .next-slide-preview { margin-top: 0.8rem; padding-top: 0.6rem; border-top: 1px solid #444; font-size: 0.75rem; opacity: 0.6; }
 
-/* Footer */
-.slide-footer {
-  position: absolute; bottom: 0.6rem; left: 0; right: 0;
-  text-align: center;
-  font-size: 0.6rem;
-  opacity: 0.3;
-  pointer-events: none;
-}
+.slide-footer { position: absolute; bottom: 0.5rem; left: 0; right: 0; text-align: center; font-size: 0.55rem; opacity: 0.3; pointer-events: none; }
 
-/* Responsive scaling */
-@media (max-width: 1280px) {
-  #slideContainer { transform: scale(calc(min(100vw / 1280, 100vh / 720))); }
-}
-@media (max-width: 640px) {
-  #controls { bottom: 0.25rem; padding: 0.25rem 0.5rem; gap: 0.25rem; }
-  #controls button { width: 28px; height: 28px; font-size: 0.8rem; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .fragment { transition: none; }
-}
+@media (max-width: 1280px) { #slideContainer { transform: scale(calc(min(100vw / 1280, 100vh / 720))); } }
+@media (max-width: 640px) { #controls { bottom: 0.25rem; padding: 0.25rem 0.5rem; gap: 0.25rem; } #controls button { width: 28px; height: 28px; font-size: 0.8rem; } }
+@media (prefers-reduced-motion: reduce) { .fragment { transition: none; } }
 </style>
 </head>
 <body>
 
 <div id="slideContainer">
 
-<!-- SLIDE 0: Cold Open -->
-<div class="slide slide-cold-open active" data-slide="0" data-notes="Projetar sem falar. Deixar a imagem no ar por 5 segundos. A pergunta deve surgir na cabeça deles, não da sua boca.">
-  <svg viewBox="0 0 1100 500" style="width:85%;height:65%;">
+<!-- 0 · COLD OPEN -->
+<div class="slide slide-cold-open active" data-notes="Projetar sem falar. 5 segundos de silêncio. A pergunta deve surgir na cabeça deles: 'o que causou essa curva?'. Não responda ainda.">
+  <svg viewBox="0 0 1100 480" style="width:85%;height:60%;">
     <defs>
       <linearGradient id="gradLine" x1="0" y1="1" x2="1" y2="0">
         <stop offset="0%" stop-color="#444"/><stop offset="55%" stop-color="#555"/>
         <stop offset="60%" stop-color="#2CA02C"/><stop offset="100%" stop-color="#2CA02C"/>
       </linearGradient>
     </defs>
-    <!-- Axes -->
-    <line x1="100" y1="430" x2="1000" y2="430" stroke="#555" stroke-width="2"/>
-    <line x1="100" y1="430" x2="100" y2="50" stroke="#555" stroke-width="2"/>
-    <text x="50" y="250" fill="#888" font-size="14" transform="rotate(-90,50,250)">Capacidade</text>
-    <text x="550" y="470" fill="#888" font-size="14">1943 → hoje</text>
-    <!-- Flat line -->
-    <polyline points="100,380 400,370 500,360 600,355 700,350 800,340 820,300 880,220 950,120 990,80"
+    <line x1="100" y1="410" x2="980" y2="410" stroke="#555" stroke-width="2"/>
+    <line x1="100" y1="410" x2="100" y2="60" stroke="#555" stroke-width="2"/>
+    <text x="50" y="245" fill="#888" font-size="13" transform="rotate(-90,50,245)">Capacidade</text>
+    <text x="540" y="450" fill="#888" font-size="13">1943 → hoje</text>
+    <polyline points="100,370 380,360 480,350 560,340 680,325 780,300 830,260 900,200 950,120 980,75"
       fill="none" stroke="url(#gradLine)" stroke-width="4" stroke-linecap="round"/>
-    <text x="990" y="70" fill="#2CA02C" font-size="20" font-weight="700">?</text>
+    <text x="985" y="68" fill="#2CA02C" font-size="22" font-weight="700">?</text>
   </svg>
+  <div style="position:absolute;top:1.2rem;left:2rem;font-family:'Space Grotesk',sans-serif;text-align:left;">
+    <div style="font-size:0.7rem;opacity:0.4;letter-spacing:0.08em;">GBC063 — INTELIGÊNCIA ARTIFICIAL</div>
+    <div style="font-size:0.85rem;opacity:0.55;">Semana 1 · O que é IA?</div>
+  </div>
+  <div style="position:absolute;top:1.2rem;right:2rem;font-family:'Space Grotesk',sans-serif;text-align:right;">
+    <div style="font-size:0.65rem;opacity:0.35;">Prof. Marcelo Keese Albertini</div>
+    <div style="font-size:0.6rem;opacity:0.25;">FACOM · Universidade Federal de Uberlândia</div>
+  </div>
 </div>
 
-<!-- SLIDE 1: Guiding Question -->
-<div class="slide" data-slide="1" data-notes="Ler a pergunta em voz alta. Pausa de 3 segundos. 'Esta é a pergunta que este curso responde.'">
-  <h1 style="font-size:3.5rem;max-width:900px;">Por que a IA funciona <span style="color:var(--c1);">agora</span>?</h1>
+<!-- 1 · PERGUNTA CONDUTORA -->
+<div class="slide" data-notes="Ler em voz alta. Pausa de 3 segundos. Esta pergunta é respondida no último slide. O curso inteiro é a engenharia da resposta.">
+  <h1 style="font-size:3.2rem;max-width:950px;">Por que a IA funciona <span style="color:var(--c1);">agora</span> — e falhou antes?</h1>
+  <p style="margin-top:1.5rem;font-size:1.3rem;opacity:0.6;">A resposta está em 70 anos de erros, dois invernos e uma lição: <span style="color:var(--c2);">a Bitter Lesson</span>.</p>
 </div>
 
-<!-- SLIDE 2-3: Timeline Intro -->
-<div class="slide timeline-slide" data-slide="2" data-notes="Apresentar a linha do tempo. Usar seta direita para avançar pelos eventos; cada evento aparece com sua cor. Não contar tudo — apenas os 4-5 eventos mais marcantes. Perguntar: 'Alguém conhece algum desses momentos?'">
-  <h2>80 anos em 60 segundos</h2>
+<!-- 2 · MAPA DA AULA -->
+<div class="slide" data-notes="Dar o mapa completo antes de mergulhar. Parte 1 = história e conceitos. Parte 2 = ferramentas e prática. Apontar que o arco vai de Turing até o ChatGPT.">
+  <h2>O que vamos ver hoje</h2>
+  <div style="display:flex;gap:2rem;margin-top:1.2rem;width:100%;max-width:1000px;">
+    <div style="flex:1;text-align:left;">
+      <div style="font-size:0.7rem;opacity:0.4;letter-spacing:0.08em;margin-bottom:0.6rem;">PARTE 1</div>
+      <div style="padding:0.35rem 0;font-size:0.9rem;border-left:2px solid var(--c0);padding-left:0.7rem;margin-bottom:0.25rem;">📜 Turing, McCarthy, Rosenblatt</div>
+      <div style="padding:0.35rem 0;font-size:0.9rem;border-left:2px solid var(--c0);padding-left:0.7rem;margin-bottom:0.25rem;">❄️ Os dois invernos da IA</div>
+      <div style="padding:0.35rem 0;font-size:0.9rem;border-left:2px solid var(--c0);padding-left:0.7rem;margin-bottom:0.25rem;">🎯 4 visões da IA — agentes racionais</div>
+      <div style="padding:0.35rem 0;font-size:0.9rem;border-left:2px solid var(--c0);padding-left:0.7rem;margin-bottom:0.25rem;">🤖 ELIZA — inteligência ou ilusão?</div>
+      <div style="padding:0.35rem 0;font-size:0.9rem;border-left:2px solid var(--c0);padding-left:0.7rem;margin-bottom:0.25rem;">⚡ Regras não escalam — demo ao vivo</div>
+      <div style="padding:0.35rem 0;font-size:0.9rem;border-left:2px solid var(--c0);padding-left:0.7rem;">📖 A Bitter Lesson (Sutton, 2019)</div>
+    </div>
+    <div style="flex:1;text-align:left;">
+      <div style="font-size:0.7rem;opacity:0.4;letter-spacing:0.08em;margin-bottom:0.6rem;">PARTE 2</div>
+      <div style="padding:0.35rem 0;font-size:0.9rem;border-left:2px solid var(--c2);padding-left:0.7rem;margin-bottom:0.25rem;">🐍 Por que Python? (Lisp, Prolog, Python)</div>
+      <div style="padding:0.35rem 0;font-size:0.9rem;border-left:2px solid var(--c2);padding-left:0.7rem;margin-bottom:0.25rem;">⚙️ Setup: Colab, Git, repositório</div>
+      <div style="padding:0.35rem 0;font-size:0.9rem;border-left:2px solid var(--c2);padding-left:0.7rem;margin-bottom:0.25rem;">🧹 Agente aspirador — do zero</div>
+      <div style="padding:0.35rem 0;font-size:0.9rem;border-left:2px solid var(--c2);padding-left:0.7rem;margin-bottom:0.25rem;">🧩 Sua vez: 3 cômodos</div>
+      <div style="padding:0.35rem 0;font-size:0.9rem;border-left:2px solid var(--c2);padding-left:0.7rem;margin-bottom:0.25rem;">🗺️ Preview do curso</div>
+      <div style="padding:0.35rem 0;font-size:0.9rem;border-left:2px solid var(--c2);padding-left:0.7rem;">🌉 Ponte: do termostato ao ChatGPT</div>
+    </div>
+  </div>
+  <p style="margin-top:1.2rem;font-size:0.85rem;opacity:0.45;">Parte 1 · pausa · Parte 2</p>
+</div>
+
+<!-- 3 · 📜 ALAN TURING -->
+<div class="slide hist-slide" data-notes="Turing não é só história. A pergunta 'Can machines think?' (1950) é filosófica. Nós a substituímos por engenharia: 'Can machines act rationally?'. O Teste de Turing ainda provoca — mas não é medida de desempenho.">
+  <div class="hist-photo-frame">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/a/a1/Alan_Turing_Aged_16.jpg" alt="Alan Turing" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+    <div class="fallback"><span style="font-size:5rem;">🧠</span></div>
+    <span class="credit">Wikimedia Commons</span>
+  </div>
+  <div class="hist-info">
+    <div class="hist-name">Alan Turing</div>
+    <div class="hist-dates">1912 – 1954 · Londres, Manchester</div>
+    <div class="hist-legacy">"Can machines think?" (1950).<br>Formalizou computação, quebrou a Enigma e fez a pergunta que originou a IA.</div>
+  </div>
+</div>
+
+<!-- 4 · 📜 JOHN MCCARTHY -->
+<div class="slide hist-slide" data-notes="Dartmouth 1956: 10 pesquisadores, 8 semanas. Objetivo: 'fazer a máquina usar linguagem, formar abstrações, resolver problemas reservados a humanos'. Nenhum objetivo foi alcançado em 8 semanas — vários ainda estão em aberto.">
+  <div class="hist-photo-frame">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/4/49/John_McCarthy_Stanford.jpg" alt="John McCarthy" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+    <div class="fallback"><span style="font-size:5rem;">🏛️</span></div>
+    <span class="credit">Wikimedia Commons</span>
+  </div>
+  <div class="hist-info">
+    <div class="hist-name">John McCarthy</div>
+    <div class="hist-dates">1927 – 2011 · Dartmouth, Stanford, MIT</div>
+    <div class="hist-legacy">Cunhou o termo "Artificial Intelligence" (1956). Criou o Lisp e o paradigma simbólico que dominou a IA por 40 anos.</div>
+    <div style="margin-top:0.8rem;font-family:'JetBrains Mono',monospace;font-size:0.58rem;line-height:1.4;text-align:left;background:#0d0d15;border-radius:4px;padding:0.35rem 0.5rem;color:#A6E3A1;max-width:420px;">
+      <span style="color:#6C7086;">;; factorial recursivo — Lisp 1.5 (McCarthy, 1960)</span><br>
+      <span style="color:#CBA6F7;">(defun</span> fatorial (n)<br>
+      &nbsp;&nbsp;<span style="color:#CBA6F7;">(cond</span> ((&lt;= n 1) 1)<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(t (* n (fatorial (- n 1))))))<br><br>
+      <span style="color:#6C7086;">;; code is data — homoiconicidade</span><br>
+      (eval '(+ 2 3)) <span style="color:#6C7086;">→ 5</span><br>
+      (car '(a b c)) <span style="color:#6C7086;">→ a</span>
+    </div>
+  </div>
+</div>
+
+<!-- 5 · LINHA DO TEMPO -->
+<div class="slide timeline-slide" data-notes="NÃO contar cada evento. Destacar 4-5: McCulloch & Pitts (semente conexionista), Dartmouth (nome), Perceptrons (1º inverno), AlexNet (virada), LLMs (hoje). Perguntar: 'Qual o padrão?' — euforia simbólica → inverno; dados + computação → saldo duradouro.">
+  <h2>80 anos em 13 momentos</h2>
   <div class="timeline-horiz" id="deckTimeline"></div>
-  <p style="margin-top:1rem;font-size:0.9rem;opacity:0.6;">
+  <p style="margin-top:0.6rem;font-size:0.8rem;opacity:0.5;">
     <span style="color:#999;">◉ simbólico</span> &nbsp;
     <span style="color:var(--c1);">◉ inverno</span> &nbsp;
-    <span style="color:var(--c0);">◉ virada</span> &nbsp;
+    <span style="color:var(--c0);">◉ conexionista</span> &nbsp;
     <span style="color:var(--c2);">◉ moderna</span>
   </p>
 </div>
 
-<!-- SLIDE 3: AI Winters -->
-<div class="slide" data-slide="3" data-notes="Enfatizar: DOIS invernos. Cada um durou ~10 anos. Ambos causados pelo mesmo motivo: hype baseado em métodos que não escalavam. Perguntar: 'O que impede um terceiro inverno?' Resposta: métodos que escalam com computação não saturam.">
-  <h2>Dois invernos. Uma lição.</h2>
-
-  <div style="display:flex;gap:2rem;align-items:flex-start;margin-top:1rem;">
-    <!-- Winter 1 -->
-    <div style="flex:1;text-align:center;background:#1a1a20;border-radius:8px;padding:1.2rem 1rem;border-top:3px solid var(--c1);">
-      <div style="font-size:3rem;">❄️</div>
-      <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1rem;margin-top:0.3rem;">1º Inverno</div>
-      <div style="font-size:0.8rem;opacity:0.5;">1969–1980</div>
-      <div style="margin-top:0.6rem;font-size:0.85rem;line-height:1.4;">
-        <strong>Causa:</strong> livro <em>Perceptrons</em><br>prova que perceptron simples<br>não resolve XOR
-      </div>
-      <div style="margin-top:0.5rem;font-size:0.8rem;opacity:0.6;">
-        Comunidade conclui:<br><strong>"redes neurais não funcionam"</strong><br>— conclusão errada.
-      </div>
+<!-- 6 · DOIS INVERNOS -->
+<div class="slide" data-notes="O erro foi o mesmo duas vezes. Não foi falta de inteligência — foi aposta errada no que escala. Perguntar: 'O que impede um terceiro inverno?' Resposta: métodos que escalam com computação não saturam.">
+  <h2>Dois invernos. Um erro.</h2>
+  <div style="display:flex;gap:1.5rem;align-items:flex-start;margin-top:0.8rem;">
+    <div style="flex:1;text-align:center;background:#1a1a20;border-radius:8px;padding:1rem 0.8rem;border-top:3px solid var(--c1);">
+      <div style="font-size:2.5rem;">❄️</div>
+      <div style="font-weight:700;font-size:0.95rem;margin-top:0.2rem;">1º Inverno</div>
+      <div style="font-size:0.7rem;opacity:0.5;">1969–1980</div>
+      <div style="margin-top:0.5rem;font-size:0.82rem;line-height:1.4;"><strong>Causa:</strong> <em>Perceptrons</em> (Minsky & Papert) prova que o perceptron simples não resolve XOR.</div>
+      <div style="margin-top:0.4rem;font-size:0.75rem;opacity:0.6;">Comunidade conclui:<br><strong>"Redes neurais não funcionam"</strong><br><span style="opacity:0.7;">— generalização precipitada.</span></div>
     </div>
-
-    <!-- Winter 2 -->
-    <div style="flex:1;text-align:center;background:#1a1a20;border-radius:8px;padding:1.2rem 1rem;border-top:3px solid var(--c1);">
-      <div style="font-size:3rem;">❄️</div>
-      <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1rem;margin-top:0.3rem;">2º Inverno</div>
-      <div style="font-size:0.8rem;opacity:0.5;">1987–1993</div>
-      <div style="margin-top:0.6rem;font-size:0.85rem;line-height:1.4;">
-        <strong>Causa:</strong> sistemas especialistas<br>não escalam além do domínio<br>para o qual foram escritos
-      </div>
-      <div style="margin-top:0.5rem;font-size:0.8rem;opacity:0.6;">
-        Cada regra é escrita à mão.<br><strong>10.000 regras = 10.000 bugs.</strong><br>Impossível manter.
-      </div>
+    <div style="flex:1;text-align:center;background:#1a1a20;border-radius:8px;padding:1rem 0.8rem;border-top:3px solid var(--c1);">
+      <div style="font-size:2.5rem;">❄️</div>
+      <div style="font-weight:700;font-size:0.95rem;margin-top:0.2rem;">2º Inverno</div>
+      <div style="font-size:0.7rem;opacity:0.5;">1987–1993</div>
+      <div style="margin-top:0.5rem;font-size:0.82rem;line-height:1.4;"><strong>Causa:</strong> sistemas especialistas não escalam além do domínio original.</div>
+      <div style="margin-top:0.4rem;font-size:0.75rem;opacity:0.6;">Cada regra é escrita à mão.<br><strong>10.000 regras = 10.000 bugs.</strong><br><span style="opacity:0.7;">— impossível manter.</span></div>
     </div>
-
-    <!-- The arrow -->
     <div style="display:flex;align-items:center;font-size:2rem;opacity:0.3;">→</div>
-
-    <!-- The Lesson -->
-    <div style="flex:1.3;text-align:center;background:#0d1a15;border:2px solid var(--c2);border-radius:8px;padding:1.2rem 1rem;">
-      <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.1rem;color:var(--c2);margin-bottom:0.6rem;">A Lição</div>
-      <div style="font-size:1.3rem;line-height:1.4;font-weight:600;">
-        Conhecimento<br><span style="color:var(--c1);">escrito à mão</span><br>não escala.
-      </div>
-      <div style="margin-top:0.8rem;font-size:0.85rem;opacity:0.7;line-height:1.4;">
-        Métodos que <strong style="color:var(--c2);">aprendem de dados</strong><br>+ computação não saturam.<br>
-        Quanto mais dados, melhor ficam.
-      </div>
-      <div style="margin-top:0.6rem;font-size:0.7rem;opacity:0.4;">
-        ← esta é a Bitter Lesson
-      </div>
+    <div style="flex:1.2;text-align:center;background:#0d1a15;border:2px solid var(--c2);border-radius:8px;padding:1rem 0.8rem;">
+      <div style="font-weight:700;font-size:1rem;color:var(--c2);margin-bottom:0.5rem;">A Lição</div>
+      <div style="font-size:1.15rem;line-height:1.35;font-weight:600;">Conhecimento<br><span style="color:var(--c1);">escrito à mão</span><br>não escala.</div>
+      <div style="margin-top:0.6rem;font-size:0.8rem;opacity:0.7;line-height:1.35;">Métodos que <strong style="color:var(--c2);">aprendem de dados</strong> + computação não saturam.</div>
+      <div style="margin-top:0.4rem;font-size:0.65rem;opacity:0.4;">← a Bitter Lesson</div>
     </div>
   </div>
-
-  <p style="margin-top:1.2rem;font-size:0.9rem;opacity:0.6;">
-    Dois invernos. <strong style="color:var(--c1);">Mesmo erro:</strong> apostar em conhecimento artesanal.
-    <strong style="color:var(--c2);">Mesma saída:</strong> métodos que aprendem.
-  </p>
+  <p style="margin-top:0.8rem;font-size:0.85rem;opacity:0.55;">Dois invernos. <strong style="color:var(--c1);">Mesmo erro:</strong> conhecimento artesanal. <strong style="color:var(--c2);">Mesma saída:</strong> aprendizado + escala.</p>
 </div>
 
-<!-- SLIDE 4: 4 Views Matrix -->
-<div class="slide" data-slide="4" data-notes="Explicar cada quadrante com um exemplo concreto. Destacar o quadrante inferior direito (agir racionalmente): 'Este é o nosso quadrante. As outras visões são interessantes, mas este é o que funciona.'">
-  <h2>As quatro visões da IA</h2>
-  <div class="matrix-2x2">
-    <div class="mcorner"></div>
-    <div class="mhdr">Humana</div>
-    <div class="mhdr">Racional</div>
-    <div class="mhdr">Pensar</div>
-    <div class="mcell">Ciência Cognitiva<br><small>Modelar a mente</small></div>
-    <div class="mcell">Lógica Matemática<br><small>Raciocinar corretamente</small></div>
-    <div class="mhdr">Agir</div>
-    <div class="mcell">Teste de Turing<br><small>Imitar comportamento</small></div>
-    <div class="mcell hl"><strong>Agentes Racionais</strong><br><small>Agir para atingir objetivos ← nós</small></div>
+<!-- 7 · 📜 FRANK ROSENBLATT -->
+<div class="slide hist-slide" data-notes="Rosenblatt morreu em 1971, aos 43 anos. O perceptron ficou congelado por 17 anos. Ironia: a solução para o XOR (multi-layer + backprop) já existia em teoria. Mark I Perceptron (1959): máquina analógica com 400 fotocélulas.">
+  <div class="hist-photo-frame">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/3/3b/Frank_Rosenblatt.jpg" alt="Frank Rosenblatt" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+    <div class="fallback"><span style="font-size:5rem;">🔌</span></div>
+    <span class="credit">Wikimedia Commons</span>
+  </div>
+  <div class="hist-info">
+    <div class="hist-name">Frank Rosenblatt</div>
+    <div class="hist-dates">1928 – 1971 · Cornell Aeronautical Laboratory</div>
+    <div class="hist-legacy">Criou o Perceptron (1959), a primeira rede neural em hardware — Mark I Perceptron. Sua morte precoce e o livro de Minsky congelaram o conexionismo por 17 anos.</div>
+    <svg viewBox="0 0 520 120" style="width:100%;max-width:520px;margin-top:0.5rem;">
+      <!-- Inputs -->
+      <circle cx="50" cy="20" r="10" fill="none" stroke="#1F77B4" stroke-width="1.5"/><text x="50" y="24" text-anchor="middle" font-size="8" fill="#EAEFF5">x₁</text>
+      <circle cx="50" cy="60" r="10" fill="none" stroke="#1F77B4" stroke-width="1.5"/><text x="50" y="64" text-anchor="middle" font-size="8" fill="#EAEFF5">x₂</text>
+      <circle cx="50" cy="100" r="10" fill="none" stroke="#1F77B4" stroke-width="1.5"/><text x="50" y="104" text-anchor="middle" font-size="8" fill="#EAEFF5">x₃</text>
+      <!-- Weights -->
+      <line x1="60" y1="20" x2="180" y2="55" stroke="#FF7F0E" stroke-width="1"/><text x="108" y="28" font-size="7" fill="#FF7F0E">w₁</text>
+      <line x1="60" y1="60" x2="180" y2="60" stroke="#FF7F0E" stroke-width="1"/><text x="108" y="55" font-size="7" fill="#FF7F0E">w₂</text>
+      <line x1="60" y1="100" x2="180" y2="65" stroke="#FF7F0E" stroke-width="1"/><text x="108" y="102" font-size="7" fill="#FF7F0E">w₃</text>
+      <!-- Sum + activation (neuron body) -->
+      <circle cx="195" cy="60" r="28" fill="#1a2a35" stroke="#EAEFF5" stroke-width="1.5"/>
+      <text x="195" y="56" text-anchor="middle" font-size="10" fill="#EAEFF5">Σ</text>
+      <text x="195" y="72" text-anchor="middle" font-size="9" fill="#FF7F0E">f(·)</text>
+      <!-- Bias -->
+      <circle cx="125" cy="10" r="8" fill="none" stroke="#888" stroke-width="1"/><text x="125" y="14" text-anchor="middle" font-size="7" fill="#888">b</text>
+      <line x1="133" y1="10" x2="175" y2="40" stroke="#888" stroke-width="0.8" stroke-dasharray="3 2"/>
+      <!-- Output -->
+      <line x1="223" y1="60" x2="275" y2="60" stroke="#2CA02C" stroke-width="1.5"/>
+      <circle cx="290" cy="60" r="12" fill="none" stroke="#2CA02C" stroke-width="1.5"/><text x="290" y="64" text-anchor="middle" font-size="9" fill="#2CA02C">ŷ</text>
+      <!-- Formula — larger, with background box to ensure visibility -->
+      <rect x="310" y="38" width="200" height="44" rx="6" fill="#1a2a35" stroke="#555" stroke-width="0.8"/>
+      <text x="410" y="55" text-anchor="middle" font-size="14" fill="#EAEFF5" font-weight="600">ŷ = f( Σ wᵢxᵢ + b )</text>
+    </svg>
   </div>
 </div>
 
-<!-- SLIDE 5: Agent Loop -->
-<div class="slide" data-slide="5" data-notes="Esta é a interface que usaremos o curso inteiro. Apresentar com reverência: 'Esta interface de 4 linhas aparece em toda aula da Semana 2 à 16.'">
-  <h2>O loop que unifica o curso</h2>
-  <div class="slide-code" style="font-size:1.3rem;text-align:center;">
+<!-- 8 · 4 VISÕES DA IA -->
+<div class="slide" data-notes="Cada quadrante com exemplo concreto. Destacar inferior direito: 'Este é o nosso quadrante.' A definição de agente racional não depende de entender a mente humana — só de maximizar uma medida de desempenho.">
+  <h2>O que é IA? Quatro respostas possíveis</h2>
+  <div class="matrix-2x2">
+    <div class="mcorner"></div><div class="mhdr">Humana</div><div class="mhdr">Racional</div>
+    <div class="mhdr">Pensar</div><div class="mcell">Ciência Cognitiva<br><small>Modelar a mente</small></div><div class="mcell">Lógica<br><small>Raciocinar corretamente</small></div>
+    <div class="mhdr">Agir</div><div class="mcell">Teste de Turing<br><small>Imitar comportamento</small></div><div class="mcell hl"><strong>Agentes Racionais</strong><br><small>Agir para atingir objetivos ← nós</small></div>
+  </div>
+  <p style="margin-top:0.8rem;font-size:0.9rem;opacity:0.6;">Russell & Norvig, <em>Artificial Intelligence: A Modern Approach</em></p>
+</div>
+
+<!-- 9 · AGENTE COMO FUNÇÃO -->
+<div class="slide" data-notes="Esta é a equação-mãe do curso. f: P* → A aparece da S2 à S16. O que muda é COMO obtemos f: regras manuais, busca, ou aprendizado. 'argmax do valor esperado' — idêntico em MDPs (S10), gradiente (S8) e Q-learning (S13).">
+  <h2>O agente como função matemática</h2>
+  <div class="def-box"><span style="color:var(--c0);">f</span> : <span style="color:var(--c4);">P*</span> → <span style="color:var(--c2);">A</span></div>
+  <p style="margin-top:0.5rem;font-size:0.9rem;max-width:750px;">P* = história de percepções · A = ações possíveis</p>
+  <div class="def-box" style="margin-top:0.6rem;">
+    <span style="color:var(--c0);">agente racional</span> = argmax<span style="font-size:0.7rem;vertical-align:super;">a</span>
+    <span style="color:var(--c4);">𝔼</span>[ <span style="color:var(--c2);">desempenho</span> | <span style="color:var(--c4);">história</span>, <span style="color:var(--c1);">a</span> ]
+  </div>
+  <p style="margin-top:0.8rem;font-size:0.85rem;opacity:0.55;max-width:750px;">A diferença entre um termostato e o AlphaGo não é esta equação — é <em>como f é obtida</em>: regras fixas, regras manuais, ou função aprendida de dados.</p>
+  <div style="display:flex;gap:1rem;align-items:center;margin-top:0.6rem;background:#1a1a25;border-radius:8px;padding:0.6rem 1rem;max-width:780px;">
+    <svg viewBox="0 0 100 100" style="width:70px;height:70px;flex-shrink:0;">
+      <rect x="5" y="5" width="90" height="90" rx="3" fill="#1a120a" stroke="#8a6d3b" stroke-width="1"/>
+      <line x1="24" y1="5" x2="24" y2="95" stroke="#5a4a30" stroke-width="0.4"/>
+      <line x1="43" y1="5" x2="43" y2="95" stroke="#5a4a30" stroke-width="0.4"/>
+      <line x1="62" y1="5" x2="62" y2="95" stroke="#5a4a30" stroke-width="0.4"/>
+      <line x1="81" y1="5" x2="81" y2="95" stroke="#5a4a30" stroke-width="0.4"/>
+      <line x1="5" y1="24" x2="95" y2="24" stroke="#5a4a30" stroke-width="0.4"/>
+      <line x1="5" y1="43" x2="95" y2="43" stroke="#5a4a30" stroke-width="0.4"/>
+      <line x1="5" y1="62" x2="95" y2="62" stroke="#5a4a30" stroke-width="0.4"/>
+      <line x1="5" y1="81" x2="95" y2="81" stroke="#5a4a30" stroke-width="0.4"/>
+      <circle cx="62" cy="43" r="7" fill="#111" stroke="#ccc" stroke-width="1.5"/>
+      <circle cx="43" cy="62" r="7" fill="#eee" stroke="#999" stroke-width="1"/>
+      <circle cx="33" cy="52" r="6" fill="#eee" stroke="#999" stroke-width="1"/>
+    </svg>
+    <div style="text-align:left;font-size:0.8rem;line-height:1.4;">
+      <strong style="color:var(--c0);">AlphaGo</strong> <span style="opacity:0.4;">(DeepMind, 2016)</span><br>
+      <span style="opacity:0.7;">f é uma combinação de <strong style="color:var(--c2);">3 redes neurais</strong> + busca em árvore.<br>
+      Política: f<sub>π</sub>(s) = qual jogada. Valor: f<sub>v</sub>(s) = probabilidade de vitória.<br>
+      <strong style="color:var(--c1);">50 milhões de parâmetros</strong> aprendidos por self-play — zero regras manuais.</span>
+    </div>
+  </div>
+</div>
+
+<!-- 10 · O LOOP -->
+<div class="slide" data-notes="Esta interface de 4 linhas aparece em toda aula da Semana 2 à 16. Apresentar com reverência. 'Isto é o que implementamos durante o curso inteiro.'">
+  <h2>O loop percepção → decisão → ação</h2>
+  <div class="slide-code" style="font-size:1.2rem;text-align:center;margin-bottom:0.8rem;">
     <span style="color:var(--c0);">percepção</span> →
     <span style="color:var(--c1);">decisão</span> →
     <span style="color:var(--c2);">ação</span>
   </div>
-  <div class="slide-code" style="margin-top:1rem;">
+  <div class="slide-code">
     <span class="co"># A interface que usaremos da Semana 2 à 16</span><br>
     obs = env.reset()<br>
     <span class="kw">while not</span> done:<br>
     &nbsp;&nbsp;&nbsp;&nbsp;acao = agente.decidir(obs)<br>
     &nbsp;&nbsp;&nbsp;&nbsp;<span class="hl">obs, recompensa, done = env.step(acao)</span>
   </div>
+  <p style="margin-top:0.8rem;font-size:0.8rem;opacity:0.45;">Mesma interface: aspirador (S1) · A* (S4) · Q-learning (S13) · AlphaGo (S15)</p>
 </div>
 
-<!-- SLIDE 6: ELIZA Demo -->
-<div class="slide" data-slide="6" data-notes="Demonstrar ao vivo. Digitar 'I feel sad today'. Mostrar o trace. Depois clicar 💥 para mostrar que ELIZA não entende aritmética ou fatos do mundo. Perguntar: 'Isso é inteligência?'">
-  <h2>1966: ELIZA — a primeira "chatbot"</h2>
+<!-- 11 · ELIZA DEMO -->
+<div class="slide" data-notes="Demonstrar ao vivo. Digitar 'I feel sad today'. Mostrar o trace. Depois clicar 💥 para aritmética ou fatos. Perguntar: 'Isso é inteligência?' — Não. É casamento de padrões de string. Zero compreensão.">
+  <h2>1966: ELIZA — inteligência ou ilusão?</h2>
   <div class="eliza-compact">
     <div class="chat-box">
-      <div class="chat-header">💬 ELIZA</div>
-      <div class="chat-msgs" id="deckElizaMsgs">
-        <div class="bmsg">Olá. Como posso ajudá-lo hoje?</div>
-      </div>
+      <div class="chat-header">💬 ELIZA — "psicoterapeuta"</div>
+      <div class="chat-msgs" id="deckElizaMsgs"><div class="bmsg">Olá. Como posso ajudá-lo hoje?</div></div>
       <div class="chat-input-row">
         <input type="text" id="deckElizaInput" placeholder="Diga algo...">
         <button onclick="deckElizaSend()">Enviar</button>
@@ -452,141 +429,651 @@ body {
       </div>
     </div>
     <div class="trace-box">
-      <div class="trace-header">🔍 Trace</div>
+      <div class="trace-header">🔍 Trace — o que ELIZA realmente faz</div>
       <div class="trace-content" id="deckElizaTrace">Aguardando entrada...</div>
     </div>
   </div>
+  <p style="margin-top:0.6rem;font-size:0.7rem;opacity:0.4;">1966: ~200 linhas de regras. 2024: centenas de bilhões de parâmetros aprendidos. Mesmo ciclo. Implementação diferente.</p>
 </div>
 
-<!-- SLIDE 7: ELIZA Verdict -->
-<div class="slide" data-slide="7" data-notes="Conectar com a Bitter Lesson. ELIZA é o exemplo perfeito de conhecimento artesanal: funciona enquanto os padrões casam, falha para todo o resto.">
+<!-- 12 · ELIZA VEREDITO -->
+<div class="slide" data-notes="Weizenbaum se assustou com a reação das pessoas. Sua secretária pedia privacidade para conversar com ELIZA. Humanos projetam inteligência onde há só padrão. Julgue pela medida de desempenho, nunca pela impressão.">
   <div class="slide-quote">
     "Eu não tinha percebido que exposições extremamente curtas a um programa de computador relativamente simples poderiam induzir pensamento delirante em pessoas perfeitamente normais."
     <div class="attr">— Joseph Weizenbaum, criador da ELIZA, 1976</div>
   </div>
-  <p style="margin-top:1.5rem;font-size:1.1rem;color:var(--c1);">Zero compreensão. 100% casamento de padrões.<br><strong>Por que as pessoas acreditaram?</strong></p>
+  <p style="margin-top:1.2rem;font-size:1rem;color:var(--c1);max-width:700px;">Zero compreensão semântica. 100% casamento de padrões.<br><strong>Por que as pessoas acreditaram?</strong> Porque julgam pela impressão, não pela medida de desempenho.</p>
 </div>
 
-<!-- SLIDE 8: AI vs Conventional Programming -->
-<div class="slide" data-slide="8" data-notes="Contraste dramático. Lado esquerdo: programamos cada regra. Lado direito: o sistema aprende as regras dos dados. 'Estes dois blocos de código representam 70 anos de história da IA.'">
-  <h2>Duas filosofias de construir inteligência</h2>
-  <div style="display:flex;gap:2rem;margin-top:1rem;">
+<!-- 13 · DUAS FILOSOFIAS -->
+<div class="slide" data-notes="Contraste dramático. 'Estes dois blocos representam 70 anos de história da IA.' Esquerda: f é escrita por humanos. Direita: f emerge dos dados. A pergunta: qual escala?">
+  <h2>De onde vem a função f?</h2>
+  <div style="display:flex;gap:2rem;margin-top:1rem;width:100%;max-width:1000px;">
     <div style="flex:1;text-align:left;">
-      <h3 style="color:#999;">Programar</h3>
-      <div class="slide-code" style="font-size:0.85rem;">
-        <span class="kw">if</span> sujo:<br>
-        &nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">return</span> <span class="st">"ASPIRAR"</span><br>
-        <span class="kw">if</span> pos == <span class="st">"A"</span>:<br>
-        &nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">return</span> <span class="st">"DIREITA"</span><br>
-        <span class="co"># ... 10.000 regras depois</span>
+      <h3 style="color:#999;">f é programada</h3>
+      <div class="slide-code" style="font-size:0.82rem;">
+        <span class="kw">if</span> sujo:<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">return</span> <span class="st">"ASPIRAR"</span><br>
+        <span class="kw">if</span> pos == <span class="st">"A"</span>:<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">return</span> <span class="st">"DIREITA"</span><br>
+        <span class="co"># ... 10.000 ifs depois</span>
       </div>
-      <p style="font-size:0.8rem;opacity:0.5;margin-top:0.5rem;">← Anos 60–80. Funciona até quebrar.</p>
+      <p style="font-size:0.75rem;opacity:0.5;margin-top:0.4rem;">← 1960–1990. O programador escreve f.</p>
     </div>
-    <div style="flex:1;text-align:left;opacity:0.4;">
-      <h3 style="color:var(--c2);">Aprender</h3>
-      <div class="slide-code" style="font-size:0.85rem;">
+    <div style="flex:1;text-align:left;">
+      <h3 style="color:var(--c2);">f é aprendida</h3>
+      <div class="slide-code" style="font-size:0.82rem;">
         model = RedeNeural()<br>
         model.fit(dados, rotulos)<br>
-        <span class="co"># as regras emergem</span><br>
-        <span class="co"># dos dados. sozinhas.</span>
+        <span class="co"># f emerge dos dados</span><br>
+        <span class="co"># sem um único if manual</span>
       </div>
-      <p style="font-size:0.8rem;opacity:0.5;margin-top:0.5rem;">→ Semanas 8–14</p>
+      <p style="font-size:0.75rem;opacity:0.5;margin-top:0.4rem;">→ 2012–hoje. f emerge de dados + computação.</p>
     </div>
   </div>
+  <p style="margin-top:1rem;font-size:0.9rem;opacity:0.6;">f é a mesma função. A <span style="color:var(--c1);">origem</span> de f é o que mudou.</p>
 </div>
 
-<!-- SLIDE 9: Forward Chaining Engine Demo -->
-<div class="slide" data-slide="9" data-notes="Demo ao vivo. Clicar 'Passo' 4 vezes mostrando cada regra disparar: tem_pelo→mamifero→gato→carnivoro→come_racao. Depois perguntar: 'E se fossem 10.000 regras? E se as regras se contradissessem?'">
-  <h2>Regras não escalam — demonstração</h2>
-  <div style="display:flex;gap:1rem;width:100%;max-width:1100px;align-items:flex-start;">
-    <!-- Left: Rules + Facts -->
+<!-- 14 · REGRAS NÃO ESCALAM -->
+<div class="slide" data-notes="Demo ao vivo. Clicar 'Passo' 4 vezes. Depois perguntar: 'E se fossem 10.000 regras? E se as regras se contradissessem?' Conectar com ELIZA: mesmo mecanismo, mesmo problema.">
+  <h2>Motor de inferência: por que regras não escalam</h2>
+  <div style="display:flex;gap:1rem;width:100%;max-width:1080px;align-items:flex-start;">
     <div style="flex:1;text-align:left;">
-      <div class="slide-code" style="font-size:0.68rem;padding:0.6rem;margin-bottom:0.5rem;">
+      <div class="slide-code" style="font-size:0.65rem;padding:0.5rem;margin-bottom:0.4rem;">
         <span class="co"># Regras (escritas à mão)</span><br>
         {tem_pelo} → <span class="st">mamifero</span><br>
         {mamifero, mia} → <span class="st">gato</span><br>
         {gato} → <span class="st">carnivoro</span><br>
         {carnivoro, domestico} → <span class="st">come_racao</span>
       </div>
-      <div style="font-size:0.85rem;opacity:0.7;text-align:center;">
-        fatos = <span style="color:var(--c2);">{tem_pelo, mia, domestico}</span>
-      </div>
+      <div style="font-size:0.8rem;opacity:0.65;text-align:center;">fatos = <span style="color:var(--c2);">{tem_pelo, mia, domestico}</span></div>
     </div>
-    <!-- Right: Execution trace -->
-    <div style="flex:1.4;">
-      <div id="deckIeTrace" style="background:#0d0d15;border:1px solid #333;border-radius:6px;padding:0.6rem;height:180px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:0.68rem;line-height:1.6;text-align:left;color:#aaa;">
+    <div style="flex:1.3;">
+      <div id="deckIeTrace" style="background:#0d0d15;border:1px solid #333;border-radius:6px;padding:0.5rem;height:160px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:0.63rem;line-height:1.55;text-align:left;color:#aaa;">
         <div>Clique <strong style="color:#fff;">▸ Passo</strong> para disparar.</div>
       </div>
-      <div style="display:flex;gap:0.3rem;margin-top:0.4rem;justify-content:center;">
-        <button id="deckIeStep" onclick="deckIeStep()" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:0.7rem;padding:0.25rem 0.6rem;cursor:pointer;background:var(--c0);color:#fff;border:none;border-radius:4px;">▸ Passo</button>
-        <button id="deckIeRun" onclick="deckIeRunAll()" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:0.7rem;padding:0.25rem 0.6rem;cursor:pointer;background:var(--c2);color:#fff;border:none;border-radius:4px;">⏩ Tudo</button>
-        <button id="deckIeReset" onclick="deckIeReset()" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:0.7rem;padding:0.25rem 0.6rem;cursor:pointer;background:#333;color:#ccc;border:1px solid #555;border-radius:4px;">⟲</button>
+      <div style="display:flex;gap:0.3rem;margin-top:0.35rem;justify-content:center;">
+        <button id="deckIeStep" onclick="deckIeStep()" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:0.68rem;padding:0.25rem 0.55rem;cursor:pointer;background:var(--c0);color:#fff;border:none;border-radius:4px;">▸ Passo</button>
+        <button id="deckIeRun" onclick="deckIeRunAll()" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:0.68rem;padding:0.25rem 0.55rem;cursor:pointer;background:var(--c2);color:#fff;border:none;border-radius:4px;">⏩ Tudo</button>
+        <button id="deckIeReset" onclick="deckIeReset()" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:0.68rem;padding:0.25rem 0.55rem;cursor:pointer;background:#333;color:#ccc;border:1px solid #555;border-radius:4px;">⟲</button>
       </div>
-      <div id="deckIeFatos" style="font-family:'JetBrains Mono',monospace;font-size:0.68rem;margin-top:0.3rem;text-align:center;opacity:0.7;">
+      <div id="deckIeFatos" style="font-family:'JetBrains Mono',monospace;font-size:0.63rem;margin-top:0.25rem;text-align:center;opacity:0.65;">
         fatos = <span id="deckIeFatosSet" style="color:var(--c2);">{tem_pelo, mia, domestico}</span>
       </div>
     </div>
   </div>
-  <div style="display:flex;gap:1.5rem;align-items:center;margin-top:0.6rem;">
-    <div style="text-align:center;">
-      <span style="font-size:1.8rem;font-weight:700;">4</span><br><span style="font-size:0.65rem;opacity:0.5;">regras: funciona</span>
-    </div>
-    <div style="text-align:center;">
-      <span style="font-size:1.8rem;font-weight:700;color:var(--c1);">100</span><br><span style="font-size:0.65rem;opacity:0.5;">regras: contradições</span>
-    </div>
-    <div style="text-align:center;">
-      <span style="font-size:1.8rem;font-weight:700;color:var(--c3);">10.000</span><br><span style="font-size:0.65rem;opacity:0.5;">regras: impossível manter</span>
-    </div>
-    <div style="text-align:center;">
-      <span style="font-size:1.8rem;font-weight:700;color:var(--c2);">1 linha</span><br><span style="font-size:0.65rem;opacity:0.5;">model.fit() → Semana 8</span>
-    </div>
+  <div style="display:flex;gap:1rem;align-items:center;margin-top:0.5rem;">
+    <span style="font-size:1.4rem;font-weight:700;">4</span><span style="font-size:0.6rem;opacity:0.45;">regras: funciona</span>
+    <span style="font-size:1.4rem;font-weight:700;color:var(--c1);">100</span><span style="font-size:0.6rem;opacity:0.45;">regras: contradições</span>
+    <span style="font-size:1.4rem;font-weight:700;color:var(--c3);">10.000</span><span style="font-size:0.6rem;opacity:0.45;">regras: impossível manter</span>
+    <span style="font-size:1.4rem;font-weight:700;color:var(--c2);">1 linha</span><span style="font-size:0.6rem;opacity:0.45;">model.fit() → S8</span>
   </div>
 </div>
 
-<!-- SLIDE 10: Bitter Lesson Quote -->
-<div class="slide" data-slide="10" data-notes="Ler a citação em voz alta, pausadamente. Esta é a tese do curso. Pedir para os alunos lerem o ensaio completo em casa — são 2 páginas.">
+<!-- 15 · BITTER LESSON QUOTE -->
+<div class="slide" data-notes="Ler pausadamente. Esta é a tese do curso. Pedir para lerem o ensaio completo (2 páginas). Sutton é o pai do reinforcement learning moderno — o destino do curso.">
   <div class="slide-quote">
     A maior lição de 70 anos de pesquisa em IA é que métodos gerais que alavancam computação são, em última instância, os mais efetivos — e por uma grande margem.
     <div class="attr">— Richard Sutton, "The Bitter Lesson", 2019</div>
   </div>
-  <p style="margin-top:1rem;font-size:0.9rem;color:var(--c1);">📖 Leitura obrigatória da semana. 2 páginas.</p>
+  <p style="margin-top:0.8rem;font-size:0.85rem;color:var(--c1);">📖 Leitura obrigatória — 2 páginas. <a href="http://www.incompleteideas.net/IncIdeas/BitterLesson.html" target="_blank" rel="noopener" style="color:var(--c1);text-decoration:underline;">incompleteideas.net/IncIdeas/BitterLesson.html</a></p>
 </div>
 
-<!-- SLIDE 11: Aula B — Why Python -->
-<div class="slide" data-slide="11" data-notes="Menção histórica a Lisp (1958) e Prolog (1972). 10 minutos no máximo. Transição rápida: 'Python não ganhou porque é a melhor linguagem — ganhou porque tem o melhor ecossistema.'">
-  <h2>Aula B — Por que Python?</h2>
-  <div style="display:flex;gap:1rem;margin-top:1.5rem;">
+<!-- 16 · TRÊS SISTEMAS -->
+<div class="slide" data-notes="Três ultrapassagens. Deep Blue: busca massiva > conhecimento humano. AlphaGo: self-play + redes > heurísticas. GPT: prever o próximo token > linguística inteira. Mesmo padrão, escalas diferentes.">
+  <h2>Três ultrapassagens — mesmo padrão</h2>
+  <div class="systems-grid">
+    <div class="system-card">
+      <div class="sc-icon">
+        <svg viewBox="0 0 60 60" style="width:60px;height:60px;">
+          <rect x="8" y="8" width="44" height="44" rx="2" fill="#1a120a" stroke="#8a6d3b" stroke-width="1.2"/>
+          <line x1="19" y1="8" x2="19" y2="52" stroke="#5a4a30" stroke-width="0.4"/><line x1="30" y1="8" x2="30" y2="52" stroke="#5a4a30" stroke-width="0.4"/><line x1="41" y1="8" x2="41" y2="52" stroke="#5a4a30" stroke-width="0.4"/>
+          <line x1="8" y1="19" x2="52" y2="19" stroke="#5a4a30" stroke-width="0.4"/><line x1="8" y1="30" x2="52" y2="30" stroke="#5a4a30" stroke-width="0.4"/><line x1="8" y1="41" x2="52" y2="41" stroke="#5a4a30" stroke-width="0.4"/>
+          <text x="19" y="17" text-anchor="middle" font-size="10" fill="#ccc">♚</text><text x="41" y="39" text-anchor="middle" font-size="10" fill="#111">♟</text>
+          <text x="30" y="28" text-anchor="middle" font-size="10" fill="#ccc">♞</text>
+        </svg>
+      </div>
+      <div class="sc-name">Deep Blue</div>
+      <div class="sc-date">IBM · 1997</div>
+      <div class="sc-line"><strong style="color:var(--c0);">Busca massiva</strong> + hardware dedicado venceu Kasparov.<br>≅ 200M posições/segundo.</div>
+    </div>
+    <div class="system-card">
+      <div class="sc-icon">
+        <svg viewBox="0 0 60 60" style="width:60px;height:60px;">
+          <rect x="8" y="8" width="44" height="44" rx="3" fill="#1a120a" stroke="#c8a84e" stroke-width="1.2"/>
+          <line x1="19" y1="8" x2="19" y2="52" stroke="#5a4a30" stroke-width="0.3"/><line x1="30" y1="8" x2="30" y2="52" stroke="#5a4a30" stroke-width="0.3"/><line x1="41" y1="8" x2="41" y2="52" stroke="#5a4a30" stroke-width="0.3"/>
+          <line x1="8" y1="19" x2="52" y2="19" stroke="#5a4a30" stroke-width="0.3"/><line x1="8" y1="30" x2="52" y2="30" stroke="#5a4a30" stroke-width="0.3"/><line x1="8" y1="41" x2="52" y2="41" stroke="#5a4a30" stroke-width="0.3"/>
+          <circle cx="30" cy="19" r="5" fill="#111" stroke="#eee" stroke-width="1.2"/>
+          <circle cx="19" cy="30" r="5" fill="#eee" stroke="#ccc" stroke-width="1"/>
+          <circle cx="41" cy="41" r="4" fill="#111" stroke="#eee" stroke-width="1.2"/>
+        </svg>
+      </div>
+      <div class="sc-name">AlphaGo</div>
+      <div class="sc-date">DeepMind · 2016</div>
+      <div class="sc-line"><strong style="color:var(--c2);">Redes neurais + busca</strong> + self-play venceu Lee Sedol.<br>O curso inteiro em um sistema.</div>
+    </div>
+    <div class="system-card">
+      <div class="sc-icon">
+        <svg viewBox="0 0 60 60" style="width:60px;height:60px;">
+          <rect x="4" y="10" width="12" height="40" rx="2" fill="#1a2a1a" stroke="#2CA02C" stroke-width="0.8"/><text x="10" y="34" text-anchor="middle" font-size="6" fill="#2CA02C">E</text>
+          <rect x="22" y="6" width="16" height="48" rx="2" fill="#1a2a1a" stroke="#2CA02C" stroke-width="0.8"/><text x="30" y="34" text-anchor="middle" font-size="6" fill="#2CA02C">T</text>
+          <rect x="44" y="14" width="12" height="32" rx="2" fill="#1a2a1a" stroke="#2CA02C" stroke-width="0.8"/><text x="50" y="34" text-anchor="middle" font-size="6" fill="#2CA02C">D</text>
+          <line x1="16" y1="25" x2="22" y2="20" stroke="#2CA02C" stroke-width="0.5"/><line x1="16" y1="35" x2="22" y2="40" stroke="#2CA02C" stroke-width="0.5"/>
+          <line x1="38" y1="22" x2="44" y2="22" stroke="#2CA02C" stroke-width="0.5"/><line x1="38" y1="38" x2="44" y2="38" stroke="#2CA02C" stroke-width="0.5"/>
+        </svg>
+      </div>
+      <div class="sc-name">GPT-4</div>
+      <div class="sc-date">OpenAI · 2023</div>
+      <div class="sc-line"><strong style="color:var(--c1);">Prever o próximo token</strong> + escala de dados venceu décadas de regras linguísticas.</div>
+    </div>
+  </div>
+  <p style="margin-top:1rem;font-size:0.85rem;opacity:0.55;">Busca + aprendizado + computação. A receita não mudou — só a escala.</p>
+</div>
+
+<!-- 17 · BITTER LESSON VISUAL -->
+<div class="slide" data-notes="Cada método da linha do tempo pertence a uma das duas curvas. A verde é quadrática (acelera com computação); a cinza é linear (times de especialistas crescem linearmente).">
+  <h2>A Lição Amarga — visual</h2>
+  <svg viewBox="0 0 1000 430" style="width:90%;height:auto;">
+    <line x1="100" y1="360" x2="920" y2="360" stroke="#555" stroke-width="1.5"/>
+    <line x1="100" y1="360" x2="100" y2="40" stroke="#555" stroke-width="1.5"/>
+    <text x="510" y="400" fill="#777" font-size="12">Computação + Dados →</text>
+    <text x="40" y="200" fill="#777" font-size="12" transform="rotate(-90,40,200)">Performance →</text>
+    <polyline points="100,350 180,210 300,130 420,105 500,95 520,88 530,85 540,82" fill="none" stroke="#999" stroke-width="3"/>
+    <circle cx="100" cy="350" r="4" fill="#999"/><circle cx="180" cy="210" r="4" fill="#999"/><circle cx="540" cy="82" r="4" fill="#999"/>
+    <text x="440" y="105" fill="#999" font-size="12">Conhecimento artesanal</text>
+    <polyline points="100,355 180,345 280,315 400,250 520,165 650,95 780,48 880,30" fill="none" stroke="#2CA02C" stroke-width="3"/>
+    <circle cx="100" cy="355" r="4" fill="#2CA02C"/><circle cx="400" cy="250" r="4" fill="#2CA02C"/><circle cx="880" cy="30" r="4" fill="#2CA02C"/>
+    <text x="700" y="45" fill="#2CA02C" font-size="14" font-weight="700">Aprendizado + escala</text>
+    <text x="145" y="335" fill="#888" font-size="10">Perceptron (1959)</text>
+    <text x="250" y="118" fill="#888" font-size="10">ELIZA (1966)</text>
+    <text x="480" y="88" fill="#888" font-size="10">Deep Blue (1997)</text>
+    <text x="460" y="195" fill="#2E7D32" font-size="10">AlexNet (2012)</text>
+    <text x="770" y="58" fill="#2E7D32" font-size="10">Transformers (2017)</text>
+  </svg>
+</div>
+
+<!-- 18 · CURVA VERDE -->
+<div class="slide" data-notes="Fechamento da Parte 1. 'As próximas 15 semanas são a engenharia desta curva.'">
+  <h2>Este curso é a <span style="color:var(--c2);">curva verde</span></h2>
+  <div style="display:flex;gap:3rem;align-items:center;margin-top:1.5rem;">
+    <div style="text-align:center;"><div style="font-size:2.5rem;">📏</div><p style="font-size:0.95rem;">Conhecimento<br>artesanal<br><span style="color:#999;">→ platô</span></p></div>
+    <div style="font-size:2.5rem;">vs</div>
+    <div style="text-align:center;"><div style="font-size:2.5rem;">🚀</div><p style="font-size:0.95rem;">Aprendizado<br>+ escala<br><span style="color:var(--c2);">→ decola</span></p></div>
+  </div>
+</div>
+
+<!-- 19 · TRANSIÇÃO PARTE 1 → B -->
+<div class="slide" data-notes="Pausa entre as duas partes. Retomar com: 'A Parte 1 nos deu o mapa e a lição. A Parte 2 nos dá as ferramentas para construir.' Deixar a tela por alguns segundos e começar.">
+  <h2 style="font-size:1.6rem;opacity:0.45;">Parte 2</h2>
+  <h1 style="margin-top:0.8rem;">Ferramentas e primeiro agente</h1>
+  <p style="margin-top:1.5rem;font-size:1.1rem;opacity:0.5;">Python · Colab · Git · Agente aspirador do zero</p>
+</div>
+
+<!-- 20 · POR QUE PYTHON? -->
+<div class="slide" data-notes="Menção histórica a Lisp (1958) e Prolog (1972) — menção breve. O ponto não é a linguagem, é o ecossistema: NumPy transforma Python em máquina de álgebra linear.">
+  <h2>Por que Python?</h2>
+  <div style="display:flex;gap:1rem;margin-top:1.2rem;">
     <div style="flex:1;padding:1rem;background:#1a1a25;border-radius:8px;">
-      <div style="font-size:0.7rem;opacity:0.4;">1960—1990</div>
-      <div style="font-size:1.5rem;font-weight:600;">Lisp</div>
-      <div style="font-size:0.8rem;opacity:0.5;">A "linguagem da IA" por 30 anos</div>
+      <div style="font-size:0.65rem;opacity:0.4;">1958–1990</div>
+      <div style="font-size:1.4rem;font-weight:600;">Lisp</div>
+      <div style="font-size:0.7rem;opacity:0.55;margin-bottom:0.4rem;">A "linguagem da IA" por 30 anos.</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:0.6rem;line-height:1.4;text-align:left;background:#0d0d15;border-radius:4px;padding:0.4rem 0.5rem;color:#A6E3A1;">
+        <span style="color:#6C7086;">;; factorial recursivo</span><br>
+        <span style="color:#CBA6F7;">(defun</span> fat (n)<br>
+        &nbsp;&nbsp;<span style="color:#CBA6F7;">(if</span> (&lt;= n 1) 1<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;(* n (fat (- n 1)))))<br><br>
+        <span style="color:#6C7086;">;; code = data</span><br>
+        (eval '(+ 2 3)) <span style="color:#6C7086;">→ 5</span>
+      </div>
     </div>
     <div style="flex:1;padding:1rem;background:#1a1a25;border-radius:8px;">
-      <div style="font-size:0.7rem;opacity:0.4;">1972—1990</div>
-      <div style="font-size:1.5rem;font-weight:600;">Prolog</div>
-      <div style="font-size:0.8rem;opacity:0.5;">Programação em lógica</div>
+      <div style="font-size:0.65rem;opacity:0.4;">1972–1990</div>
+      <div style="font-size:1.4rem;font-weight:600;">Prolog</div>
+      <div style="font-size:0.7rem;opacity:0.55;margin-bottom:0.4rem;">Programação em lógica.</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:0.6rem;line-height:1.4;text-align:left;background:#0d0d15;border-radius:4px;padding:0.4rem 0.5rem;color:#A6E3A1;">
+        <span style="color:#6C7086;">% fatos e regras</span><br>
+        pai(joao, maria).<br>
+        pai(joao, pedro).<br>
+        <span style="color:#CBA6F7;">irmao</span>(X,Y) :-<br>
+        &nbsp;&nbsp;pai(Z,X), pai(Z,Y), X\=Y.<br><br>
+        <span style="color:#6C7086;">% consulta</span><br>
+        ?- irmao(maria, pedro).<br>
+        <span style="color:#6C7086;">→ true</span>
+      </div>
     </div>
     <div style="flex:1;padding:1rem;background:#1a2a30;border:1px solid var(--c2);border-radius:8px;">
-      <div style="font-size:0.7rem;opacity:0.4;">2010—hoje</div>
-      <div style="font-size:1.5rem;font-weight:600;color:var(--c2);">Python</div>
-      <div style="font-size:0.8rem;opacity:0.5;">NumPy · PyTorch · Jupyter · Gymnasium</div>
+      <div style="font-size:0.65rem;opacity:0.4;">2010–hoje</div>
+      <div style="font-size:1.4rem;font-weight:600;color:var(--c2);">Python</div>
+      <div style="font-size:0.7rem;opacity:0.55;margin-bottom:0.4rem;">NumPy · PyTorch · Jupyter</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:0.6rem;line-height:1.4;text-align:left;background:#0d0d15;border-radius:4px;padding:0.4rem 0.5rem;color:#A6E3A1;">
+        <span style="color:#6C7086;"># rede neural em PyTorch</span><br>
+        <span style="color:#CBA6F7;">import</span> torch.nn <span style="color:#CBA6F7;">as</span> nn<br>
+        model = nn.<span style="color:#89B4FA;">Sequential</span>(<br>
+        &nbsp;&nbsp;nn.<span style="color:#89B4FA;">Linear</span>(784, 256),<br>
+        &nbsp;&nbsp;nn.<span style="color:#89B4FA;">ReLU</span>(),<br>
+        &nbsp;&nbsp;nn.<span style="color:#89B4FA;">Linear</span>(256, 10)<br>
+        )<br><br>
+        <span style="color:#6C7086;"># f emerge dos dados</span><br>
+        loss = <span style="color:#89B4FA;">CrossEntropyLoss</span>()<br>
+        optim = <span style="color:#89B4FA;">Adam</span>(model.parameters())
+      </div>
+    </div>
+  </div>
+  <p style="margin-top:1rem;font-size:0.85rem;opacity:0.5;">Python não ganhou pela sintaxe — ganhou pelo ecossistema de álgebra linear.</p>
+</div>
+
+<!-- 21 · SETUP -->
+<div class="slide" data-notes="Garantir que todos tenham o ambiente funcionando. Mostrar o repositório. Mostrar como abrir um notebook no Colab.">
+  <h2>Setup e repositório</h2>
+  <div class="slide-code" style="text-align:center;font-size:1rem;">
+    github.com/albertiniufu/gbc063<br>
+    <span style="opacity:0.5;">semanaXX/ · material_*.html · notebook_*.ipynb · deck_*.html</span>
+  </div>
+  <div style="margin-top:1.2rem;font-size:0.9rem;opacity:0.6;">🐍 Python 3.11+ · NumPy · Matplotlib · Gymnasium · PyTorch</div>
+  <p style="margin-top:1rem;font-size:0.8rem;opacity:0.4;">Notebook da semana: <span style="font-family:'JetBrains Mono',monospace;">semana01/notebook_introducao_ia.ipynb</span></p>
+</div>
+
+<!-- 22 · PEAS DO ASPIRADOR -->
+<div class="slide" data-notes="Aplicar PEAS a este agente. Performance: salas limpas por passo. Environment: duas salas A,B, sujeira aparece seletivamente. Actuators: mover direita/esquerda, aspirar. Sensors: posição atual, sensor de sujeira. Toda decisão da S2 à S16 usa esta estrutura.">
+  <h2>Anatomia do agente: PEAS</h2>
+  <div style="display:flex;gap:1.5rem;margin-top:1rem;width:100%;max-width:1000px;text-align:left;">
+    <div style="flex:1;">
+      <div style="background:#1a2a30;border-left:3px solid var(--c0);padding:0.5rem 0.8rem;margin-bottom:0.35rem;font-size:0.9rem;"><strong>P</strong>erformance<br><small style="opacity:0.6;">Medida de desempenho: salas limpas por passo</small></div>
+      <div style="background:#1a2a30;border-left:3px solid var(--c4);padding:0.5rem 0.8rem;margin-bottom:0.35rem;font-size:0.9rem;"><strong>E</strong>nvironment<br><small style="opacity:0.6;">Duas salas A,B; sujeira aparece seletivamente</small></div>
+      <div style="background:#1a2a30;border-left:3px solid var(--c2);padding:0.5rem 0.8rem;margin-bottom:0.35rem;font-size:0.9rem;"><strong>A</strong>ctuators<br><small style="opacity:0.6;">Mover (ESQUERDA, DIREITA), ASPIRAR</small></div>
+      <div style="background:#1a2a30;border-left:3px solid var(--c1);padding:0.5rem 0.8rem;font-size:0.9rem;"><strong>S</strong>ensors<br><small style="opacity:0.6;">Posição atual, sensor de sujeira no chão</small></div>
+    </div>
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;">
+      <div style="font-size:1.2rem;font-family:'JetBrains Mono',monospace;color:var(--c0);">PEAS</div>
+      <div style="font-size:0.9rem;opacity:0.5;margin-top:0.5rem;">Russell & Norvig, AIMA</div>
+      <div style="margin-top:1rem;font-size:0.85rem;opacity:0.55;text-align:center;">Toda decisão de agente da S2 à S16<br>usa esta estrutura.</div>
     </div>
   </div>
 </div>
 
-<!-- SLIDE 12: Setup -->
-<div class="slide" data-slide="12" data-notes="Garantir que todos tenham o ambiente funcionando. Mostrar o repositório. Mostrar como abrir um notebook no Colab.">
-  <h2>Setup e repositório</h2>
-  <div class="slide-code" style="text-align:center;font-size:1.1rem;">
-    github.com/albertiniufu/gbc063<br>
-    <span style="opacity:0.5;">semana-XX/ · material_*.html · notebook_*.ipynb · deck_*.html</span>
+<!-- 23 · OBSERVABILIDADE -->
+<div class="slide" data-notes="A diferença mais fundamental entre ambientes. Se o agente não vê tudo, precisa de memória (estado interno). O aspirador vê posição+sujeira = ambiente observável. Xadrez: observável. Poker: não — as cartas dos outros são ocultas.">
+  <h2>1. Observável vs Parcialmente observável</h2>
+  <div style="display:flex;gap:2rem;width:100%;max-width:1000px;margin-top:1rem;align-items:flex-start;">
+    <div style="flex:1;text-align:left;">
+      <h3 style="color:var(--c0);">Totalmente observável</h3>
+      <p style="font-size:0.82rem;opacity:0.7;">Os sensores capturam o <strong>estado completo</strong>. O agente sabe exatamente onde está.</p>
+      <svg viewBox="0 0 240 140" style="width:100%;max-width:260px;margin-top:0.5rem;">
+        <!-- 4x3 grid, all cells visible -->
+        <rect x="10" y="10" width="220" height="120" rx="4" fill="#1a1a20" stroke="#1F77B4" stroke-width="1.5"/>
+        <line x1="65" y1="10" x2="65" y2="130" stroke="#333" stroke-width="0.5"/><line x1="120" y1="10" x2="120" y2="130" stroke="#333" stroke-width="0.5"/><line x1="175" y1="10" x2="175" y2="130" stroke="#333" stroke-width="0.5"/>
+        <line x1="10" y1="43" x2="230" y2="43" stroke="#333" stroke-width="0.5"/><line x1="10" y1="76" x2="230" y2="76" stroke="#333" stroke-width="0.5"/><line x1="10" y1="109" x2="230" y2="109" stroke="#333" stroke-width="0.5"/>
+        <!-- agent in center cell -->
+        <circle cx="148" cy="60" r="14" fill="#1F77B4" opacity="0.9"/><text x="148" y="64" text-anchor="middle" font-size="9" fill="#fff">🤖</text>
+        <!-- all cells labeled as visible -->
+        <text x="38" y="32" text-anchor="middle" font-size="7" fill="#2CA02C">✓</text><text x="93" y="32" text-anchor="middle" font-size="7" fill="#2CA02C">✓</text><text x="148" y="32" text-anchor="middle" font-size="7" fill="#2CA02C">✓</text><text x="203" y="32" text-anchor="middle" font-size="7" fill="#2CA02C">✓</text>
+        <text x="38" y="65" text-anchor="middle" font-size="7" fill="#2CA02C">✓</text><text x="93" y="65" text-anchor="middle" font-size="7" fill="#2CA02C">✓</text><text x="203" y="65" text-anchor="middle" font-size="7" fill="#2CA02C">✓</text>
+        <text x="38" y="98" text-anchor="middle" font-size="7" fill="#2CA02C">✓</text><text x="93" y="98" text-anchor="middle" font-size="7" fill="#2CA02C">✓</text><text x="148" y="98" text-anchor="middle" font-size="7" fill="#2CA02C">✓</text><text x="203" y="98" text-anchor="middle" font-size="7" fill="#2CA02C">✓</text>
+        <text x="120" y="6" text-anchor="middle" font-size="7" fill="#2CA02C">todas as células visíveis</text>
+      </svg>
+      <div style="font-size:0.7rem;opacity:0.4;margin-top:0.3rem;">Aspirador · Xadrez · Go · GridWorld</div>
+    </div>
+    <div style="flex:1;text-align:left;">
+      <h3 style="color:var(--c1);">Parcialmente observável</h3>
+      <p style="font-size:0.82rem;opacity:0.7;">O agente vê apenas <strong>parte</strong> do estado. Precisa de <strong>estado interno</strong> (crença sobre o que não vê).</p>
+      <svg viewBox="0 0 240 140" style="width:100%;max-width:260px;margin-top:0.5rem;">
+        <!-- same grid but with fog of war -->
+        <rect x="10" y="10" width="220" height="120" rx="4" fill="#1a1a20" stroke="#FF7F0E" stroke-width="1.5"/>
+        <line x1="65" y1="10" x2="65" y2="130" stroke="#333" stroke-width="0.5"/><line x1="120" y1="10" x2="120" y2="130" stroke="#333" stroke-width="0.5"/><line x1="175" y1="10" x2="175" y2="130" stroke="#333" stroke-width="0.5"/>
+        <line x1="10" y1="43" x2="230" y2="43" stroke="#333" stroke-width="0.5"/><line x1="10" y1="76" x2="230" y2="76" stroke="#333" stroke-width="0.5"/><line x1="10" y1="109" x2="230" y2="109" stroke="#333" stroke-width="0.5"/>
+        <!-- fog over non-visible cells -->
+        <rect x="10" y="10" width="55" height="33" fill="#111" opacity="0.8"/><rect x="65" y="10" width="55" height="33" fill="#111" opacity="0.8"/><rect x="175" y="10" width="55" height="33" fill="#111" opacity="0.8"/>
+        <rect x="10" y="43" width="55" height="33" fill="#111" opacity="0.8"/><rect x="175" y="43" width="55" height="33" fill="#111" opacity="0.8"/>
+        <rect x="10" y="76" width="55" height="33" fill="#111" opacity="0.8"/><rect x="65" y="76" width="55" height="33" fill="#111" opacity="0.8"/><rect x="120" y="76" width="55" height="33" fill="#111" opacity="0.8"/><rect x="175" y="76" width="55" height="33" fill="#111" opacity="0.8"/>
+        <rect x="10" y="109" width="55" height="21" fill="#111" opacity="0.8"/><rect x="65" y="109" width="55" height="21" fill="#111" opacity="0.8"/><rect x="120" y="109" width="55" height="21" fill="#111" opacity="0.8"/><rect x="175" y="109" width="55" height="21" fill="#111" opacity="0.8"/>
+        <!-- visible area around agent -->
+        <rect x="120" y="10" width="55" height="33" fill="#0a0a15"/><text x="148" y="32" text-anchor="middle" font-size="7" fill="#2CA02C">? talvez</text>
+        <rect x="120" y="43" width="55" height="33" fill="#0a0a15"/>
+        <!-- agent in visible cell -->
+        <circle cx="148" cy="60" r="14" fill="#FF7F0E" opacity="0.9"/><text x="148" y="64" text-anchor="middle" font-size="9" fill="#fff">🤖</text>
+        <!-- visible highlight -->
+        <rect x="65" y="43" width="55" height="33" fill="none" stroke="#2CA02C" stroke-width="1.5" stroke-dasharray="3 2"/>
+        <rect x="120" y="10" width="55" height="33" fill="none" stroke="#2CA02C" stroke-width="1.5" stroke-dasharray="3 2"/>
+        <text x="120" y="6" text-anchor="middle" font-size="7" fill="#FF7F0E">só vê células vizinhas</text>
+      </svg>
+      <div style="font-size:0.7rem;opacity:0.4;margin-top:0.3rem;">Poker · Direção autônoma · Diagnóstico</div>
+    </div>
   </div>
-  <p style="margin-top:1.5rem;">🐍 Python 3.11+ · NumPy · Matplotlib · Gymnasium · PyTorch</p>
+  <div class="def-box" style="margin-top:1rem;font-size:0.9rem;">
+    <span style="color:var(--c1);">Parcialmente observável</span> → agente precisa de <span style="color:var(--c0);">estado interno</span> (Semana 2).<br>
+    No limite: POMDP — o agente mantém uma <strong>distribuição de probabilidade</strong> sobre onde pode estar.
+  </div>
 </div>
 
-<!-- SLIDE 13: Vacuum Agent -->
-<div class="slide" data-slide="13" data-notes="Mostrar o código linha a linha. Destacar a linha 'if sujo: return ASPIRAR' como a decisão mais importante.">
-  <h2>O agente mais simples do mundo</h2>
+<!-- 24 · DETERMINISMO -->
+<div class="slide" data-notes="Determinístico = mesma ação no mesmo estado sempre produz o mesmo próximo estado. Estocástico = há uma distribuição de probabilidade sobre os resultados. A diferença é profunda: estocástico exige raciocínio probabilístico.">
+  <h2>2. Determinístico vs Estocástico</h2>
+  <div style="display:flex;gap:2rem;width:100%;max-width:1000px;margin-top:1rem;align-items:flex-start;">
+    <div style="flex:1;text-align:left;">
+      <h3 style="color:var(--c0);">Determinístico</h3>
+      <p style="font-size:0.85rem;opacity:0.7;">A mesma ação no mesmo estado <strong>sempre</strong> produz o mesmo próximo estado. O futuro é previsível dado o presente.</p>
+      <svg viewBox="0 0 280 100" style="width:100%;max-width:280px;margin-top:0.5rem;">
+        <circle cx="45" cy="50" r="18" fill="#1a2a35" stroke="#1F77B4" stroke-width="2"/><text x="45" y="54" text-anchor="middle" font-size="10" fill="#EAEFF5">s</text>
+        <line x1="63" y1="50" x2="105" y2="50" stroke="#1F77B4" stroke-width="2" marker-end="url(#arrDet)"/>
+        <rect x="42" y="10" width="45" height="14" rx="2" fill="none" stroke="#FF7F0E" stroke-width="0.8"/><text x="64" y="20" text-anchor="middle" font-size="7" fill="#FF7F0E">ação a</text>
+        <circle cx="125" cy="50" r="18" fill="#0d1a15" stroke="#2CA02C" stroke-width="2"/><text x="125" y="54" text-anchor="middle" font-size="10" fill="#2CA02C">s'</text>
+        <text x="85" y="40" text-anchor="middle" font-size="8" fill="#aaa">100%</text>
+        <defs><marker id="arrDet" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#1F77B4"/></marker></defs>
+      </svg>
+      <div style="font-size:0.7rem;opacity:0.4;margin-top:0.3rem;">Aspirador (sem desastre) · Xadrez · A*</div>
+    </div>
+    <div style="flex:1;text-align:left;">
+      <h3 style="color:var(--c1);">Estocástico</h3>
+      <p style="font-size:0.85rem;opacity:0.7;">A ação determina uma <strong>distribuição de probabilidade</strong> sobre os próximos estados. Incerteza inerente.</p>
+      <svg viewBox="0 0 280 110" style="width:100%;max-width:280px;margin-top:0.5rem;">
+        <circle cx="45" cy="55" r="18" fill="#1a2a35" stroke="#1F77B4" stroke-width="2"/><text x="45" y="59" text-anchor="middle" font-size="10" fill="#EAEFF5">s</text>
+        <line x1="63" y1="55" x2="100" y2="55" stroke="#FF7F0E" stroke-width="2"/>
+        <line x1="100" y1="55" x2="115" y2="25" stroke="#FF7F0E" stroke-width="1.8"/>
+        <line x1="100" y1="55" x2="115" y2="55" stroke="#FF7F0E" stroke-width="1.8"/>
+        <line x1="100" y1="55" x2="115" y2="85" stroke="#FF7F0E" stroke-width="1.8"/>
+        <text x="108" y="22" text-anchor="middle" font-size="7" fill="#aaa">0.2</text>
+        <text x="108" y="52" text-anchor="middle" font-size="7" fill="#aaa">0.5</text>
+        <text x="108" y="95" text-anchor="middle" font-size="7" fill="#aaa">0.3</text>
+        <circle cx="132" cy="25" r="14" fill="#0d1a15" stroke="#2CA02C" stroke-width="1.5"/><text x="132" y="29" text-anchor="middle" font-size="8" fill="#2CA02C">s₁'</text>
+        <circle cx="132" cy="55" r="14" fill="#0d1a15" stroke="#2CA02C" stroke-width="1.5"/><text x="132" y="59" text-anchor="middle" font-size="8" fill="#2CA02C">s₂'</text>
+        <circle cx="132" cy="85" r="14" fill="#0d1a15" stroke="#2CA02C" stroke-width="1.5"/><text x="132" y="89" text-anchor="middle" font-size="8" fill="#2CA02C">s₃'</text>
+      </svg>
+      <div style="font-size:0.7rem;opacity:0.4;margin-top:0.3rem;">Aspirador com 💥 · Poker · Robótica · Clima</div>
+    </div>
+  </div>
+  <div class="def-box" style="margin-top:1rem;font-size:0.9rem;">
+    <span style="color:var(--c1);">Estocástico</span> → <span style="color:var(--c0);">teoria da probabilidade</span> (Semana 7).<br>
+    A transição é uma distribuição: <span style="font-family:'JetBrains Mono',monospace;">P(s' | s, a)</span>. O agente maximiza o <strong>valor esperado</strong>, não o resultado determinístico.
+  </div>
+</div>
+
+<!-- 25 · EPISÓDICO VS SEQUENCIAL -->
+<div class="slide" data-notes="Episódico = cada decisão é independente (classificar uma imagem). Sequencial = a decisão de hoje afeta o mundo de amanhã (jogar xadrez). Esta é a distinção que separa ML clássico de reinforcement learning.">
+  <h2>3. Episódico vs Sequencial</h2>
+  <div style="display:flex;gap:2rem;width:100%;max-width:1000px;margin-top:1rem;align-items:flex-start;">
+    <div style="flex:1;text-align:left;">
+      <h3 style="color:var(--c0);">Episódico</h3>
+      <p style="font-size:0.82rem;opacity:0.7;">Cada decisão é <strong>independente</strong>. O agente percebe e age uma vez; o próximo episódio começa do zero.</p>
+      <svg viewBox="0 0 260 100" style="width:100%;max-width:270px;margin-top:0.5rem;">
+        <!-- 3 independent episodes -->
+        <text x="15" y="16" font-size="7" fill="#888">Episódio 1</text>
+        <rect x="5" y="22" width="48" height="22" rx="3" fill="#1a2a30" stroke="#1F77B4" stroke-width="1"/><text x="29" y="36" text-anchor="middle" font-size="8" fill="#ccc">🖼️→"gato"</text>
+        <text x="75" y="16" font-size="7" fill="#888">Episódio 2</text>
+        <rect x="65" y="22" width="48" height="22" rx="3" fill="#1a2a30" stroke="#1F77B4" stroke-width="1"/><text x="89" y="36" text-anchor="middle" font-size="8" fill="#ccc">🖼️→"cão"</text>
+        <text x="135" y="16" font-size="7" fill="#888">Episódio 3</text>
+        <rect x="125" y="22" width="48" height="22" rx="3" fill="#1a2a30" stroke="#1F77B4" stroke-width="1"/><text x="149" y="36" text-anchor="middle" font-size="8" fill="#ccc">🖼️→"gato"</text>
+        <!-- separators between episodes -->
+        <line x1="53" y1="33" x2="63" y2="33" stroke="#444" stroke-width="2"/><line x1="53" y1="33" x2="59" y2="30" stroke="#444" stroke-width="1.5"/><line x1="53" y1="33" x2="59" y2="36" stroke="#444" stroke-width="1.5"/>
+        <line x1="113" y1="33" x2="123" y2="33" stroke="#444" stroke-width="2"/><line x1="113" y1="33" x2="119" y2="30" stroke="#444" stroke-width="1.5"/><line x1="113" y1="33" x2="119" y2="36" stroke="#444" stroke-width="1.5"/>
+        <!-- annotation -->
+        <text x="130" y="70" text-anchor="middle" font-size="8" fill="#aaa">cada episódio é isolado</text>
+        <text x="130" y="84" text-anchor="middle" font-size="7" fill="#888">a ordem não importa</text>
+      </svg>
+      <div style="font-size:0.7rem;opacity:0.4;margin-top:0.2rem;">Classificar imagem · Diagnosticar · Filtrar spam</div>
+    </div>
+    <div style="flex:1;text-align:left;">
+      <h3 style="color:var(--c1);">Sequencial</h3>
+      <p style="font-size:0.82rem;opacity:0.7;">A decisão atual <strong>afeta o estado futuro</strong>. O agente planeja uma trajetória completa.</p>
+      <svg viewBox="0 0 260 100" style="width:100%;max-width:270px;margin-top:0.5rem;">
+        <!-- chain of states connected -->
+        <circle cx="25" cy="50" r="16" fill="#1a2a30" stroke="#1F77B4" stroke-width="1.5"/><text x="25" y="54" text-anchor="middle" font-size="8" fill="#ccc">s₀</text>
+        <line x1="41" y1="50" x2="58" y2="50" stroke="#FF7F0E" stroke-width="1.5" marker-end="url(#arrSeq)"/>
+        <text x="50" y="42" text-anchor="middle" font-size="6" fill="#FF7F0E">a₀</text>
+        <circle cx="75" cy="50" r="16" fill="#1a2a30" stroke="#1F77B4" stroke-width="1.5"/><text x="75" y="54" text-anchor="middle" font-size="8" fill="#ccc">s₁</text>
+        <line x1="91" y1="50" x2="108" y2="50" stroke="#FF7F0E" stroke-width="1.5" marker-end="url(#arrSeq)"/>
+        <text x="100" y="42" text-anchor="middle" font-size="6" fill="#FF7F0E">a₁</text>
+        <circle cx="125" cy="50" r="16" fill="#1a2a30" stroke="#1F77B4" stroke-width="1.5"/><text x="125" y="54" text-anchor="middle" font-size="8" fill="#ccc">s₂</text>
+        <line x1="141" y1="50" x2="158" y2="50" stroke="#FF7F0E" stroke-width="1.5" marker-end="url(#arrSeq)"/>
+        <text x="150" y="42" text-anchor="middle" font-size="6" fill="#FF7F0E">a₂</text>
+        <circle cx="175" cy="50" r="16" fill="#0d1a15" stroke="#2CA02C" stroke-width="2"/><text x="175" y="54" text-anchor="middle" font-size="8" fill="#2CA02C">s₃</text>
+        <!-- rewards below -->
+        <text x="50" y="72" text-anchor="middle" font-size="7" fill="#2CA02C">r₀=0</text>
+        <text x="100" y="72" text-anchor="middle" font-size="7" fill="#2CA02C">r₁=0</text>
+        <text x="150" y="72" text-anchor="middle" font-size="7" fill="#2CA02C">r₂=+10</text>
+        <!-- annotation -->
+        <text x="100" y="92" text-anchor="middle" font-size="8" fill="#aaa">decisões encadeadas</text>
+        <text x="100" y="104" text-anchor="middle" font-size="7" fill="#888">a recompensa pode estar longe</text>
+        <defs><marker id="arrSeq" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="#FF7F0E"/></marker></defs>
+      </svg>
+      <div style="font-size:0.7rem;opacity:0.4;margin-top:0.2rem;">Xadrez · Go · Dirigir · Diálogo · RL</div>
+    </div>
+  </div>
+  <div class="def-box" style="margin-top:1rem;font-size:0.9rem;">
+    <span style="color:var(--c1);">Sequencial</span> → <span style="color:var(--c0);">MDPs</span> (Semana 10).<br>
+    A recompensa pode estar no futuro: ações de hoje existem para viabilizar recompensas de amanhã. Esta é a essência do <strong>planejamento</strong> e do <strong>reinforcement learning</strong>.
+  </div>
+</div>
+
+<!-- 26 · ESTÁTICO VS DINÂMICO -->
+<div class="slide" data-notes="Estático = o mundo espera o agente decidir. Dinâmico = o mundo não espera. Dirigir é dinâmico: se você demora para frear, o carro da frente já mudou de posição.">
+  <h2>4. Estático vs Dinâmico</h2>
+  <div style="display:flex;gap:2rem;width:100%;max-width:1000px;margin-top:1rem;align-items:flex-start;">
+    <div style="flex:1;text-align:left;">
+      <h3 style="color:var(--c0);">Estático</h3>
+      <p style="font-size:0.82rem;opacity:0.7;">O ambiente <strong>não muda enquanto o agente pensa</strong>. Pode deliberar o tempo que quiser.</p>
+      <svg viewBox="0 0 240 105" style="width:100%;max-width:260px;margin-top:0.5rem;">
+        <!-- timeline: agent thinks, world frozen -->
+        <text x="10" y="14" font-size="7" fill="#888">tempo →</text>
+        <line x1="5" y1="22" x2="230" y2="22" stroke="#444" stroke-width="1"/>
+        <!-- agent timeline -->
+        <rect x="30" y="32" width="80" height="20" rx="3" fill="#1a2a30" stroke="#1F77B4" stroke-width="1.2"/>
+        <text x="70" y="45" text-anchor="middle" font-size="7" fill="#ccc">agente pensa ⏳</text>
+        <line x1="110" y1="42" x2="150" y2="42" stroke="#1F77B4" stroke-width="1.5"/>
+        <rect x="150" y="32" width="50" height="20" rx="3" fill="#0d1a15" stroke="#2CA02C" stroke-width="1.2"/>
+        <text x="175" y="45" text-anchor="middle" font-size="7" fill="#2CA02C">age ✓</text>
+        <!-- world frozen -->
+        <rect x="10" y="62" width="190" height="20" rx="3" fill="#0a0a15" stroke="#555" stroke-width="0.8"/>
+        <text x="105" y="75" text-anchor="middle" font-size="7" fill="#555">mundo congelado — não muda ⏸️</text>
+        <text x="105" y="98" text-anchor="middle" font-size="8" fill="#aaa">o agente controla o ritmo</text>
+      </svg>
+      <div style="font-size:0.7rem;opacity:0.4;margin-top:0.2rem;">Xadrez · Go · Quebra-cabeças · Sudoku</div>
+    </div>
+    <div style="flex:1;text-align:left;">
+      <h3 style="color:var(--c1);">Dinâmico</h3>
+      <p style="font-size:0.82rem;opacity:0.7;">O ambiente <strong>evolui independentemente</strong>. Se o agente demora, o mundo já mudou.</p>
+      <svg viewBox="0 0 240 105" style="width:100%;max-width:260px;margin-top:0.5rem;">
+        <!-- timeline: world keeps changing -->
+        <text x="10" y="14" font-size="7" fill="#888">tempo →</text>
+        <line x1="5" y1="22" x2="230" y2="22" stroke="#444" stroke-width="1"/>
+        <!-- agent thinks but world moves -->
+        <rect x="25" y="32" width="55" height="20" rx="3" fill="#1a2a30" stroke="#1F77B4" stroke-width="1.2"/>
+        <text x="52" y="45" text-anchor="middle" font-size="7" fill="#ccc">pensa...</text>
+        <!-- world changes while agent thinks -->
+        <rect x="10" y="60" width="35" height="18" rx="2" fill="#1a1010" stroke="#FF7F0E" stroke-width="1"/><text x="27" y="72" text-anchor="middle" font-size="6" fill="#FF7F0E">w₁</text>
+        <rect x="50" y="60" width="35" height="18" rx="2" fill="#1a1010" stroke="#FF7F0E" stroke-width="1"/><text x="67" y="72" text-anchor="middle" font-size="6" fill="#FF7F0E">w₂</text>
+        <rect x="90" y="60" width="35" height="18" rx="2" fill="#1a1010" stroke="#FF7F0E" stroke-width="1"/><text x="107" y="72" text-anchor="middle" font-size="6" fill="#FF7F0E">w₃</text>
+        <!-- agent acts but world moved on -->
+        <line x1="80" y1="42" x2="130" y2="42" stroke="#D62728" stroke-width="1.5" stroke-dasharray="3 2"/>
+        <rect x="130" y="32" width="50" height="20" rx="3" fill="#1a1010" stroke="#D62728" stroke-width="1.2"/>
+        <text x="155" y="45" text-anchor="middle" font-size="7" fill="#D62728">age!</text>
+        <!-- world already changed -->
+        <rect x="135" y="60" width="35" height="18" rx="2" fill="#1a1010" stroke="#FF7F0E" stroke-width="1.2"/>
+        <text x="152" y="72" text-anchor="middle" font-size="6" fill="#FF7F0E">w₄</text>
+        <text x="175" y="72" text-anchor="middle" font-size="6" fill="#aaa">...</text>
+        <text x="105" y="98" text-anchor="middle" font-size="8" fill="#FF7F0E">o mundo não espera</text>
+      </svg>
+      <div style="font-size:0.7rem;opacity:0.4;margin-top:0.2rem;">Dirigir · Jogos em tempo real · Bolsa · Robô</div>
+    </div>
+  </div>
+  <div class="def-box" style="margin-top:1rem;font-size:0.9rem;">
+    <span style="color:var(--c1);">Dinâmico</span> → <strong>raciocínio com limite de tempo</strong>.<br>
+    Técnicas: busca com time-out, políticas reativas, <em>anytime algorithms</em> que melhoram a resposta conforme ganham mais tempo.
+  </div>
+</div>
+
+<!-- 27 · DISCRETO VS CONTÍNUO -->
+<div class="slide" data-notes="Discreto = estados e ações são enumeráveis (posições no tabuleiro). Contínuo = estados/ações são números reais (ângulo do volante). Contínuo é muito mais difícil — requer aproximação de função.">
+  <h2>5. Discreto vs Contínuo</h2>
+  <div style="display:flex;gap:2rem;width:100%;max-width:1000px;margin-top:1rem;align-items:flex-start;">
+    <div style="flex:1;text-align:left;">
+      <h3 style="color:var(--c0);">Discreto</h3>
+      <p style="font-size:0.82rem;opacity:0.7;">Estados e ações formam um <strong>conjunto finito e enumerável</strong>. Cabe numa tabela.</p>
+      <svg viewBox="0 0 240 105" style="width:100%;max-width:260px;margin-top:0.5rem;">
+        <!-- Q-table -->
+        <rect x="10" y="16" width="210" height="78" rx="3" fill="#1a1a20" stroke="#1F77B4" stroke-width="1.2"/>
+        <text x="115" y="32" text-anchor="middle" font-size="8" fill="#1F77B4">Tabela Q[s, a]</text>
+        <!-- column headers -->
+        <line x1="60" y1="38" x2="60" y2="88" stroke="#333" stroke-width="0.5"/><line x1="120" y1="38" x2="120" y2="88" stroke="#333" stroke-width="0.5"/><line x1="170" y1="38" x2="170" y2="88" stroke="#333" stroke-width="0.5"/>
+        <line x1="10" y1="52" x2="220" y2="52" stroke="#333" stroke-width="0.5"/><line x1="10" y1="66" x2="220" y2="66" stroke="#333" stroke-width="0.5"/>
+        <text x="35" y="46" text-anchor="middle" font-size="7" fill="#888">estado</text><text x="90" y="46" text-anchor="middle" font-size="7" fill="#FF7F0E">←</text><text x="145" y="46" text-anchor="middle" font-size="7" fill="#FF7F0E">→</text><text x="195" y="46" text-anchor="middle" font-size="7" fill="#FF7F0E">↑</text>
+        <text x="35" y="60" text-anchor="middle" font-size="7" fill="#2CA02C">s₁</text><text x="90" y="60" text-anchor="middle" font-size="7" fill="#ccc">2.1</text><text x="145" y="60" text-anchor="middle" font-size="7" fill="#ccc">3.4</text><text x="195" y="60" text-anchor="middle" font-size="7" fill="#ccc">0.5</text>
+        <text x="35" y="74" text-anchor="middle" font-size="7" fill="#2CA02C">s₂</text><text x="90" y="74" text-anchor="middle" font-size="7" fill="#ccc">1.8</text><text x="145" y="74" text-anchor="middle" font-size="7" fill="#ccc">5.0</text><text x="195" y="74" text-anchor="middle" font-size="7" fill="#ccc">2.3</text>
+        <text x="35" y="86" text-anchor="middle" font-size="5" fill="#444">...</text><text x="90" y="86" text-anchor="middle" font-size="5" fill="#444">...</text><text x="145" y="86" text-anchor="middle" font-size="5" fill="#444">...</text><text x="195" y="86" text-anchor="middle" font-size="5" fill="#444">...</text>
+      </svg>
+      <div style="font-size:0.7rem;opacity:0.4;margin-top:0.2rem;">Xadrez (64² estados) · GridWorld · Q-learning tabular</div>
+    </div>
+    <div style="flex:1;text-align:left;">
+      <h3 style="color:var(--c1);">Contínuo</h3>
+      <p style="font-size:0.82rem;opacity:0.7;">Estados/ações são <strong>valores reais</strong> (ℝⁿ). A tabela explode — é preciso aproximar.</p>
+      <svg viewBox="0 0 240 105" style="width:100%;max-width:260px;margin-top:0.5rem;">
+        <!-- continuous space with NN approximator -->
+        <rect x="10" y="10" width="80" height="60" rx="4" fill="#1a1a20" stroke="#FF7F0E" stroke-width="1.2"/>
+        <text x="50" y="30" text-anchor="middle" font-size="7" fill="#FF7F0E">Espaço contínuo</text>
+        <text x="50" y="44" text-anchor="middle" font-size="6" fill="#888">ℝⁿ — infinitos</text>
+        <text x="50" y="56" text-anchor="middle" font-size="6" fill="#888">estados e ações</text>
+        <!-- arrow to NN -->
+        <text x="50" y="82" text-anchor="middle" font-size="6" fill="#D62728">tabela impossível!</text>
+        <!-- neural network -->
+        <rect x="105" y="8" width="15" height="64" rx="2" fill="#1a2a1a" stroke="#2CA02C" stroke-width="0.8"/><text x="112" y="45" text-anchor="middle" font-size="6" fill="#2CA02C">s</text>
+        <line x1="120" y1="25" x2="130" y2="15" stroke="#2CA02C" stroke-width="0.5"/><line x1="120" y1="40" x2="130" y2="40" stroke="#2CA02C" stroke-width="0.5"/><line x1="120" y1="55" x2="130" y2="65" stroke="#2CA02C" stroke-width="0.5"/>
+        <rect x="130" y="10" width="12" height="60" rx="2" fill="#1a2a1a" stroke="#2CA02C" stroke-width="0.8"/>
+        <line x1="142" y1="25" x2="152" y2="15" stroke="#2CA02C" stroke-width="0.5"/><line x1="142" y1="40" x2="152" y2="40" stroke="#2CA02C" stroke-width="0.5"/><line x1="142" y1="55" x2="152" y2="65" stroke="#2CA02C" stroke-width="0.5"/>
+        <rect x="152" y="10" width="12" height="60" rx="2" fill="#1a2a1a" stroke="#2CA02C" stroke-width="0.8"/>
+        <line x1="164" y1="40" x2="175" y2="40" stroke="#2CA02C" stroke-width="0.5"/>
+        <rect x="175" y="26" width="18" height="28" rx="2" fill="#0d1a15" stroke="#2CA02C" stroke-width="1.2"/><text x="184" y="44" text-anchor="middle" font-size="6" fill="#2CA02C">Q(s,a)</text>
+        <!-- annotation -->
+        <text x="50" y="100" text-anchor="middle" font-size="7" fill="#888">ações enumeráveis</text>
+        <text x="160" y="100" text-anchor="middle" font-size="8" fill="#2CA02C">Q(s,a; θ)</text>
+      </svg>
+      <div style="font-size:0.7rem;opacity:0.4;margin-top:0.2rem;">Braço robótico · Carro autônomo · Helicóptero</div>
+    </div>
+  </div>
+  <div class="def-box" style="margin-top:1rem;font-size:0.9rem;">
+    <span style="color:var(--c1);">Contínuo</span> → <span style="color:var(--c0);">aproximação de função</span> (Semana 14).<br>
+    Em vez de uma tabela Q[s,a], usa-se uma <strong>rede neural Q(s,a; θ)</strong> que generaliza sobre o espaço contínuo. Esta é a ponte do RL tabular para o Deep RL.
+  </div>
+</div>
+
+<!-- 28 · AGENTE ÚNICO VS MULTIAGENTE -->
+<div class="slide" data-notes="Agente único = só existe um tomador de decisão. Multiagente = outros agentes também decidem. A presença de outros agentes torna o ambiente não-estacionário: o que era ótimo pode deixar de ser porque os outros mudaram de estratégia.">
+  <h2>6. Agente único vs Multiagente</h2>
+  <div style="display:flex;gap:2rem;width:100%;max-width:1000px;margin-top:1rem;align-items:flex-start;">
+    <div style="flex:1;text-align:left;">
+      <h3 style="color:var(--c0);">Agente único</h3>
+      <p style="font-size:0.82rem;opacity:0.7;">Só existe <strong>um tomador de decisão</strong>. Os outros elementos são parte passiva da dinâmica do ambiente.</p>
+      <svg viewBox="0 0 240 110" style="width:100%;max-width:260px;margin-top:0.5rem;">
+        <!-- environment box -->
+        <rect x="10" y="10" width="220" height="90" rx="6" fill="#1a1a20" stroke="#1F77B4" stroke-width="1.5" stroke-dasharray="6 3"/>
+        <text x="120" y="28" text-anchor="middle" font-size="8" fill="#1F77B4">AMBIENTE</text>
+        <!-- agent -->
+        <circle cx="60" cy="60" r="18" fill="#1a2a30" stroke="#1F77B4" stroke-width="2"/><text x="60" y="64" text-anchor="middle" font-size="10" fill="#fff">🤖</text>
+        <text x="60" y="88" text-anchor="middle" font-size="7" fill="#888">agente</text>
+        <!-- obstacles (passive) -->
+        <rect x="140" y="46" width="28" height="28" rx="3" fill="#1a1a25" stroke="#444" stroke-width="1"/>
+        <text x="154" y="64" text-anchor="middle" font-size="7" fill="#555">⬛</text>
+        <text x="154" y="84" text-anchor="middle" font-size="6" fill="#555">obstáculo</text>
+        <rect x="182" y="46" width="28" height="28" rx="3" fill="#1a1a25" stroke="#444" stroke-width="1"/>
+        <text x="196" y="64" text-anchor="middle" font-size="7" fill="#555">⬛</text>
+        <text x="196" y="84" text-anchor="middle" font-size="6" fill="#555">obstáculo</text>
+        <!-- perception/action arrows -->
+        <line x1="78" y1="60" x2="130" y2="50" stroke="#2CA02C" stroke-width="1"/><text x="100" y="46" text-anchor="middle" font-size="6" fill="#2CA02C">percepção</text>
+        <line x1="130" y1="70" x2="78" y2="60" stroke="#FF7F0E" stroke-width="1"/><text x="100" y="78" text-anchor="middle" font-size="6" fill="#FF7F0E">ação</text>
+      </svg>
+      <div style="font-size:0.7rem;opacity:0.4;margin-top:0.2rem;">Aspirador · Labirinto · GridWorld · Braço robótico</div>
+    </div>
+    <div style="flex:1;text-align:left;">
+      <h3 style="color:var(--c1);">Multiagente</h3>
+      <p style="font-size:0.82rem;opacity:0.7;">Existem <strong>outros agentes decidindo</strong>. Cada um se adapta aos outros. O ambiente é não-estacionário.</p>
+      <svg viewBox="0 0 240 110" style="width:100%;max-width:260px;margin-top:0.5rem;">
+        <!-- environment box -->
+        <rect x="10" y="10" width="220" height="90" rx="6" fill="#1a1a20" stroke="#FF7F0E" stroke-width="1.5" stroke-dasharray="6 3"/>
+        <text x="120" y="28" text-anchor="middle" font-size="8" fill="#FF7F0E">AMBIENTE MULTIAGENTE</text>
+        <!-- agent 1 -->
+        <circle cx="45" cy="60" r="15" fill="#1a2a30" stroke="#1F77B4" stroke-width="1.5"/><text x="45" y="64" text-anchor="middle" font-size="9" fill="#fff">🤖</text>
+        <text x="45" y="84" text-anchor="middle" font-size="6" fill="#888">agente A</text>
+        <!-- agent 2 -->
+        <circle cx="115" cy="50" r="15" fill="#1a2a30" stroke="#D62728" stroke-width="1.5"/><text x="115" y="54" text-anchor="middle" font-size="9" fill="#fff">🤖</text>
+        <text x="115" y="74" text-anchor="middle" font-size="6" fill="#888">agente B</text>
+        <!-- agent 3 -->
+        <circle cx="185" cy="65" r="15" fill="#1a2a30" stroke="#9467BD" stroke-width="1.5"/><text x="185" y="69" text-anchor="middle" font-size="9" fill="#fff">🤖</text>
+        <text x="185" y="88" text-anchor="middle" font-size="6" fill="#888">agente C</text>
+        <!-- interaction arrows between agents -->
+        <line x1="60" y1="56" x2="100" y2="52" stroke="#888" stroke-width="0.8" stroke-dasharray="2 2"/>
+        <line x1="130" y1="54" x2="170" y2="62" stroke="#888" stroke-width="0.8" stroke-dasharray="2 2"/>
+        <line x1="185" y1="52" x2="155" y2="52" stroke="#888" stroke-width="0.8" stroke-dasharray="2 2"/>
+        <!-- Nash equilibrium note -->
+        <text x="120" y="102" text-anchor="middle" font-size="7" fill="#FF7F0E">cada um reage à estratégia do outro</text>
+      </svg>
+      <div style="font-size:0.7rem;opacity:0.4;margin-top:0.2rem;">Xadrez · Futebol de robôs · Leilões · Tráfego</div>
+    </div>
+  </div>
+  <div class="def-box" style="margin-top:1rem;font-size:0.9rem;">
+    <span style="color:var(--c1);">Multiagente</span> → <span style="color:var(--c0);">teoria dos jogos</span> (Semana 5).<br>
+    Conceitos: <strong>equilíbrio de Nash</strong>, estratégia minimax, cooperação vs competição. O ambiente é <strong>não-estacionário</strong>: a política ótima muda quando os outros mudam.
+  </div>
+</div>
+
+<!-- 29 · RESUMO DAS PROPRIEDADES -->
+<div class="slide" data-notes="Fechar o arco. Cada propriedade foi explicada individualmente; agora mostrar como elas se combinam para determinar a técnica. O GridWorld da Semana 2 é discreto, determinístico, observável, sequencial, estático, agente único — o ambiente mais simples. Conforme relaxamos cada propriedade, subimos na escala de complexidade técnica.">
+  <h2>Resumo: o ambiente escolhe a técnica</h2>
+  <div style="display:flex;gap:1.5rem;width:100%;max-width:1050px;margin-top:0.6rem;text-align:left;">
+    <div style="flex:1;">
+      <table style="width:100%;font-size:0.7rem;border-collapse:collapse;line-height:1.5;">
+        <tr style="border-bottom:1px solid #444;"><th style="text-align:left;padding:0.3rem 0.4rem;color:var(--c0);">Propriedade</th><th style="text-align:left;padding:0.3rem 0.4rem;color:var(--c0);">Se for ↓</th><th style="text-align:left;padding:0.3rem 0.4rem;color:var(--c1);">Técnica</th><th style="text-align:left;padding:0.3rem 0.4rem;opacity:0.4;">Semana</th></tr>
+        <tr><td style="padding:0.25rem 0.4rem;">Observável?</td><td style="padding:0.25rem 0.4rem;color:var(--c1);">Parcial</td><td style="padding:0.25rem 0.4rem;">Estado interno</td><td style="padding:0.25rem 0.4rem;opacity:0.4;">S2</td></tr>
+        <tr><td style="padding:0.25rem 0.4rem;">Determinístico?</td><td style="padding:0.25rem 0.4rem;color:var(--c1);">Estocástico</td><td style="padding:0.25rem 0.4rem;">Probabilidade</td><td style="padding:0.25rem 0.4rem;opacity:0.4;">S7</td></tr>
+        <tr><td style="padding:0.25rem 0.4rem;">Episódico?</td><td style="padding:0.25rem 0.4rem;color:var(--c1);">Sequencial</td><td style="padding:0.25rem 0.4rem;">MDPs / RL</td><td style="padding:0.25rem 0.4rem;opacity:0.4;">S10–14</td></tr>
+        <tr><td style="padding:0.25rem 0.4rem;">Estático?</td><td style="padding:0.25rem 0.4rem;color:var(--c1);">Dinâmico</td><td style="padding:0.25rem 0.4rem;">Anytime / reativo</td><td style="padding:0.25rem 0.4rem;opacity:0.4;">S2</td></tr>
+        <tr><td style="padding:0.25rem 0.4rem;">Discreto?</td><td style="padding:0.25rem 0.4rem;color:var(--c1);">Contínuo</td><td style="padding:0.25rem 0.4rem;">Aprox. de função</td><td style="padding:0.25rem 0.4rem;opacity:0.4;">S14</td></tr>
+        <tr><td style="padding:0.25rem 0.4rem;">Agente único?</td><td style="padding:0.25rem 0.4rem;color:var(--c1);">Multiagente</td><td style="padding:0.25rem 0.4rem;">Teoria dos jogos</td><td style="padding:0.25rem 0.4rem;opacity:0.4;">S5</td></tr>
+      </table>
+    </div>
+    <div style="flex:1;">
+      <div style="background:#1a1a25;border-radius:8px;padding:0.8rem;font-size:0.78rem;line-height:1.5;">
+        <strong style="color:var(--c2);">Caso mais simples:</strong><br>
+        <span style="font-family:'JetBrains Mono',monospace;">Observável · Determinístico<br>Episódico · Estático · Discreto<br>Agente único</span><br><br>
+        <span style="opacity:0.6;">= GridWorld da Semana 2</span><br><br>
+        <strong style="color:var(--c1);">Caso mais complexo:</strong><br>
+        <span style="font-family:'JetBrains Mono',monospace;">Parcial · Estocástico<br>Sequencial · Dinâmico<br>Contínuo · Multiagente</span><br><br>
+        <span style="opacity:0.6;">= Deep RL do mundo real</span>
+      </div>
+    </div>
+  </div>
+  <p style="margin-top:0.6rem;font-size:0.75rem;opacity:0.4;">Russell & Norvig, AIMA · Capítulos 2 e 3. Esta tabela é a bússola do curso.</p>
+</div>
+
+<!-- 30 · TIPOS DE AGENTE -->
+<div class="slide" data-notes="O aspirador é reativo simples. A diferença entre cada tipo é COMO a decisão é produzida. A seta final — agente que aprende — é literalmente o diagrama do reinforcement learning. Plantar essa semente.">
+  <h2>Do reativo ao que aprende</h2>
+  <div style="display:flex;gap:0.5rem;width:100%;max-width:1050px;margin-top:0.8rem;font-size:0.78rem;">
+    <div style="flex:1;background:#1a1a20;border-radius:8px;padding:0.7rem 0.5rem;text-align:center;border-top:2px solid #999;">
+      <div style="font-size:1.5rem;">👀</div>
+      <div style="font-weight:700;margin:0.3rem 0;">Reativo simples</div>
+      <div style="opacity:0.5;font-size:0.65rem;">percepção → ação<br>sem memória, sem modelo<br><em style="color:var(--c1);">nosso aspirador</em></div>
+    </div>
+    <div style="font-size:1.2rem;display:flex;align-items:center;opacity:0.3;">→</div>
+    <div style="flex:1;background:#1a1a20;border-radius:8px;padding:0.7rem 0.5rem;text-align:center;border-top:2px solid var(--c0);">
+      <div style="font-size:1.5rem;">📝</div>
+      <div style="font-weight:700;margin:0.3rem 0;">Com estado</div>
+      <div style="opacity:0.5;font-size:0.65rem;">memória do que já viu<br>modelo interno do mundo<br><em>S2</em></div>
+    </div>
+    <div style="font-size:1.2rem;display:flex;align-items:center;opacity:0.3;">→</div>
+    <div style="flex:1;background:#1a1a20;border-radius:8px;padding:0.7rem 0.5rem;text-align:center;border-top:2px solid var(--c4);">
+      <div style="font-size:1.5rem;">🎯</div>
+      <div style="font-weight:700;margin:0.3rem 0;">Baseado em objetivo</div>
+      <div style="opacity:0.5;font-size:0.65rem;">busca no espaço de estados<br>planejamento<br><em>S3–S5</em></div>
+    </div>
+    <div style="font-size:1.2rem;display:flex;align-items:center;opacity:0.3;">→</div>
+    <div style="flex:1;background:#1a1a20;border-radius:8px;padding:0.7rem 0.5rem;text-align:center;border-top:2px solid var(--c2);">
+      <div style="font-size:1.5rem;">🧠</div>
+      <div style="font-weight:700;margin:0.3rem 0;">Que aprende</div>
+      <div style="opacity:0.5;font-size:0.65rem;">melhora com experiência<br>o ambiente ensina<br><em>S8–S14</em></div>
+    </div>
+  </div>
+  <p style="margin-top:1rem;font-size:0.85rem;opacity:0.55;">O agente que aprende é o destino do curso. O diagrama dele <strong style="color:var(--c2);">é literalmente o diagrama do reinforcement learning</strong>.</p>
+</div>
+
+<!-- 31 · AGENTE ASPIRADOR (código) -->
+<div class="slide" data-notes="Ler o código linha a linha. Destacar: 'if sujo: return ASPIRAR' — esta é a função f inteira. 3 regras. Compare com bilhões de parâmetros de um LLM. A estrutura do ciclo é idêntica.">
+  <h2>O agente aspirador em 6 linhas</h2>
   <div class="slide-code">
     <span class="kw">def</span> <span class="bu">agente_aspirador</span>(percepcao):<br>
     &nbsp;&nbsp;&nbsp;&nbsp;posicao, sujo = percepcao<br>
@@ -594,17 +1081,15 @@ body {
     &nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">if</span> posicao == <span class="st">"A"</span>: <span class="kw">return</span> <span class="st">"DIREITA"</span><br>
     &nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">return</span> <span class="st">"ESQUERDA"</span>
   </div>
-  <p style="margin-top:1rem;"><span style="color:var(--c0);">percepção</span> → <span style="color:var(--c1);">decisão</span> → <span style="color:var(--c2);">ação</span></p>
+  <p style="margin-top:0.8rem;"><span style="color:var(--c0);">f</span> é programada linha a linha — <span style="color:var(--c1);">3 regras</span>. E se o mundo mudar?</p>
 </div>
 
-<!-- SLIDE 14: Sua Vez — O bug dos 3 cômodos -->
-<div class="slide" data-slide="14" data-notes="ETAPA 1: Mostrar o agente de 2 cômodos funcionando (clicar '2 cômodos'). Depois clicar '3 cômodos' e pedir que a turma preveja o que vai acontecer. Só então clicar '▸ Passo' para revelar o bug: o agente fica preso no ciclo B↔C e nunca alcança A. Perguntar: 'Por quê?' Resposta: a lógica de movimento só empurra para a direita a partir de A. Não há regra que leve de C ou B para A.">
-  <h2>Sua vez: o agente funciona com 3 cômodos?</h2>
-
-  <div style="display:flex;gap:1rem;width:100%;max-width:1100px;align-items:flex-start;">
-    <!-- Left: code + controls -->
+<!-- 32 · SUA VEZ: 3 CÔMODOS -->
+<div class="slide" data-notes="ETAPA 1: 2 cômodos funcionando. ETAPA 2: 3 cômodos — pedir que a turma preveja. ETAPA 3: Executar. O agente NUNCA alcança A — fica preso em B↔C. Perguntar: 'Por quê?' A lógica só empurra para a direita a partir de A.">
+  <h2>Sua vez: funciona com 3 cômodos?</h2>
+  <div style="display:flex;gap:1rem;width:100%;max-width:1080px;align-items:flex-start;">
     <div style="flex:1;text-align:left;">
-      <div class="slide-code" style="font-size:0.7rem;padding:0.6rem;margin-bottom:0.5rem;">
+      <div class="slide-code" style="font-size:0.68rem;padding:0.5rem;margin-bottom:0.4rem;">
         <span class="kw">def</span> <span class="bu">agente_aspirador</span>(percepcao):<br>
         &nbsp;&nbsp;posicao, sujo = percepcao<br>
         &nbsp;&nbsp;<span class="kw">if</span> sujo: <span class="kw">return</span> <span class="st">"ASPIRAR"</span><br>
@@ -613,114 +1098,96 @@ body {
         &nbsp;&nbsp;<span class="kw">return</span> <span class="st">"ESQUERDA"</span>
       </div>
       <div style="display:flex;gap:0.3rem;justify-content:center;">
-        <button id="sv2rooms" onclick="svSetup(2)" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:0.7rem;padding:0.3rem 0.6rem;cursor:pointer;background:var(--c2);color:#fff;border:none;border-radius:4px;">2 cômodos</button>
-        <button id="sv3rooms" onclick="svSetup(3)" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:0.7rem;padding:0.3rem 0.6rem;cursor:pointer;background:var(--c1);color:#fff;border:none;border-radius:4px;">3 cômodos</button>
-        <button id="svStep" onclick="svStep()" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:0.7rem;padding:0.3rem 0.6rem;cursor:pointer;background:var(--c0);color:#fff;border:none;border-radius:4px;">▸ Passo</button>
-        <button id="svReset" onclick="svReset()" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:0.7rem;padding:0.3rem 0.6rem;cursor:pointer;background:#333;color:#ccc;border:1px solid #555;border-radius:4px;">⟲</button>
+        <button id="sv2rooms" onclick="svSetup(2)" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:0.68rem;padding:0.3rem 0.55rem;cursor:pointer;background:var(--c2);color:#fff;border:none;border-radius:4px;">2 cômodos</button>
+        <button id="sv3rooms" onclick="svSetup(3)" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:0.68rem;padding:0.3rem 0.55rem;cursor:pointer;background:var(--c1);color:#fff;border:none;border-radius:4px;">3 cômodos</button>
+        <button id="svStep" onclick="svStep()" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:0.68rem;padding:0.3rem 0.55rem;cursor:pointer;background:var(--c0);color:#fff;border:none;border-radius:4px;">▸ Passo</button>
+        <button id="svReset" onclick="svReset()" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:0.68rem;padding:0.3rem 0.55rem;cursor:pointer;background:#333;color:#ccc;border:1px solid #555;border-radius:4px;">⟲</button>
       </div>
-      <div id="svTrace" style="background:#0d0d15;border:1px solid #333;border-radius:6px;padding:0.5rem;height:130px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:0.65rem;line-height:1.55;text-align:left;color:#aaa;margin-top:0.4rem;">
-        <div>Selecione <strong style="color:#fff;">2</strong> ou <strong style="color:#FF7F0E;">3</strong> cômodos para começar.</div>
+      <div id="svTrace" style="background:#0d0d15;border:1px solid #333;border-radius:6px;padding:0.4rem;height:110px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:0.6rem;line-height:1.5;text-align:left;color:#aaa;margin-top:0.35rem;">
+        <div>Selecione <strong style="color:#fff;">2</strong> ou <strong style="color:#FF7F0E;">3</strong> cômodos.</div>
       </div>
     </div>
-
-    <!-- Right: visual grid -->
-    <div style="flex:1.3;">
-      <div id="svGrid" style="display:flex;gap:0.5rem;justify-content:center;align-items:center;min-height:200px;position:relative;">
-        <!-- dynamically filled -->
-      </div>
-      <div id="svStatus" style="text-align:center;font-family:'Space Grotesk',sans-serif;font-size:0.85rem;margin-top:0.5rem;opacity:0.6;">
-        Aguardando...
-      </div>
+    <div style="flex:1.2;">
+      <div id="svGrid" style="display:flex;gap:0.4rem;justify-content:center;align-items:center;min-height:180px;position:relative;"></div>
+      <div id="svStatus" style="text-align:center;font-size:0.8rem;margin-top:0.4rem;opacity:0.6;">Aguardando...</div>
     </div>
   </div>
-
-  <p id="svPunchline" style="margin-top:0.8rem;font-size:1.1rem;color:var(--c1);display:none;">
-    <strong>O agente NUNCA chega ao cômodo A.</strong> A lógica de movimento só empurra para a direita. De B ele vai para C. De C ele volta para B. Ciclo infinito B↔C.
+  <p id="svPunchline" style="margin-top:0.6rem;font-size:1rem;color:var(--c1);display:none;">
+    <strong>O agente NUNCA alcança A.</strong> Ciclo B↔C infinito. f programada para 2 cômodos — adicionar 1 quebrou tudo.
   </p>
 </div>
 
-<!-- SLIDE 15-16: Bitter Lesson Graph -->
-<div class="slide" data-slide="15" data-notes="Mostrar o gráfico. Apontar cada método da linha do tempo e classificá-lo em uma das duas curvas. 'Todo método que vocês viram hoje está em uma dessas duas curvas.'">
-  <h2>A Lição Amarga — visual</h2>
-  <svg viewBox="0 0 1000 450" style="width:90%;height:auto;">
-    <!-- axes -->
-    <line x1="100" y1="380" x2="920" y2="380" stroke="#555" stroke-width="1.5"/>
-    <line x1="100" y1="380" x2="100" y2="40" stroke="#555" stroke-width="1.5"/>
-    <text x="510" y="420" fill="#777" font-size="13">Computação + Dados →</text>
-    <text x="40" y="210" fill="#777" font-size="13" transform="rotate(-90,40,210)">Performance →</text>
-    <!-- hand-crafted curve -->
-    <polyline points="100,370 180,220 300,140 420,120 500,110 520,108 530,107 540,106"
-      fill="none" stroke="#999" stroke-width="3.5"/>
-    <circle cx="100" cy="370" r="4" fill="#999"/>
-    <circle cx="180" cy="220" r="4" fill="#999"/>
-    <circle cx="540" cy="106" r="4" fill="#999"/>
-    <text x="450" y="130" fill="#999" font-size="12">Conhecimento artesanal</text>
-    <!-- learned curve -->
-    <polyline points="100,372 140,360 200,330 300,280 450,200 600,140 750,90 880,50"
-      fill="none" stroke="#2CA02C" stroke-width="3.5"/>
-    <circle cx="100" cy="372" r="4" fill="#2CA02C"/>
-    <circle cx="450" cy="200" r="4" fill="#2CA02C"/>
-    <circle cx="880" cy="50" r="4" fill="#2CA02C"/>
-    <text x="700" y="55" fill="#2CA02C" font-size="14" font-weight="700">Aprendizado + escala</text>
-    <!-- annotations -->
-    <text x="145" y="350" fill="#888" font-size="10">Perceptron</text>
-    <text x="250" y="125" fill="#888" font-size="10">ELIZA</text>
-    <text x="500" y="100" fill="#888" font-size="10">Deep Blue</text>
-    <text x="460" y="215" fill="#2E7D32" font-size="10">AlexNet</text>
-    <text x="760" y="80" fill="#2E7D32" font-size="10">Transformers</text>
-  </svg>
-</div>
-
-<!-- SLIDE 16: The Two Curves Labeled -->
-<div class="slide" data-slide="16" data-notes="Fechamento do Ato 3. Apontar para a curva verde: 'Este curso é a curva verde. As próximas 15 semanas são a engenharia desta frase.'">
-  <h2>Este curso é a <span style="color:var(--c2);">curva verde</span></h2>
-  <div style="display:flex;gap:3rem;align-items:center;margin-top:2rem;">
-    <div style="text-align:center;">
-      <div style="font-size:3rem;">📏</div>
-      <p>Conhecimento<br>artesanal<br><span style="color:#999;">→ platô</span></p>
-    </div>
-    <div style="font-size:3rem;">vs</div>
-    <div style="text-align:center;">
-      <div style="font-size:3rem;">🚀</div>
-      <p>Aprendizado<br>+ escala<br><span style="color:var(--c2);">→ decola</span></p>
-    </div>
-  </div>
-</div>
-
-<!-- SLIDE 17-20: Course Preview Mosaic -->
-<div class="slide" data-slide="17" data-notes="Apresentar o mapa do curso. Cada card é uma janela para uma semana futura. Não explicar cada um — só passar o cursor e deixar a curiosidade fazer o trabalho.">
+<!-- 33 · PREVIEW DO CURSO -->
+<div class="slide" data-notes="Mapa do curso. Não explicar cada card — passar o cursor e deixar a curiosidade trabalhar.">
   <h2>O que vem por aí</h2>
   <div class="preview-mini-grid" id="deckPreviewGrid"></div>
 </div>
 
-<!-- SLIDE 18: AlphaGo anatomy preview -->
-<div class="slide" data-slide="18" data-notes="'Na Semana 15, vocês vão desmontar este diagrama e entender cada peça.'">
-  <h2>Semana 15: AlphaGo — o curso inteiro em um sistema</h2>
-  <div style="display:flex;gap:1.5rem;align-items:center;margin-top:1rem;">
+<!-- 34 · ALPHAGO ANATOMY -->
+<div class="slide" data-notes="Na S15 vocês vão desmontar este diagrama. MCTS vem da busca (S3-5). Rede de Política vem do ML (S8-9). Rede de Valor e Self-Play vêm do RL (S10-14). Este slide é a promessa do curso.">
+  <h2>AlphaGo — o curso inteiro em um sistema</h2>
+  <div style="display:flex;gap:1.5rem;align-items:center;margin-top:0.8rem;width:100%;max-width:1000px;">
     <div style="flex:1;text-align:left;">
-      <div style="padding:0.6rem;background:#1a2a30;border-left:3px solid var(--c0);margin-bottom:0.4rem;">🔵 MCTS — <small>Semanas 3-5 (Busca)</small></div>
-      <div style="padding:0.6rem;background:#1a2a30;border-left:3px solid var(--c4);margin-bottom:0.4rem;">🟣 Rede de Política — <small>Semanas 8-9 (ML)</small></div>
-      <div style="padding:0.6rem;background:#1a2a30;border-left:3px solid var(--c2);margin-bottom:0.4rem;">🟢 Rede de Valor — <small>Semanas 10-14 (RL)</small></div>
-      <div style="padding:0.6rem;background:#1a2a30;border-left:3px solid var(--c1);">🟠 Self-Play — <small>Semanas 12-14 (RL)</small></div>
+      <div style="padding:0.5rem 0.7rem;background:#1a2a30;border-left:3px solid var(--c0);margin-bottom:0.35rem;font-size:0.9rem;">🔵 MCTS — <small>Semanas 3-5 (Busca)</small></div>
+      <div style="padding:0.5rem 0.7rem;background:#1a2a30;border-left:3px solid var(--c4);margin-bottom:0.35rem;font-size:0.9rem;">🟣 Rede de Política — <small>Semanas 8-9 (ML)</small></div>
+      <div style="padding:0.5rem 0.7rem;background:#1a2a30;border-left:3px solid var(--c2);margin-bottom:0.35rem;font-size:0.9rem;">🟢 Rede de Valor — <small>Semanas 10-14 (RL)</small></div>
+      <div style="padding:0.5rem 0.7rem;background:#1a2a30;border-left:3px solid var(--c1);font-size:0.9rem;">🟠 Self-Play — <small>Semanas 12-14 (RL)</small></div>
     </div>
     <div style="flex:1;text-align:center;font-size:5rem;">🏆</div>
   </div>
+  <p style="margin-top:0.8rem;font-size:0.85rem;opacity:0.5;">S15 você reconhecerá cada peça. O curso é a engenharia deste diagrama.</p>
 </div>
 
-<!-- SLIDE 19: Bridge -->
-<div class="slide" data-slide="19" data-notes="Último slide de conteúdo. Slide 🌉: 'Do zero ao Deep Learning. Começamos com um termostato. Terminamos entendendo o ChatGPT.'">
+<!-- 35 · 🌉 PONTE -->
+<div class="slide" data-notes="Último slide de conteúdo. Do termostato ao ChatGPT: mesmo loop, mesma matemática, escalas diferentes.">
   <h2>🌉 Do termostato ao ChatGPT</h2>
-  <p style="font-size:1.5rem;max-width:700px;">O mesmo loop.<br>A mesma matemática.<br>Escalas diferentes.</p>
-  <p style="margin-top:2rem;opacity:0.6;">percepção → decisão → ação</p>
+  <p style="font-size:1.4rem;max-width:750px;line-height:1.6;">Mesmo ciclo: <span style="color:var(--c0);">percepção</span> → <span style="color:var(--c1);">decisão</span> → <span style="color:var(--c2);">ação</span>.<br>Mesma equação: <span style="font-family:'JetBrains Mono',monospace;">f: P* → A</span>.<br>Escalas radicalmente diferentes.</p>
+  <div style="display:flex;gap:2rem;margin-top:2rem;align-items:center;">
+    <span style="font-size:0.9rem;opacity:0.5;">termostato<br>3 regras</span>
+    <span style="font-size:1.5rem;">→</span>
+    <span style="font-size:0.9rem;opacity:0.5;">aspirador<br>6 linhas</span>
+    <span style="font-size:1.5rem;">→</span>
+    <span style="font-size:0.9rem;opacity:0.5;">AlphaGo<br>50M parâmetros</span>
+    <span style="font-size:1.5rem;">→</span>
+    <span style="font-size:0.9rem;opacity:0.5;">GPT<br>1.7T parâmetros</span>
+  </div>
 </div>
 
-<!-- SLIDE 20: Recapitulation / Course Map -->
-<div class="slide" data-slide="20" data-notes="Slide final. Responder a pergunta condutora. Deixar o mapa do curso no ar.">
-  <h1 style="font-size:2.5rem;">A IA funciona agora porque parou de tentar ser <span style="color:var(--c1);">programada</span><br>e começou a <span style="color:var(--c2);">aprender</span>.</h1>
-  <p style="margin-top:2rem;font-size:1rem;opacity:0.6;">Semana 1 de 16. Próxima aula: Agentes, ambientes e NumPy.</p>
+<!-- 36 · RECAPITULAÇÃO -->
+<div class="slide" data-notes="Slide final de conteúdo. Responder a pergunta condutora. 'Próxima aula: como modelar agentes e ambientes em código.'">
+  <h1 style="font-size:2.3rem;max-width:950px;line-height:1.3;">A IA funciona <span style="color:var(--c1);">agora</span> — e falhou antes —<br>porque parou de apostar em conhecimento<br><span style="color:var(--c1);">escrito à mão</span> e passou a apostar em métodos que<br><span style="color:var(--c2);">aprendem de dados e escalam com computação</span>.</h1>
+  <p style="margin-top:1.5rem;font-size:0.95rem;opacity:0.6;">Essa é a Bitter Lesson. Semana 1 de 16. Próxima aula: Agentes, ambientes e NumPy.</p>
 </div>
 
-<!-- ── Slide Footer ── -->
+<!-- 37 · 📚 PARA IR ALÉM -->
+<div class="slide" data-notes="Deixar este slide projetado enquanto os alunos saem ou fotografam. Todos os links são clicáveis. Reforçar: a Bitter Lesson (Sutton) é leitura obrigatória.">
+  <h2>📚 Para ir além</h2>
+  <div style="display:flex;gap:1.5rem;width:100%;max-width:1050px;margin-top:0.6rem;text-align:left;">
+    <div style="flex:1;font-size:0.68rem;line-height:1.45;">
+      <div style="font-size:0.6rem;opacity:0.4;letter-spacing:0.06em;margin-bottom:0.35rem;">WIKIPEDIA</div>
+      <div style="margin-bottom:0.4rem;">🔗 <a href="https://pt.wikipedia.org/wiki/Intelig%C3%AAncia_artificial" target="_blank" rel="noopener" style="color:var(--c0);">Inteligência Artificial</a><br><span style="opacity:0.45;">Panorama geral do campo, história e subáreas.</span></div>
+      <div style="margin-bottom:0.4rem;">🔗 <a href="https://pt.wikipedia.org/wiki/Teste_de_Turing" target="_blank" rel="noopener" style="color:var(--c0);">Teste de Turing</a><br><span style="opacity:0.45;">O jogo da imitação e suas críticas.</span></div>
+      <div style="margin-bottom:0.4rem;">🔗 <a href="https://pt.wikipedia.org/wiki/ELIZA" target="_blank" rel="noopener" style="color:var(--c0);">ELIZA</a><br><span style="opacity:0.45;">O primeiro chatbot, Weizenbaum, 1966.</span></div>
+      <div style="margin-bottom:0.4rem;">🔗 <a href="https://en.wikipedia.org/wiki/Perceptron" target="_blank" rel="noopener" style="color:var(--c0);">Perceptron</a><br><span style="opacity:0.45;">Rosenblatt, Mark I, o livro de Minsky & Papert.</span></div>
+    </div>
+    <div style="flex:1;font-size:0.68rem;line-height:1.45;">
+      <div style="font-size:0.6rem;opacity:0.4;letter-spacing:0.06em;margin-bottom:0.35rem;">PAPERS & LIVROS</div>
+      <div style="margin-bottom:0.4rem;">📄 <a href="http://www.incompleteideas.net/IncIdeas/BitterLesson.html" target="_blank" rel="noopener" style="color:var(--c1);">The Bitter Lesson</a> (Sutton, 2019)<br><span style="opacity:0.45;">2 páginas. Leitura obrigatória da semana.</span></div>
+      <div style="margin-bottom:0.4rem;">📄 <a href="https://courses.cs.umbc.edu/471/papers/turing.pdf" target="_blank" rel="noopener" style="color:var(--c1);">Computing Machinery and Intelligence</a> (Turing, 1950)<br><span style="opacity:0.45;">O paper que fundou a IA. 28 páginas — histórico.</span></div>
+      <div style="margin-bottom:0.4rem;">📖 <a href="https://github.com/aimacode/aima-python" target="_blank" rel="noopener" style="color:var(--c1);">AIMA — Russell & Norvig (código Python)</a><br><span style="opacity:0.45;">Repositório oficial: todos os algoritmos do livro implementados em Python. Capítulos 1–2.</span></div>
+      <div style="margin-bottom:0.4rem;">📖 <a href="https://www.deeplearningbook.org/" target="_blank" rel="noopener" style="color:var(--c1);">Deep Learning</a> (Goodfellow, Bengio, Courville)<br><span style="opacity:0.45;">Livro gratuito. Capítulo 1: Introdução.</span></div>
+    </div>
+    <div style="flex:1;font-size:0.68rem;line-height:1.45;">
+      <div style="font-size:0.6rem;opacity:0.4;letter-spacing:0.06em;margin-bottom:0.35rem;">VÍDEOS</div>
+      <div style="margin-bottom:0.4rem;">▶️ <a href="https://www.youtube.com/watch?v=aircAruvnKk" target="_blank" rel="noopener" style="color:var(--c2);">But what is a neural network?</a><br><span style="opacity:0.45;">3Blue1Brown. A melhor intuição visual.</span></div>
+      <div style="margin-bottom:0.4rem;">▶️ <a href="https://www.youtube.com/watch?v=EeMCEQa85tw" target="_blank" rel="noopener" style="color:var(--c2);">The Bitter Lesson (vídeo)</a><br><span style="opacity:0.45;">Rich Sutton explica sua tese. 2018.</span></div>
+      <div style="margin-bottom:0.4rem;">▶️ <a href="https://www.youtube.com/watch?v=5NgNicANyqM" target="_blank" rel="noopener" style="color:var(--c2);">Harvard CS50 — Introduction to AI</a><br><span style="opacity:0.45;">Curso completo (2023). Inclui LLMs, busca, ML, redes neurais.</span></div>
+      <div style="margin-bottom:0.4rem;">▶️ <a href="https://www.youtube.com/watch?v=WXuK6gekU1Y" target="_blank" rel="noopener" style="color:var(--c2);">AlphaGo — The Movie</a><br><span style="opacity:0.45;">Documentário completo (90 min).</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Footer -->
 <div class="slide-footer">Prof. Marcelo Keese Albertini · FACOM · UFU · GBC063 · S1</div>
 
 </div><!-- /#slideContainer -->
@@ -735,7 +1202,7 @@ body {
 <!-- Controls -->
 <div id="controls">
   <button onclick="prevSlide()" title="Slide anterior (←)">◀</button>
-  <span class="slide-num" id="slideNum">1 / 21</span>
+  <span class="slide-num" id="slideNum">1 / 38</span>
   <button onclick="nextSlide()" title="Próximo slide (→)">▶</button>
   <button onclick="toggleNotes()" class="btn-notes" title="Notas do apresentador (N)">📝</button>
 </div>
@@ -746,37 +1213,113 @@ let currentSlide = 0;
 const slides = document.querySelectorAll('.slide');
 const totalSlides = slides.length;
 
-// ── Deck timeline data (compact) ──
+// ── TIMELINE ──
 const deckTimeline = [
-  {yr:"1943",lb:"McCulloch\n& Pitts",color:"#1F77B4"},
-  {yr:"1950",lb:"Turing",color:"#999"},
-  {yr:"1956",lb:"Dart-\nmouth",color:"#1F77B4"},
-  {yr:"1959",lb:"Percep-\ntron",color:"#1F77B4"},
-  {yr:"1966",lb:"ELIZA",color:"#999"},
-  {yr:"1969",lb:"1º Inverno\nPerceptrons",color:"#FF7F0E"},
-  {yr:"1970",lb:"SHRDLU",color:"#999"},
-  {yr:"1980",lb:"Sist.\nEspec.",color:"#999"},
-  {yr:"1987",lb:"2º Inverno\nSist. Espec.",color:"#FF7F0E"},
-  {yr:"1986",lb:"Back-\nprop",color:"#1F77B4"},
-  {yr:"1997",lb:"Deep\nBlue",color:"#999"},
-  {yr:"2012",lb:"AlexNet",color:"#2CA02C"},
-  {yr:"2017",lb:"Trans-\nformers",color:"#2CA02C"},
-  {yr:"2023",lb:"LLMs",color:"#2CA02C"}
+  {yr:"1943",lb:"McCulloch\n& Pitts",color:"#1F77B4",
+   svg:'<circle cx="15" cy="10" r="6" fill="none" stroke="#1F77B4" stroke-width="2"/><circle cx="65" cy="45" r="6" fill="none" stroke="#1F77B4" stroke-width="2"/><circle cx="115" cy="20" r="6" fill="none" stroke="#1F77B4" stroke-width="2"/><circle cx="165" cy="55" r="6" fill="none" stroke="#1F77B4" stroke-width="2"/><circle cx="90" cy="70" r="6" fill="none" stroke="#1F77B4" stroke-width="2"/><line x1="21" y1="10" x2="59" y2="45" stroke="#1F77B4" stroke-width="1.2"/><line x1="21" y1="10" x2="109" y2="20" stroke="#1F77B4" stroke-width="1.2"/><line x1="71" y1="45" x2="159" y2="55" stroke="#1F77B4" stroke-width="1.2"/><line x1="121" y1="20" x2="159" y2="55" stroke="#1F77B4" stroke-width="1.2"/><line x1="71" y1="45" x2="84" y2="70" stroke="#1F77B4" stroke-width="1.2"/><line x1="159" y1="55" x2="84" y2="70" stroke="#1F77B4" stroke-width="1.2"/>',
+   title:"McCulloch & Pitts",
+   desc:"Publicam o primeiro modelo matemático de um neurônio artificial (Bulletin of Mathematical Biophysics, 1943). Rede de neurônios lógicos com limiares — capaz de computar qualquer função booleana. A semente do conexionismo, 70 anos antes de florescer."},
+  {yr:"1950",lb:"Turing\nTest",color:"#999",
+   img:"https://commons.wikimedia.org/wiki/Special:FilePath/Alan_Turing_Aged_16.jpg",
+   title:"Turing Test",
+   desc:"\"Computing Machinery and Intelligence\" (Mind, 1950). Turing propõe o jogo da imitação: uma máquina é inteligente se um humano não consegue distingui-la de outro humano em conversa. A pergunta fundadora da IA."},
+  {yr:"1956",lb:"Dart-\nmouth",color:"#1F77B4",
+   img:"https://commons.wikimedia.org/wiki/Special:FilePath/John_McCarthy_Stanford.jpg",
+   title:"Workshop de Dartmouth",
+   desc:"10 pesquisadores, 8 semanas. McCarthy cunha \"Artificial Intelligence\". Objetivo: fazer a máquina usar linguagem, formar abstrações, resolver problemas reservados a humanos. Nenhum objetivo foi cumprido em 8 semanas — vários seguem em aberto."},
+  {yr:"1959",lb:"Percep-\ntron",color:"#1F77B4",
+   img:"https://commons.wikimedia.org/wiki/Special:FilePath/Frank_Rosenblatt.jpg",
+   title:"Mark I Perceptron",
+   desc:"Frank Rosenblatt constrói o primeiro hardware neural: 400 fotocélulas conectadas a uma camada de neurônios artificiais com pesos ajustáveis por potenciômetros. O New York Times prevê: \"máquinas que andam, falam, veem e se reproduzem\"."},
+  {yr:"1966",lb:"ELIZA",color:"#999",
+   img:"https://commons.wikimedia.org/wiki/Special:FilePath/ELIZA_conversation.jpg",
+   title:"ELIZA — primeiro chatbot",
+   desc:"Joseph Weizenbaum (MIT) cria ELIZA. ~200 linhas de código, casamento de padrões de string simulando um psicoterapeuta rogeriano. Pessoas confidenciavam segredos à máquina. Weizenbaum ficou chocado com o \"pensamento delirante\" induzido."},
+  {yr:"1969",lb:"1º Inverno\nPerceptrons",color:"#FF7F0E",
+   svg:'<rect x="20" y="8" width="130" height="70" rx="3" fill="#3a1a10" stroke="#FF7F0E" stroke-width="1.5"/><text x="85" y="35" text-anchor="middle" font-size="12" fill="#FF7F0E" font-weight="bold">PERCEPTRONS</text><text x="85" y="53" text-anchor="middle" font-size="8" fill="#aaa">Minsky &amp; Papert</text><text x="85" y="68" text-anchor="middle" font-size="7" fill="#888">MIT Press, 1969</text>',
+   title:"Perceptrons (Minsky & Papert)",
+   desc:"O livro prova matematicamente as limitações do perceptron simples (não resolve XOR). A comunidade conclui — erroneamente — que redes neurais como um todo não funcionam. Financiamento migra para o simbólico. O inverno dura 11 anos."},
+  {yr:"1980",lb:"Sist.\nEspec.",color:"#999",
+   svg:'<rect x="15" y="8" width="140" height="70" rx="3" fill="#1a1a25" stroke="#666" stroke-width="1.2"/><text x="85" y="28" text-anchor="middle" font-size="10" fill="#ccc" font-weight="bold">Base de</text><text x="85" y="42" text-anchor="middle" font-size="10" fill="#ccc" font-weight="bold">Conhecimento</text><text x="85" y="60" text-anchor="middle" font-size="8" fill="#888">Regras SE-ENTÃO</text><line x1="25" y1="80" x2="145" y2="80" stroke="#555" stroke-width="0.8"/><polygon points="80,80 90,88 70,88" fill="#555"/>',
+   title:"Sistemas Especialistas",
+   desc:"MYCIN (diagnóstico), XCON (configuração DEC). Regras SE-ENTÃO extraídas de especialistas viram indústria bilionária. Limitação fundamental: cada regra é escrita à mão — 10.000 regras = 10.000 bugs."},
+  {yr:"1986",lb:"Back-\nprop",color:"#1F77B4",
+   img:"https://commons.wikimedia.org/wiki/Special:FilePath/Geoffrey_Hinton_at_UBC.jpg",
+   title:"Backpropagation",
+   desc:"Rumelhart, Hinton & Williams (Nature, 1986) popularizam o backpropagation. Finalmente redes multicamada podem ser treinadas. O XOR é resolvido com uma hidden layer de 2 neurônios. O conexionismo renasce."},
+  {yr:"1990",lb:"2º Inverno\nSist. Espec.",color:"#FF7F0E",
+   svg:'<polyline points="20,70 60,40 100,55 140,30 180,50" fill="none" stroke="#999" stroke-width="2"/><polyline points="20,70 60,65 100,55 140,35 180,15" fill="none" stroke="#FF7F0E" stroke-width="2" stroke-dasharray="6 3"/><line x1="18" y1="78" x2="182" y2="78" stroke="#555" stroke-width="1"/><text x="100" y="92" text-anchor="middle" font-size="8" fill="#888">mercado de IA</text>',
+   title:"2º Inverno da IA",
+   desc:"O mercado de sistemas especialistas colapsa: manutenção impossível, domínios limitados. O financiamento some. Mas o aprendizado de máquina estatístico (SVMs, redes Bayesianas) já crescia silenciosamente nos bastidores da academia."},
+  {yr:"1997",lb:"Deep\nBlue",color:"#999",
+   img:"https://commons.wikimedia.org/wiki/Special:FilePath/Deep_Blue.jpg",
+   title:"Deep Blue vence Kasparov",
+   desc:"IBM Deep Blue derrota Garry Kasparov por 4-2 em Nova York. Busca massiva (~200 milhões de posições por segundo) + hardware dedicado + heurísticas de mestres. A força bruta computacional vence o campeão mundial de xadrez."},
+  {yr:"2012",lb:"AlexNet\nImageNet",color:"#2CA02C",
+   svg:'<rect x="10" y="10" width="50" height="50" rx="3" fill="#1a3a1a" stroke="#2CA02C" stroke-width="1"/><rect x="65" y="15" width="40" height="18" rx="2" fill="#1a3a1a" stroke="#2CA02C" stroke-width="0.8"/><rect x="65" y="37" width="40" height="18" rx="2" fill="#1a3a1a" stroke="#2CA02C" stroke-width="0.8"/><rect x="110" y="20" width="50" height="10" rx="2" fill="#1a2a1a" stroke="#2CA02C" stroke-width="0.6"/><rect x="110" y="33" width="50" height="10" rx="2" fill="#1a2a1a" stroke="#2CA02C" stroke-width="0.6"/><rect x="110" y="46" width="50" height="10" rx="2" fill="#1a2a1a" stroke="#2CA02C" stroke-width="0.6"/><text x="35" y="40" text-anchor="middle" font-size="7" fill="#2CA02C">227x227</text><text x="135" y="38" text-anchor="middle" font-size="6" fill="#888">4096 4096 1000</text>',
+   title:"AlexNet — Deep Learning",
+   desc:"Krizhevsky, Sutskever & Hinton vencem a ImageNet com uma CNN de 8 camadas treinada em 2 GPUs GTX 580. Erro top-5 cai de 26% para 15.3%. A Bitter Lesson se consuma: dados + GPU + método geral derrotam décadas de features manuais."},
+  {yr:"2017",lb:"Trans-\nformers",color:"#2CA02C",
+   svg:'<rect x="10" y="30" width="30" height="30" rx="2" fill="#1a2a1a" stroke="#2CA02C" stroke-width="1"/><rect x="50" y="30" width="30" height="30" rx="2" fill="#1a2a1a" stroke="#2CA02C" stroke-width="1"/><rect x="90" y="30" width="30" height="30" rx="2" fill="#1a2a1a" stroke="#2CA02C" stroke-width="1"/><line x1="40" y1="35" x2="50" y2="35" stroke="#2CA02C" stroke-width="1"/><line x1="40" y1="45" x2="50" y2="45" stroke="#2CA02C" stroke-width="1"/><line x1="40" y1="55" x2="50" y2="55" stroke="#2CA02C" stroke-width="1"/><line x1="80" y1="35" x2="90" y2="35" stroke="#2CA02C" stroke-width="1"/><line x1="80" y1="45" x2="90" y2="45" stroke="#2CA02C" stroke-width="1"/><line x1="80" y1="55" x2="90" y2="55" stroke="#2CA02C" stroke-width="1"/><text x="25" y="78" text-anchor="middle" font-size="7" fill="#888">Q</text><text x="65" y="78" text-anchor="middle" font-size="7" fill="#888">K</text><text x="105" y="78" text-anchor="middle" font-size="7" fill="#888">V</text>',
+   title:"Attention Is All You Need",
+   desc:"Vaswani et al. (Google Brain) publicam o Transformer (NeurIPS 2017). 8 autores, 6 páginas. Arquitetura baseada exclusivamente em self-attention — sem recorrência (RNN), sem convolução. Em 5 anos, transforma todo o campo da IA."},
+  {yr:"2023",lb:"LLMs\nGPT-4",color:"#2CA02C",
+   svg:'<rect x="15" y="15" width="55" height="55" rx="4" fill="#1a2a1a" stroke="#2CA02C" stroke-width="1.5"/><text x="42" y="35" text-anchor="middle" font-size="8" fill="#2CA02C">LLM</text><text x="42" y="50" text-anchor="middle" font-size="7" fill="#888">1.7T params</text><line x1="75" y1="42" x2="95" y2="42" stroke="#2CA02C" stroke-width="1.2"/><rect x="100" y="20" width="55" height="14" rx="2" fill="#1a2a1a" stroke="#2CA02C" stroke-width="0.8"/><rect x="100" y="38" width="55" height="14" rx="2" fill="#1a2a1a" stroke="#2CA02C" stroke-width="0.8"/><rect x="100" y="56" width="55" height="14" rx="2" fill="#1a2a1a" stroke="#2CA02C" stroke-width="0.8"/><text x="128" y="29" text-anchor="middle" font-size="7" fill="#ccc">código</text><text x="128" y="47" text-anchor="middle" font-size="7" fill="#ccc">tradução</text><text x="128" y="65" text-anchor="middle" font-size="7" fill="#ccc">física</text>',
+   title:"LLMs — Large Language Models",
+   desc:"GPT-4, Claude, Gemini. Prever o próximo token + escala massiva de dados e computação de treinamento. Escrevem código, traduzem idiomas, explicam física — nenhuma regra foi escrita à mão. A Bitter Lesson em sua forma mais pura e contundente."}
 ];
-
 (function renderDeckTimeline() {
   const container = document.getElementById('deckTimeline');
   if (!container) return;
-  container.innerHTML = deckTimeline.map(t =>
-    `<div class="timeline-item">
-      <div class="dot" style="background:${t.color};"></div>
-      <div class="yr">${t.yr}</div>
-      <div class="lb">${t.lb.replace(/\n/g,'<br>')}</div>
-    </div>`
-  ).join('');
+  // Create tooltip element
+  const tooltip = document.createElement('div');
+  tooltip.className = 'timeline-tooltip';
+  tooltip.innerHTML = '<div class="tt-img"><img src="" alt="" style="display:none" onerror="this.style.display=\'none\'"><svg viewBox="0 0 180 90" style="display:none;width:100%;height:100%"></svg></div><div class="tt-body"><div class="tt-year"></div><div class="tt-title"></div><div class="tt-desc"></div></div>';
+  document.body.appendChild(tooltip);
+  // Render items
+  container.innerHTML = deckTimeline.map(function(t) {
+    var attrs = ' data-title="'+t.title+'" data-desc="'+t.desc+'" data-yr="'+t.yr+'"';
+    if (t.img) attrs += ' data-img="'+t.img+'"';
+    if (t.svg) attrs += ' data-svg=\''+t.svg+'\'';
+    return '<div class="timeline-item"'+attrs+'>'+
+    '<div class="dot" style="background:'+t.color+';"></div>'+
+    '<div class="yr">'+t.yr+'</div>'+
+    '<div class="lb">'+t.lb.replace(/\n/g,'<br>')+'</div></div>';
+  }).join('');
+  // Hover events
+  container.querySelectorAll('.timeline-item').forEach(function(item) {
+    item.addEventListener('mouseenter', function(e) {
+      var imgEl = tooltip.querySelector('.tt-img img');
+      var svgEl = tooltip.querySelector('.tt-img svg');
+      if (item.dataset.img) {
+        imgEl.src = item.dataset.img;
+        imgEl.style.display = 'block';
+        svgEl.style.display = 'none';
+      } else if (item.dataset.svg) {
+        svgEl.innerHTML = item.dataset.svg;
+        svgEl.style.display = 'block';
+        imgEl.style.display = 'none';
+      }
+      tooltip.querySelector('.tt-year').textContent = item.dataset.yr;
+      tooltip.querySelector('.tt-title').textContent = item.dataset.title;
+      tooltip.querySelector('.tt-desc').textContent = item.dataset.desc;
+      tooltip.classList.add('visible');
+    });
+    item.addEventListener('mousemove', function(e) {
+      var left = e.clientX + 18;
+      var top = e.clientY - 220;
+      if (left + 360 > window.innerWidth) left = e.clientX - 360;
+      if (top < 10) top = e.clientY + 20;
+      tooltip.style.left = left+'px';
+      tooltip.style.top = top+'px';
+    });
+    item.addEventListener('mouseleave', function() {
+      tooltip.classList.remove('visible');
+    });
+  });
 })();
 
-// ── Deck ELIZA (compact version) ──
+// ── ELIZA ──
 function deckElizaResponse(input) {
   const rules = [
     {p: /i feel (.*)/i, r: ["Why do you feel $1?"]},
@@ -791,141 +1334,101 @@ function deckElizaResponse(input) {
   const refl = {"i":"you","me":"you","my":"your","am":"are","you":"me","your":"my","are":"am"};
   function ref(t) { return t.replace(/\b(\w+('\w+)?)\b/g, m => refl[m.toLowerCase()] || m); }
   const inp = input.trim().toLowerCase();
-  const steps = []; steps.push(`Entrada: "${input}"`);
+  const steps = []; steps.push('Entrada: "'+input+'"');
   for (const rule of rules) {
     const m = inp.match(rule.p);
     if (m) {
-      steps.push(`✓ Match: /${rule.p.source}/`);
-      const resp = rule.r[Math.floor(Math.random() * rule.r.length)];
+      steps.push('✔ Match: /'+rule.p.source+'/');
+      const resp = rule.r[Math.floor(Math.random()*rule.r.length)];
       const refd = m.slice(1).map(g => ref(g || ''));
       let out = resp; refd.forEach((r,i) => { out = out.replace('$'+(i+1), r); });
-      steps.push(`→ "${out}"`);
+      steps.push('→ "'+out+'"');
       return {msg: out, steps};
-    } else { steps.push(`✗ /${rule.p.source}/`); }
+    } else { steps.push('✗ /'+rule.p.source+'/'); }
   }
   return {msg: "Tell me more.", steps};
 }
-
 async function deckElizaSend() {
   const inp = document.getElementById('deckElizaInput');
-  const text = inp.value.trim();
-  if (!text) return;
-  inp.value = '';
-  document.getElementById('deckElizaMsgs').innerHTML += `<div class="umsg">${text}</div>`;
-  const trace = document.getElementById('deckElizaTrace');
-  trace.innerHTML = '';
+  const text = inp.value.trim(); if (!text) return; inp.value = '';
+  document.getElementById('deckElizaMsgs').innerHTML += '<div class="umsg">'+text+'</div>';
+  const trace = document.getElementById('deckElizaTrace'); trace.innerHTML = '';
   const {msg, steps} = deckElizaResponse(text);
   for (const s of steps) {
-    trace.innerHTML += `<div>${s}</div>`;
+    trace.innerHTML += '<div>'+s+'</div>';
     trace.scrollTop = trace.scrollHeight;
     await new Promise(r => setTimeout(r, 80));
   }
   await new Promise(r => setTimeout(r, 150));
-  document.getElementById('deckElizaMsgs').innerHTML += `<div class="bmsg">${msg}</div>`;
+  document.getElementById('deckElizaMsgs').innerHTML += '<div class="bmsg">'+msg+'</div>';
   document.getElementById('deckElizaMsgs').scrollTop = document.getElementById('deckElizaMsgs').scrollHeight;
 }
-
 function deckElizaBreak() {
-  const breaks = ["2+2=?", "The sky is blue.","x=5;y=3;print(x*y)","42","derivative of sin(x)?"];
+  const breaks = ["2+2=?","The sky is blue.","x=5;y=3;print(x*y)","42","derivative of sin(x)?"];
   const text = breaks[Math.floor(Math.random()*breaks.length)];
-  const trace = document.getElementById('deckElizaTrace');
-  trace.innerHTML = '';
+  const trace = document.getElementById('deckElizaTrace'); trace.innerHTML = '';
   const {msg, steps} = deckElizaResponse(text);
-  for (const s of steps) {
-    trace.innerHTML += `<div>${s}</div>`;
-    trace.scrollTop = trace.scrollHeight;
-  }
-  trace.innerHTML += `<div style="color:#FF7F0E;margin-top:0.4rem;">⚠️ Zero compreensão semântica — apenas strings.</div>`;
-  document.getElementById('deckElizaMsgs').innerHTML +=
-    `<div class="umsg">${text} <small>(💥)</small></div><div class="bmsg">${msg}</div>`;
+  for (const s of steps) { trace.innerHTML += '<div>'+s+'</div>'; trace.scrollTop = trace.scrollHeight; }
+  trace.innerHTML += '<div style="color:#FF7F0E;margin-top:0.4rem;">⚠️ Zero compreensão semântica — apenas strings.</div>';
+  document.getElementById('deckElizaMsgs').innerHTML += '<div class="umsg">'+text+' <small>(\U0001f4a5)</small></div><div class="bmsg">'+msg+'</div>';
 }
-
 document.getElementById('deckElizaInput')?.addEventListener('keydown', function(e) {
   if (e.key === 'Enter') deckElizaSend();
 });
 
-// ── Deck inference engine ──
+// ── FORWARD CHAINING ──
 const deckIeRules = [
-  {prem: new Set(["tem_pelo"]),                    concl: "mamifero",   label: '{tem_pelo} → mamifero'},
-  {prem: new Set(["mamifero", "mia"]),             concl: "gato",       label: '{mamifero, mia} → gato'},
-  {prem: new Set(["gato"]),                        concl: "carnivoro",  label: '{gato} → carnivoro'},
-  {prem: new Set(["carnivoro", "domestico"]),      concl: "come_racao", label: '{carnivoro, domestico} → come_racao'},
+  {prem: new Set(["tem_pelo"]), concl: "mamifero", label: '{tem_pelo} → mamifero'},
+  {prem: new Set(["mamifero","mia"]), concl: "gato", label: '{mamifero, mia} → gato'},
+  {prem: new Set(["gato"]), concl: "carnivoro", label: '{gato} → carnivoro'},
+  {prem: new Set(["carnivoro","domestico"]), concl: "come_racao", label: '{carnivoro, domestico} → come_racao'},
 ];
-let deckIeFatos = new Set(["tem_pelo", "mia", "domestico"]);
-let deckIeDone = false;
-
-function deckIeRenderFatos() {
-  const el = document.getElementById('deckIeFatosSet');
-  if (el) el.textContent = '{' + [...deckIeFatos].join(', ') + '}';
-}
-
+let deckIeFatos = new Set(["tem_pelo","mia","domestico"]), deckIeDone = false;
+function deckIeRenderFatos() { const el = document.getElementById('deckIeFatosSet'); if (el) el.textContent = '{'+[...deckIeFatos].join(', ')+'}'; }
 function deckIeStep() {
-  const trace = document.getElementById('deckIeTrace');
-  if (!trace) return;
-  if (deckIeDone) {
-    trace.innerHTML += `<div style="color:#2CA02C;margin-top:0.3rem;">✓ Encadeamento concluído.</div>`;
-    trace.scrollTop = trace.scrollHeight;
-    return;
-  }
+  const trace = document.getElementById('deckIeTrace'); if (!trace) return;
+  if (deckIeDone) { trace.innerHTML += '<div style="color:#2CA02C;margin-top:0.3rem;">✔ Encadeamento concluído.</div>'; trace.scrollTop = trace.scrollHeight; return; }
   for (const rule of deckIeRules) {
-    const satisfied = [...rule.prem].every(p => deckIeFatos.has(p));
-    if (satisfied) {
-      if (deckIeFatos.has(rule.concl)) {
-        trace.innerHTML += `<div style="color:#666;">${rule.label} — já conhecido.</div>`;
-        trace.scrollTop = trace.scrollHeight;
-        return;
-      }
+    if ([...rule.prem].every(p => deckIeFatos.has(p))) {
+      if (deckIeFatos.has(rule.concl)) { trace.innerHTML += '<div style="color:#666;">'+rule.label+' — já conhecido.</div>'; trace.scrollTop = trace.scrollHeight; return; }
       deckIeFatos.add(rule.concl);
-      trace.innerHTML += `<div style="color:#1F77B4;">✓ <strong>${rule.label}</strong> dispara!</div>`;
-      trace.innerHTML += `<div style="color:#2CA02C;margin-left:0.8rem;">→ novo fato: <strong>${rule.concl}</strong></div>`;
-      deckIeRenderFatos();
-      trace.scrollTop = trace.scrollHeight;
-      return;
+      trace.innerHTML += '<div style="color:#1F77B4;">✔ <strong>'+rule.label+'</strong> dispara!</div>';
+      trace.innerHTML += '<div style="color:#2CA02C;margin-left:0.8rem;">→ novo fato: <strong>'+rule.concl+'</strong></div>';
+      deckIeRenderFatos(); trace.scrollTop = trace.scrollHeight; return;
     }
   }
   deckIeDone = true;
-  trace.innerHTML += `<div style="color:#FF7F0E;margin-top:0.3rem;">⚠️ Nenhuma regra dispara — motor para.</div>`;
-  trace.innerHTML += `<div style="color:#2CA02C;">✓ Final: {${[...deckIeFatos].join(', ')}}</div>`;
+  trace.innerHTML += '<div style="color:#FF7F0E;margin-top:0.3rem;">⚠️ Nenhuma regra dispara — motor para.</div>';
+  trace.innerHTML += '<div style="color:#2CA02C;">✔ Final: {'+[...deckIeFatos].join(', ')+'}</div>';
   trace.scrollTop = trace.scrollHeight;
 }
-
 function deckIeRunAll() {
-  const trace = document.getElementById('deckIeTrace');
-  if (!trace) return;
-  trace.innerHTML = '';
-  deckIeFatos = new Set(["tem_pelo", "mia", "domestico"]);
-  deckIeDone = false;
-  deckIeRenderFatos();
+  const trace = document.getElementById('deckIeTrace'); if (!trace) return;
+  trace.innerHTML = ''; deckIeFatos = new Set(["tem_pelo","mia","domestico"]); deckIeDone = false; deckIeRenderFatos();
   let changed = true;
-  while (changed) {
-    changed = false;
+  while (changed) { changed = false;
     for (const rule of deckIeRules) {
       if ([...rule.prem].every(p => deckIeFatos.has(p)) && !deckIeFatos.has(rule.concl)) {
         deckIeFatos.add(rule.concl);
-        trace.innerHTML += `<div style="color:#1F77B4;">✓ <strong>${rule.label}</strong> dispara!</div>`;
-        trace.innerHTML += `<div style="color:#2CA02C;margin-left:0.8rem;">→ novo fato: <strong>${rule.concl}</strong></div>`;
+        trace.innerHTML += '<div style="color:#1F77B4;">✔ <strong>'+rule.label+'</strong> dispara!</div>';
+        trace.innerHTML += '<div style="color:#2CA02C;margin-left:0.8rem;">→ novo fato: <strong>'+rule.concl+'</strong></div>';
         changed = true;
       }
     }
   }
-  trace.innerHTML += `<div style="color:#2CA02C;margin-top:0.3rem;">✓ Final: {${[...deckIeFatos].join(', ')}}</div>`;
-  trace.innerHTML += `<div style="color:#888;margin-top:0.2rem;">4 regras. E se fossem 10.000?</div>`;
-  deckIeDone = true;
-  trace.scrollTop = trace.scrollHeight;
-  deckIeRenderFatos();
+  trace.innerHTML += '<div style="color:#2CA02C;margin-top:0.3rem;">✔ Final: {'+[...deckIeFatos].join(', ')+'}</div>';
+  trace.innerHTML += '<div style="color:#888;margin-top:0.2rem;">4 regras. E se fossem 10.000?</div>';
+  deckIeDone = true; trace.scrollTop = trace.scrollHeight; deckIeRenderFatos();
 }
-
 function deckIeReset() {
-  deckIeFatos = new Set(["tem_pelo", "mia", "domestico"]);
-  deckIeDone = false;
+  deckIeFatos = new Set(["tem_pelo","mia","domestico"]); deckIeDone = false;
   const trace = document.getElementById('deckIeTrace');
-  if (trace) trace.innerHTML = `<div>Clique <strong style="color:#fff;">▸ Passo</strong> para disparar.</div>`;
+  if (trace) trace.innerHTML = '<div>Clique <strong style="color:#fff;">▸ Passo</strong> para disparar.</div>';
   deckIeRenderFatos();
 }
 
-// ── Sua Vez: 3-room vacuum agent demo ──
-let svState = { nRooms: 2, rooms: [true, false], pos: 0, step: 0, done: false, stuck: false, stuckCount: 0 };
-
+// ── SUA VEZ: VACUUM ──
+let svState = { nRooms: 2, rooms: [true, false], pos: 0, step: 0, done: false, stuck: false };
 function svAgent(percepcao) {
   const [pos, sujo] = percepcao;
   const idx = ["A","B","C","D","E"].indexOf(pos);
@@ -933,112 +1436,60 @@ function svAgent(percepcao) {
   if (idx < svState.nRooms - 1) return "DIREITA";
   return "ESQUERDA";
 }
-
 function svRenderGrid() {
-  const grid = document.getElementById('svGrid');
-  if (!grid) return;
+  const grid = document.getElementById('svGrid'); if (!grid) return;
   const rooms = ["A","B","C","D","E"].slice(0, svState.nRooms);
-  const arrows = {"A→B":"→","B→C":"→","C→D":"→","D→E":"→","B→A":"←","C→B":"←","D→C":"←","E→D":"←"};
   grid.innerHTML = rooms.map((r, i) => {
-    const isHere = i === svState.pos;
-    const isDirty = svState.rooms[i];
+    const isHere = i === svState.pos, isDirty = svState.rooms[i];
     const bg = isHere ? (isDirty ? 'rgba(255,127,14,0.3)' : 'rgba(31,119,180,0.3)') : (isDirty ? 'rgba(255,127,14,0.1)' : '#1a1a20');
     const border = isHere ? (isDirty ? '2px solid #FF7F0E' : '2px solid #1F77B4') : '1px solid #333';
-    const emoji = isDirty ? '🟫' : '🟩';
-    const marker = isHere ? '📍' : '';
-    return `<div style="flex:0 0 120px;background:${bg};border:${border};border-radius:8px;padding:1rem 0.6rem;text-align:center;transition:all 0.3s;">
-      <div style="font-size:2.5rem;">${emoji}</div>
-      <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.1rem;">${r} ${marker}</div>
-      <div style="font-size:0.7rem;opacity:0.6;">${isDirty ? 'sujo' : 'limpo'}</div>
-    </div>`;
+    return '<div style="flex:0 0 110px;background:'+bg+';border:'+border+';border-radius:8px;padding:0.8rem 0.5rem;text-align:center;transition:all 0.3s;">'+
+      '<div style="font-size:2.2rem;">'+(isDirty ? '🟫' : '🟩')+'</div>'+
+      '<div style="font-weight:700;font-size:1rem;">'+r+' '+(isHere ? '📍' : '')+'</div>'+
+      '<div style="font-size:0.6rem;opacity:0.5;">'+(isDirty ? 'sujo' : 'limpo')+'</div></div>';
   }).join('');
 }
-
 function svUpdateStatus() {
-  const status = document.getElementById('svStatus');
-  if (!status) return;
-  if (svState.done) {
-    status.innerHTML = '<span style="color:#2CA02C;">✓ Todos os cômodos limpos!</span>';
-    status.style.opacity = '1';
-  } else if (svState.stuck) {
-    status.innerHTML = `<span style="color:#FF7F0E;">⚠️ Preso no ciclo! Passo ${svState.step}: agente não alcança o cômodo sujo.</span>`;
-    status.style.opacity = '1';
-  } else {
-    const posName = ["A","B","C","D","E"][svState.pos];
-    status.textContent = `Passo ${svState.step} · agente em ${posName}`;
-    status.style.opacity = '0.7';
-  }
+  const status = document.getElementById('svStatus'); if (!status) return;
+  if (svState.done) { status.innerHTML = '<span style="color:#2CA02C;">✔ Todos os cômodos limpos!</span>'; status.style.opacity = '1'; }
+  else if (svState.stuck) { status.innerHTML = '<span style="color:#FF7F0E;">⚠️ Preso no ciclo B↔C! Passo '+svState.step+'.</span>'; status.style.opacity = '1'; }
+  else { status.textContent = 'Passo '+svState.step+' · agente em '+["A","B","C","D","E"][svState.pos]; status.style.opacity = '0.65'; }
   document.getElementById('svPunchline').style.display = svState.stuck ? 'block' : 'none';
 }
-
 function svLog(msg, color) {
-  const trace = document.getElementById('svTrace');
-  if (!trace) return;
-  trace.innerHTML += `<div style="color:${color || '#aaa'};">${msg}</div>`;
+  const trace = document.getElementById('svTrace'); if (!trace) return;
+  trace.innerHTML += '<div style="color:'+(color||'#aaa')+';">'+msg+'</div>';
   trace.scrollTop = trace.scrollHeight;
 }
-
 function svSetup(n) {
-  svState.nRooms = n;
-  svState.rooms = Array(n).fill(false);
-  svState.rooms[0] = true; // only A is dirty
-  svState.pos = n === 2 ? 0 : 1; // A for 2 rooms, B (middle) for 3+
-  svState.step = 0;
-  svState.done = false;
-  svState.stuck = false;
-  svState.stuckCount = 0;
-  const trace = document.getElementById('svTrace');
-  if (trace) trace.innerHTML = '';
+  svState.nRooms = n; svState.rooms = Array(n).fill(false); svState.rooms[0] = true;
+  svState.pos = n === 2 ? 0 : 1; svState.step = 0; svState.done = false; svState.stuck = false;
+  document.getElementById('svTrace').innerHTML = '';
   document.getElementById('svPunchline').style.display = 'none';
-  svLog(`Ambiente: ${n} cômodos [${svState.rooms.map(r=>r?'sujo':'limpo').join(', ')}]`);
-  svLog(`Agente começa em: ${["A","B","C","D","E"][svState.pos]}`);
-  if (n >= 3) svLog(`⚠️ Cômodo A está sujo, mas o agente está em B...`, '#FF7F0E');
-  svRenderGrid();
-  svUpdateStatus();
+  svLog('Ambiente: '+n+' cômodos ['+svState.rooms.map(r=>r?'sujo':'limpo').join(', ')+']');
+  svLog('Agente começa em: '+["A","B","C","D","E"][svState.pos]);
+  if (n >= 3) svLog('⚠️ Cômodo A está sujo, mas o agente está em B...', '#FF7F0E');
+  svRenderGrid(); svUpdateStatus();
 }
-
 function svStep() {
-  if (svState.done) { svLog('✓ Ambiente já está limpo.', '#2CA02C'); return; }
+  if (svState.done) { svLog('✔ Ambiente já está limpo.', '#2CA02C'); return; }
   svState.step++;
-  const posName = ["A","B","C","D","E"][svState.pos];
-  const idx = svState.pos;
-  const sujo = svState.rooms[idx];
-  const percepcao = [posName, sujo];
-  const acao = svAgent(percepcao);
-  svLog(`Passo ${svState.step}: pos=${posName}, sensor=${sujo?'sujo':'limpo'} → ${acao}`, sujo ? '#FF7F0E' : '#1F77B4');
-
-  if (acao === "ASPIRAR") {
-    svState.rooms[idx] = false;
-  } else if (acao === "DIREITA" && idx < svState.nRooms - 1) {
-    svState.pos++;
-  } else if (acao === "ESQUERDA" && idx > 0) {
-    svState.pos--;
+  const posName = ["A","B","C","D","E"][svState.pos], idx = svState.pos, sujo = svState.rooms[idx];
+  const acao = svAgent([posName, sujo]);
+  svLog(svState.step+': pos='+posName+', '+(sujo?'sujo':'limpo')+' → '+acao, sujo ? '#FF7F0E' : '#1F77B4');
+  if (acao === "ASPIRAR") { svState.rooms[idx] = false; }
+  else if (acao === "DIREITA" && idx < svState.nRooms - 1) { svState.pos++; }
+  else if (acao === "ESQUERDA" && idx > 0) { svState.pos--; }
+  if (svState.rooms.every(r => !r)) { svState.done = true; svLog('✔ Todos limpos!', '#2CA02C'); }
+  if (svState.nRooms >= 3 && svState.step >= 8 && !svState.done && svState.rooms[0]) {
+    svState.stuck = true; svLog('⚠️ Ciclo: agente nunca alcança A! B→C, C→B...', '#FF7F0E');
   }
-
-  // Check if clean
-  if (svState.rooms.every(r => !r)) {
-    svState.done = true;
-    svLog('✓ Todos os cômodos limpos!', '#2CA02C');
-  }
-
-  // Detect stuck cycle for 3+ rooms
-  if (svState.nRooms >= 3 && svState.step >= 8 && !svState.done) {
-    // After 8 steps, if A still dirty, we're stuck
-    if (svState.rooms[0]) {
-      svState.stuck = true;
-      svLog('⚠️ Ciclo detectado: agente nunca alcança A!', '#FF7F0E');
-      svLog('→ De B vai para C. De C volta para B. A fica inalcançável.', '#FF7F0E');
-    }
-  }
-
-  svRenderGrid();
-  svUpdateStatus();
+  svRenderGrid(); svUpdateStatus();
 }
-
 function svReset() {
   const trace = document.getElementById('svTrace');
-  if (trace) trace.innerHTML = '<div>Selecione <strong style="color:#fff;">2</strong> ou <strong style="color:#FF7F0E;">3</strong> cômodos para começar.</div>';
-  svState = { nRooms: 2, rooms: [true, false], pos: 0, step: 0, done: false, stuck: false, stuckCount: 0 };
+  if (trace) trace.innerHTML = '<div>Selecione <strong style="color:#fff;">2</strong> ou <strong style="color:#FF7F0E;">3</strong> cômodos.</div>';
+  svState = { nRooms: 2, rooms: [true, false], pos: 0, step: 0, done: false, stuck: false };
   document.getElementById('svPunchline').style.display = 'none';
   svRenderGrid();
   const status = document.getElementById('svStatus');
@@ -1046,43 +1497,37 @@ function svReset() {
 }
 svReset();
 
-// ── Deck preview grid ──
-const deckPreviews = [
-  {w:"3-4",t:"Busca: BFS, DFS, A*",d:"Agentes que encontram caminhos"},
-  {w:"5",t:"Jogos: Minimax, α-β",d:"Agentes que jogam contra você"},
-  {w:"6",t:"IA Simbólica: Autópsia",d:"Por que regras não escalam"},
-  {w:"7",t:"Probabilidade e Bayes",d:"A matemática da incerteza"},
-  {w:"8",t:"Gradiente Descendente",d:"O algoritmo mais importante do DL"},
-  {w:"9",t:"Perceptron e Redes",d:"O XOR que parou a IA por 17 anos"},
-  {w:"10-11",t:"MDPs e Bellman",d:"O formalismo da decisão sequencial"},
-  {w:"12",t:"Monte Carlo e TD",d:"Aprender sem modelo do mundo"},
-  {w:"13",t:"Q-learning",d:"Controle ótimo sem modelo"},
-  {w:"14",t:"Deep RL",d:"De tabelas Q a redes neurais"},
-  {w:"15",t:"AlphaGo, LLMs, RLHF",d:"Todas as peças montadas"},
-];
+// ── PREVIEW GRID ──
 (function renderDeckPreviews() {
-  const grid = document.getElementById('deckPreviewGrid');
-  if (!grid) return;
-  grid.innerHTML = deckPreviews.map(p =>
-    `<div class="preview-mini-card">
-      <div class="pw">S${p.w}</div>
-      <div class="pt">${p.t}</div>
-      <div class="pd">${p.d}</div>
-    </div>`
+  const grid = document.getElementById('deckPreviewGrid'); if (!grid) return;
+  const previews = [
+    {w:"2",t:"Agentes, ambientes, NumPy",d:"PEAS, GridWorld, vetorização"},
+    {w:"3-4",t:"Busca: BFS, DFS, A*",d:"Agentes que encontram caminhos"},
+    {w:"5",t:"Jogos: Minimax, α-β",d:"Agentes que jogam contra você"},
+    {w:"6",t:"IA Simbólica: Autópsia",d:"Por que regras não escalam"},
+    {w:"7",t:"Probabilidade e Bayes",d:"A matemática da incerteza"},
+    {w:"8",t:"Gradiente Descendente",d:"O algoritmo central do DL"},
+    {w:"9",t:"Perceptron e Redes",d:"O XOR que parou a IA por 17 anos"},
+    {w:"10-11",t:"MDPs e Bellman",d:"O formalismo da decisão sequencial"},
+    {w:"12",t:"Monte Carlo e TD",d:"Aprender por experiência"},
+    {w:"13",t:"Q-learning",d:"Controle ótimo sem modelo"},
+    {w:"14",t:"Deep RL",d:"De tabelas Q a redes neurais"},
+    {w:"15",t:"AlphaGo, LLMs, RLHF",d:"Todas as peças montadas"},
+  ];
+  grid.innerHTML = previews.map(p =>
+    '<div class="preview-mini-card"><div class="pw">S'+p.w+'</div><div class="pt">'+p.t+'</div><div class="pd">'+p.d+'</div></div>'
   ).join('');
 })();
 
-// ── Slide navigation ──
+// ── NAVIGATION ──
 function showSlide(n) {
   slides.forEach(s => s.classList.remove('active'));
   currentSlide = Math.max(0, Math.min(n, totalSlides - 1));
   slides[currentSlide].classList.add('active');
-  document.getElementById('slideNum').textContent = `${currentSlide + 1} / ${totalSlides}`;
+  document.getElementById('slideNum').textContent = (currentSlide + 1) + ' / ' + totalSlides;
   updateNotes();
-  // Reset fragments on new slide
   document.querySelectorAll('.fragment').forEach(f => f.classList.remove('visible'));
 }
-
 function nextSlide() { showSlide(currentSlide + 1); }
 function prevSlide() { showSlide(currentSlide - 1); }
 function showFragment() {
@@ -1090,59 +1535,45 @@ function showFragment() {
   const fragments = current.querySelectorAll('.fragment:not(.visible)');
   if (fragments.length > 0) fragments[0].classList.add('visible');
 }
-
-// ── Presenter notes ──
 function updateNotes() {
   const notes = slides[currentSlide]?.dataset?.notes || '(sem notas)';
   document.getElementById('notesContent').textContent = notes;
   const next = slides[currentSlide + 1];
   document.getElementById('nextSlidePreview').textContent = next
-    ? `Próximo slide (${currentSlide + 2}/${totalSlides}): ${(next.dataset.notes || '').substring(0, 80)}...`
+    ? 'Próximo ('+(currentSlide+2)+'/'+totalSlides+'): '+(next.dataset.notes||'').substring(0,80)+'...'
     : 'Último slide';
 }
-
 let notesVisible = false;
 function toggleNotes() {
   notesVisible = !notesVisible;
   document.getElementById('presenterNotes').classList.toggle('visible', notesVisible);
 }
 
-// ── Keyboard ──
+// ── KEYBOARD ──
 document.addEventListener('keydown', function(e) {
   if (e.target.tagName === 'INPUT') return;
   if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); nextSlide(); }
   if (e.key === 'ArrowLeft') { e.preventDefault(); prevSlide(); }
   if (e.key === 'ArrowDown') { e.preventDefault(); showFragment(); }
   if (e.key === 'n' || e.key === 'N') { e.preventDefault(); toggleNotes(); }
-  if (e.key === 'f' || e.key === 'F') { e.preventDefault(); } // fallback placeholder
 });
 
-// ── Touch ──
+// ── TOUCH ──
 let touchStartX = 0, touchStartY = 0;
-document.addEventListener('touchstart', function(e) {
-  touchStartX = e.touches[0].clientX;
-  touchStartY = e.touches[0].clientY;
-});
+document.addEventListener('touchstart', function(e) { touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY; });
 document.addEventListener('touchend', function(e) {
-  const dx = e.changedTouches[0].clientX - touchStartX;
-  const dy = e.changedTouches[0].clientY - touchStartY;
-  if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
-    if (dx < 0) nextSlide(); else prevSlide();
-  }
+  const dx = e.changedTouches[0].clientX - touchStartX, dy = e.changedTouches[0].clientY - touchStartY;
+  if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) { if (dx < 0) nextSlide(); else prevSlide(); }
 });
 
-// ── Scale to viewport ──
+// ── SCALE ──
 function scaleDeck() {
-  const container = document.getElementById('slideContainer');
-  const scaleX = window.innerWidth / 1280;
-  const scaleY = window.innerHeight / 720;
-  const scale = Math.min(scaleX, scaleY);
-  container.style.transform = `scale(${scale})`;
+  document.getElementById('slideContainer').style.transform =
+    'scale('+Math.min(window.innerWidth/1280, window.innerHeight/720)+')';
 }
 window.addEventListener('resize', scaleDeck);
 scaleDeck();
 
-// ── Init ──
 showSlide(0);
 </script>
 </body>
