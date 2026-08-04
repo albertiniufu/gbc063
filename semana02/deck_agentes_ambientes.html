@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GBC063 · S2 · Deck — Agentes, ambientes e NumPy</title>
+<meta name="author" content="Prof. Marcelo Keese Albertini · FACOM · UFU">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Source+Serif+4:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --board: #20262E; --chalk: #EAEFF5;
+  --c0: #1F77B4; --c1: #FF7F0E; --c2: #2CA02C; --c3: #D62728; --c4: #9467BD;
+  --slide-w: 1280px; --slide-h: 720px;
+}
+body {
+  background: #111; font-family: 'Space Grotesk', sans-serif;
+  overflow: hidden; height: 100vh; width: 100vw;
+  display: flex; align-items: center; justify-content: center;
+  user-select: none; -webkit-user-select: none;
+}
+#slideContainer {
+  width: var(--slide-w); height: var(--slide-h);
+  position: relative; transform-origin: center center;
+  background: var(--board); color: var(--chalk);
+  border-radius: 4px; overflow: hidden;
+  box-shadow: 0 0 60px rgba(0,0,0,0.6);
+}
+.slide { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 2.5rem 3.5rem; text-align: center; }
+.slide.active { display: flex; }
+.slide h1 { font-size: 2.8rem; font-weight: 700; line-height: 1.2; margin-bottom: 0.8rem; max-width: 1000px; }
+.slide h2 { font-size: 2rem; font-weight: 600; line-height: 1.2; margin-bottom: 0.6rem; color: var(--c0); max-width: 950px; }
+.slide h3 { font-size: 1.35rem; font-weight: 500; margin-bottom: 0.5rem; }
+.slide p { font-family: 'Source Serif 4', serif; font-size: 1.15rem; line-height: 1.55; max-width: 900px; margin-bottom: 0.6rem; }
+.slide-cold-open { background: radial-gradient(ellipse at center, #1a1a2e 0%, #0a0a0f 100%); }
+.slide-code { text-align: left; font-family: 'JetBrains Mono', monospace; font-size: 0.95rem; line-height: 1.6; background: #0d0d15; border: 1px solid #333; border-radius: 6px; padding: 1rem 1.3rem; max-width: 850px; }
+.slide-code .kw { color: #CBA6F7; } .slide-code .co { color: #6C7086; } .slide-code .st { color: #A6E3A1; } .slide-code .bu { color: #89B4FA; }
+.slide-code .hl { background: rgba(255,127,14,0.25); display: inline-block; padding: 0 0.3rem; border-radius: 3px; }
+.def-box { background: #1a2a35; border-left: 4px solid var(--c0); border-radius: 0 8px 8px 0; padding: 1rem 1.3rem; text-align: left; max-width: 900px; font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; line-height: 1.7; margin: 0.8rem 0; }
+#controls { position: fixed; bottom: 0.75rem; left: 50%; transform: translateX(-50%); display: flex; gap: 0.5rem; align-items: center; z-index: 100; background: rgba(0,0,0,0.7); padding: 0.4rem 0.8rem; border-radius: 20px; font-family: 'Space Grotesk', sans-serif; font-size: 0.8rem; }
+#controls button { background: transparent; border: 1px solid #555; color: #ccc; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 1rem; display: flex; align-items: center; justify-content: center; }
+#controls button:hover { border-color: #fff; color: #fff; }
+#controls .slide-num { color: #999; min-width: 70px; text-align: center; }
+#controls .btn-notes { width: auto; border-radius: 14px; padding: 0 0.8rem; font-size: 0.75rem; }
+#presenterNotes { display: none; position: fixed; bottom: 4rem; right: 1rem; width: 380px; max-height: 300px; background: rgba(0,0,0,0.9); border: 1px solid #555; border-radius: 8px; padding: 1rem; color: #ddd; font-family: 'Source Serif 4', serif; font-size: 0.85rem; line-height: 1.5; overflow-y: auto; z-index: 101; }
+#presenterNotes.visible { display: block; }
+#presenterNotes .note-label { font-family: 'Space Grotesk', sans-serif; font-weight: 600; color: var(--c1); font-size: 0.7rem; margin-bottom: 0.4rem; }
+#presenterNotes .next-slide-preview { margin-top: 0.8rem; padding-top: 0.6rem; border-top: 1px solid #444; font-size: 0.75rem; opacity: 0.6; }
+.slide-footer { position: absolute; bottom: 0.5rem; left: 0; right: 0; text-align: center; font-size: 0.55rem; opacity: 0.3; pointer-events: none; }
+@media (max-width: 1280px) { #slideContainer { transform: scale(calc(min(100vw / 1280, 100vh / 720))); } }
+@media (max-width: 640px) { #controls { bottom: 0.25rem; padding: 0.25rem 0.5rem; gap: 0.25rem; } #controls button { width: 28px; height: 28px; font-size: 0.8rem; } }
+</style>
+</head>
+<body>
+<div id="slideContainer">
+
+<!-- 0 · COLD OPEN -->
+<div class="slide slide-cold-open active" data-notes="Projetar sem falar. Mostrar o GridWorld com o agente preso no obstáculo. Deixar 5 segundos. A pergunta deve surgir: por que ele não chega ao objetivo?">
+  <svg viewBox="0 0 800 400" style="width:80%;height:70%;">
+    <rect x="40" y="40" width="360" height="320" rx="6" fill="#1a1a20" stroke="#555" stroke-width="2"/>
+    <line x1="130" y1="40" x2="130" y2="360" stroke="#333" stroke-width="0.5"/><line x1="220" y1="40" x2="220" y2="360" stroke="#333" stroke-width="0.5"/><line x1="310" y1="40" x2="310" y2="360" stroke="#333" stroke-width="0.5"/>
+    <line x1="40" y1="120" x2="400" y2="120" stroke="#333" stroke-width="0.5"/><line x1="40" y1="200" x2="400" y2="200" stroke="#333" stroke-width="0.5"/><line x1="40" y1="280" x2="400" y2="280" stroke="#333" stroke-width="0.5"/>
+    <rect x="130" y="120" width="88" height="78" rx="2" fill="#444" stroke="#555" stroke-width="1.5"/><text x="174" y="164" text-anchor="middle" font-size="24" fill="#888">⛔</text>
+    <rect x="220" y="200" width="88" height="78" rx="2" fill="#444" stroke="#555" stroke-width="1.5"/><text x="264" y="244" text-anchor="middle" font-size="24" fill="#888">⛔</text>
+    <text x="354" y="344" text-anchor="middle" font-size="32">⭐</text>
+    <circle cx="130" cy="84" r="22" fill="#1F77B4" opacity="0.8"/><text x="130" y="90" text-anchor="middle" font-size="16">🤖</text>
+    <line x1="108" y1="84" x2="85" y2="84" stroke="#FF7F0E" stroke-width="2" marker-end="url(#a)"/><line x1="152" y1="106" x2="175" y2="106" stroke="#FF7F0E" stroke-width="2" marker-end="url(#a)"/>
+    <text x="174" y="85" text-anchor="middle" font-size="10" fill="#FF7F0E">preso!</text>
+    <!-- right side: formula -->
+    <text x="460" y="140" font-size="22" fill="#EAEFF5">O que o agente precisa</text>
+    <text x="460" y="175" font-size="22" fill="#EAEFF5">saber sobre o <span style="color:#FF7F0E;">ambiente</span></text>
+    <text x="460" y="210" font-size="22" fill="#EAEFF5">para decidir corretamente?</text>
+    <defs><marker id="a" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#FF7F0E"/></marker></defs>
+  </svg>
+  <div style="position:absolute;top:1.2rem;left:2rem;text-align:left;">
+    <div style="font-size:0.7rem;opacity:0.4;letter-spacing:0.08em;">GBC063 — INTELIGÊNCIA ARTIFICIAL</div>
+    <div style="font-size:0.85rem;opacity:0.55;">Semana 2 · Agentes, ambientes e NumPy</div>
+  </div>
+  <div style="position:absolute;top:1.2rem;right:2rem;text-align:right;">
+    <div style="font-size:0.65rem;opacity:0.35;">Prof. Marcelo Keese Albertini</div>
+    <div style="font-size:0.6rem;opacity:0.25;">FACOM · Universidade Federal de Uberlândia</div>
+  </div>
+</div>
+
+<!-- 1 · PERGUNTA CONDUTORA -->
+<div class="slide" data-notes="Ler em voz alta. Pausa. Esta pergunta conecta o aspirador (S1) com o RL (S10).">
+  <h1 style="font-size:3rem;max-width:900px;">Como formalizar a interação<br>agente–ambiente — e por que<br>essa <span style="color:var(--c2);">mesma interface</span> treinará<br>um agente de RL na Semana 10?</h1>
+</div>
+
+<!-- 2 · MAPA DA AULA -->
+<div class="slide" data-notes="Dar o mapa. Parte 1 = teoria dos agentes. Parte 2 = NumPy + GridWorld.">
+  <h2>O que vamos ver hoje</h2>
+  <div style="display:flex;gap:2rem;margin-top:1.2rem;width:100%;max-width:1000px;">
+    <div style="flex:1;text-align:left;">
+      <div style="font-size:0.7rem;opacity:0.4;letter-spacing:0.08em;margin-bottom:0.6rem;">PARTE 1</div>
+      <div style="padding:0.35rem 0;font-size:0.9rem;border-left:2px solid var(--c0);padding-left:0.7rem;margin-bottom:0.25rem;">📐 PEAS — anatomia do agente</div>
+      <div style="padding:0.35rem 0;font-size:0.9rem;border-left:2px solid var(--c0);padding-left:0.7rem;margin-bottom:0.25rem;">🔄 O loop percepção → decisão → ação</div>
+      <div style="padding:0.35rem 0;font-size:0.9rem;border-left:2px solid var(--c0);padding-left:0.7rem;margin-bottom:0.25rem;">🌍 6 propriedades do ambiente</div>
+      <div style="padding:0.35rem 0;font-size:0.9rem;border-left:2px solid var(--c0);padding-left:0.7rem;margin-bottom:0.25rem;">🧬 5 tipos de agente</div>
+      <div style="padding:0.35rem 0;font-size:0.9rem;border-left:2px solid var(--c0);padding-left:0.7rem;">🎓 O agente que aprende = RL</div>
+    </div>
+    <div style="flex:1;text-align:left;">
+      <div style="font-size:0.7rem;opacity:0.4;letter-spacing:0.08em;margin-bottom:0.6rem;">PARTE 2</div>
+      <div style="padding:0.35rem 0;font-size:0.9rem;border-left:2px solid var(--c2);padding-left:0.7rem;margin-bottom:0.25rem;">🐍 NumPy — arrays, broadcasting, indexação</div>
+      <div style="padding:0.35rem 0;font-size:0.9rem;border-left:2px solid var(--c2);padding-left:0.7rem;margin-bottom:0.25rem;">🏗️ GridWorld — implementação do zero</div>
+      <div style="padding:0.35rem 0;font-size:0.9rem;border-left:2px solid var(--c2);padding-left:0.7rem;margin-bottom:0.25rem;">⚡ Vetorização × laços — benchmark</div>
+      <div style="padding:0.35rem 0;font-size:0.9rem;border-left:2px solid var(--c2);padding-left:0.7rem;margin-bottom:0.25rem;">🗺️ Preview do curso</div>
+      <div style="padding:0.35rem 0;font-size:0.9rem;border-left:2px solid var(--c2);padding-left:0.7rem;">🌉 Ponte para o Deep RL</div>
+    </div>
+  </div>
+  <p style="margin-top:1.2rem;font-size:0.85rem;opacity:0.45;">Parte 1 · pausa · Parte 2</p>
+</div>
+
+<!-- 3 · PEAS -->
+<div class="slide" data-notes="PEAS é a ferramenta universal de análise de agentes. Aplicar ao GridWorld. Depois pedir que a turma faça PEAS para o aspirador da S1 e para o AlphaGo. Percebem que a estrutura é a mesma?">
+  <h2>PEAS — a anatomia de qualquer agente</h2>
+  <div style="display:flex;gap:1.5rem;width:100%;max-width:1000px;margin-top:0.6rem;text-align:left;">
+    <div style="flex:1;">
+      <div style="background:#1a2a30;border-left:3px solid var(--c0);padding:0.5rem 0.8rem;margin-bottom:0.35rem;font-size:0.9rem;"><strong>P</strong>erformance<br><small style="opacity:0.6;">Medida de desempenho — o que medimos?</small></div>
+      <div style="background:#1a2a30;border-left:3px solid var(--c4);padding:0.5rem 0.8rem;margin-bottom:0.35rem;font-size:0.9rem;"><strong>E</strong>nvironment<br><small style="opacity:0.6;">Ambiente — onde o agente opera?</small></div>
+      <div style="background:#1a2a30;border-left:3px solid var(--c2);padding:0.5rem 0.8rem;margin-bottom:0.35rem;font-size:0.9rem;"><strong>A</strong>ctuators<br><small style="opacity:0.6;">Atuadores — como o agente age?</small></div>
+      <div style="background:#1a2a30;border-left:3px solid var(--c1);padding:0.5rem 0.8rem;font-size:0.9rem;"><strong>S</strong>ensors<br><small style="opacity:0.6;">Sensores — o que o agente percebe?</small></div>
+    </div>
+    <div style="flex:1;font-size:0.8rem;line-height:1.5;opacity:0.7;">
+      <strong style="color:var(--c0);">GridWorld:</strong> soma de recompensas, chegar ao ⭐ rápido<br>
+      Grade 4×4 com obstáculos<br>
+      Mover ↑↓←→<br>
+      Posição (x,y) atual<br><br>
+      <strong style="color:var(--c0);">Aspirador (S1):</strong> salas limpas/passo<br>
+      Duas salas A,B<br>
+      Mover, ASPIRAR<br>
+      Posição, sensor de sujeira<br><br>
+      <strong style="color:var(--c0);">AlphaGo (S15):</strong> vitória<br>
+      Tabuleiro 19×19<br>
+      Colocar pedra, passar<br>
+      Estado completo do tabuleiro
+    </div>
+  </div>
+  <p style="margin-top:0.8rem;font-size:0.85rem;opacity:0.5;">Mesma estrutura. Três agentes radicalmente diferentes. A diferença está em <em>como decidir() funciona</em>.</p>
+</div>
+
+<!-- 4 · O LOOP -->
+<div class="slide" data-notes="Ler com reverência. Estas 4 linhas são o contrato que unifica o curso inteiro. Aparecerão idênticas na S10 com Q-learning.">
+  <h2>O contrato agente–ambiente</h2>
+  <div class="slide-code" style="font-size:1.15rem;text-align:center;margin-bottom:0.8rem;">
+    <span style="color:var(--c0);">percepção</span> →
+    <span style="color:var(--c1);">decisão</span> →
+    <span style="color:var(--c2);">ação</span>
+  </div>
+  <div class="slide-code">
+    <span class="co"># Idêntico da Semana 2 à Semana 16</span><br>
+    obs = env.reset()<br>
+    <span class="kw">while not</span> done:<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;acao = agente.decidir(obs)<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="hl">obs, recompensa, done = env.step(acao)</span>
+  </div>
+  <p style="margin-top:0.8rem;font-size:0.8rem;opacity:0.45;">O que muda a cada módulo é <strong>apenas</strong> o que acontece dentro de <code style="font-family:'JetBrains Mono',monospace;">decidir()</code>.</p>
+</div>
+
+<!-- 5 · PROPRIEDADES 1+2+3 -->
+<div class="slide" data-notes="Apresentar as 3 primeiras em sequência rápida. Cada par aponta para uma técnica do curso. Não se alongar em cada uma — serão revisitadas em cada módulo.">
+  <h2>6 propriedades que decidem a técnica</h2>
+  <div style="display:flex;gap:1rem;width:100%;max-width:1050px;margin-top:0.8rem;text-align:left;">
+    <div style="flex:1;font-size:0.82rem;line-height:1.5;">
+      <div style="margin-bottom:0.6rem;"><strong style="color:var(--c0);">1. Observável</strong> vs <strong style="color:var(--c1);">Parcialmente obs.</strong><br><small style="opacity:0.5;">Sensores veem tudo? GridWorld: sim. Poker: não. → estado interno (S2).</small></div>
+      <div style="margin-bottom:0.6rem;"><strong style="color:var(--c0);">2. Determinístico</strong> vs <strong style="color:var(--c1);">Estocástico</strong><br><small style="opacity:0.5;">Mesma ação = mesmo resultado? Se não: probabilidade (S7).</small></div>
+      <div style="margin-bottom:0.6rem;"><strong style="color:var(--c0);">3. Episódico</strong> vs <strong style="color:var(--c1);">Sequencial</strong><br><small style="opacity:0.5;">Decisões independentes ou encadeadas? Sequencial → MDPs (S10–14).</small></div>
+    </div>
+    <div style="flex:1;font-size:0.82rem;line-height:1.5;">
+      <div style="margin-bottom:0.6rem;"><strong style="color:var(--c0);">4. Estático</strong> vs <strong style="color:var(--c1);">Dinâmico</strong><br><small style="opacity:0.5;">Mundo muda enquanto pensa? Dinâmico → anytime algorithms.</small></div>
+      <div style="margin-bottom:0.6rem;"><strong style="color:var(--c0);">5. Discreto</strong> vs <strong style="color:var(--c1);">Contínuo</strong><br><small style="opacity:0.5;">Estados enumeráveis? Contínuo → aproximação (S14).</small></div>
+      <div style="margin-bottom:0.6rem;"><strong style="color:var(--c0);">6. Agente único</strong> vs <strong style="color:var(--c1);">Multiagente</strong><br><small style="opacity:0.5;">Outros decidem também? → teoria dos jogos (S5).</small></div>
+    </div>
+  </div>
+  <p style="margin-top:0.8rem;font-size:0.8rem;opacity:0.45;">Russell & Norvig, AIMA · Capítulo 2 · Esta tabela é o mapa do curso.</p>
+</div>
+
+<!-- 6 · TIPOS DE AGENTE -->
+<div class="slide" data-notes="Mostrar a evolução. O aspirador da S1 é reativo simples. O GridWorld com busca (S3) é baseado em objetivo. O Q-learning (S10) é o agente que aprende. A seta da direita é literalmente o diagrama do RL.">
+  <h2>Do reativo ao que aprende</h2>
+  <div style="display:flex;gap:0.4rem;width:100%;max-width:1050px;margin-top:0.8rem;font-size:0.75rem;">
+    <div style="flex:1;background:#1a1a20;border-radius:8px;padding:0.7rem 0.5rem;text-align:center;border-top:2px solid #999;">
+      <div style="font-size:1.5rem;">👀</div><div style="font-weight:700;margin:0.3rem 0;">Reativo simples</div>
+      <div style="opacity:0.5;font-size:0.62rem;">percepção → ação<br>sem memória<br><em style="color:var(--c1);">aspirador S1</em></div>
+    </div>
+    <div style="font-size:1rem;display:flex;align-items:center;opacity:0.3;">→</div>
+    <div style="flex:1;background:#1a1a20;border-radius:8px;padding:0.7rem 0.5rem;text-align:center;border-top:2px solid var(--c0);">
+      <div style="font-size:1.5rem;">📝</div><div style="font-weight:700;margin:0.3rem 0;">Com estado</div>
+      <div style="opacity:0.5;font-size:0.62rem;">memória do passado<br>modelo interno</div>
+    </div>
+    <div style="font-size:1rem;display:flex;align-items:center;opacity:0.3;">→</div>
+    <div style="flex:1;background:#1a1a20;border-radius:8px;padding:0.7rem 0.5rem;text-align:center;border-top:2px solid var(--c4);">
+      <div style="font-size:1.5rem;">🎯</div><div style="font-weight:700;margin:0.3rem 0;">Baseado em objetivo</div>
+      <div style="opacity:0.5;font-size:0.62rem;">busca/planejamento<br><em>S3–S5</em></div>
+    </div>
+    <div style="font-size:1rem;display:flex;align-items:center;opacity:0.3;">→</div>
+    <div style="flex:1;background:#1a1a20;border-radius:8px;padding:0.7rem 0.5rem;text-align:center;border-top:2px solid var(--c2);">
+      <div style="font-size:1.5rem;">🧠</div><div style="font-weight:700;margin:0.3rem 0;">Que aprende</div>
+      <div style="opacity:0.5;font-size:0.62rem;">experiência → melhora<br><em>S8–S14</em></div>
+    </div>
+  </div>
+  <div class="def-box" style="margin-top:1rem;font-size:0.85rem;">
+    O agente que aprende <strong style="color:var(--c2);">é literalmente o diagrama do reinforcement learning</strong>.<br>
+    Ambiente → recompensa → agente ajusta seu comportamento → ciclo repete.
+  </div>
+</div>
+
+<!-- 7 · DIAGRAMA DO AGENTE QUE APRENDE -->
+<div class="slide" data-notes="Este diagrama é a semente do RL. O crítico avalia a ação (erro = recompensa esperada - obtida). O elemento de aprendizado ajusta o agente. Guardar esta imagem — ela voltará idêntica na S10.">
+  <h2>O agente que aprende = RL em embrião</h2>
+  <svg viewBox="0 0 700 220" style="width:85%;height:auto;">
+    <rect x="10" y="60" width="120" height="50" rx="8" fill="#1a2a30" stroke="#1F77B4" stroke-width="1.5"/>
+    <text x="70" y="80" text-anchor="middle" font-size="11" fill="#EAEFF5" font-weight="bold">Ambiente</text>
+    <text x="70" y="96" text-anchor="middle" font-size="9" fill="#888">reset() / step()</text>
+    <rect x="260" y="60" width="120" height="50" rx="8" fill="#1a2a30" stroke="#c05f00" stroke-width="1.5"/>
+    <text x="320" y="80" text-anchor="middle" font-size="11" fill="#EAEFF5" font-weight="bold">Agente</text>
+    <text x="320" y="96" text-anchor="middle" font-size="9" fill="#888">decidir(obs)</text>
+    <rect x="500" y="60" width="120" height="50" rx="8" fill="#0d1a15" stroke="#2CA02C" stroke-width="1.5"/>
+    <text x="560" y="80" text-anchor="middle" font-size="11" fill="#2CA02C" font-weight="bold">Crítico</text>
+    <text x="560" y="96" text-anchor="middle" font-size="9" fill="#888">atualiza com erro</text>
+    <line x1="130" y1="75" x2="255" y2="75" stroke="#1F77B4" stroke-width="1.5" marker-end="url(#az)"/>
+    <text x="192" y="68" text-anchor="middle" font-size="9" fill="#1F77B4">obs, recompensa</text>
+    <line x1="380" y1="75" x2="495" y2="75" stroke="#c05f00" stroke-width="1.5" marker-end="url(#la)"/>
+    <text x="437" y="68" text-anchor="middle" font-size="9" fill="#c05f00">ação</text>
+    <line x1="320" y1="110" x2="320" y2="140" stroke="#c05f00" stroke-width="1.2"/>
+    <line x1="320" y1="140" x2="555" y2="140" stroke="#2CA02C" stroke-width="1.2" marker-end="url(#vd)"/>
+    <text x="437" y="134" text-anchor="middle" font-size="9" fill="#2CA02C">feedback de aprendizado</text>
+    <text x="350" y="185" text-anchor="middle" font-size="11" fill="#EAEFF5">Este diagrama <strong style="color:var(--c2);">é o reinforcement learning</strong>.</text>
+    <text x="350" y="205" text-anchor="middle" font-size="9" fill="#888">Guarde-o. Ele voltará na Semana 10.</text>
+    <defs>
+      <marker id="az" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#1F77B4"/></marker>
+      <marker id="la" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#c05f00"/></marker>
+      <marker id="vd" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#2CA02C"/></marker>
+    </defs>
+  </svg>
+</div>
+
+<!-- 8 · TRANSIÇÃO -->
+<div class="slide" data-notes="Pausa entre as duas partes.">
+  <h2 style="font-size:1.6rem;opacity:0.45;">Parte 2</h2>
+  <h1 style="margin-top:0.8rem;">NumPy e GridWorld</h1>
+  <p style="margin-top:1.5rem;font-size:1.1rem;opacity:0.5;">Arrays · Broadcasting · Vetorização · Implementação do zero</p>
+</div>
+
+<!-- 9 · POR QUE NumPy? -->
+<div class="slide" data-notes="NumPy não é só uma biblioteca — é a razão pela qual Python substituiu Lisp como linguagem da IA. Sem NumPy, cada operação matricial seria um laço for em Python puro.">
+  <h2>Por que NumPy?</h2>
+  <div style="display:flex;gap:2rem;margin-top:1rem;width:100%;max-width:1000px;">
+    <div style="flex:1;text-align:left;">
+      <h3 style="color:var(--c1);">Sem NumPy</h3>
+      <div class="slide-code" style="font-size:0.78rem;">
+        <span class="co"># laço for: 50 ms para 1M elementos</span><br>
+        c = []<br>
+        <span class="kw">for</span> i <span class="kw">in</span> range(len(a)):<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;c.append(a[i] + b[i])
+      </div>
+    </div>
+    <div style="flex:1;text-align:left;">
+      <h3 style="color:var(--c2);">Com NumPy</h3>
+      <div class="slide-code" style="font-size:0.78rem;">
+        <span class="co"># vetorizado: 0.1 ms para 1M elementos</span><br>
+        c = np.array(a) + np.array(b)
+      </div>
+      <p style="font-size:0.85rem;margin-top:0.5rem;"><strong style="color:var(--c2);">500× mais rápido.</strong> A diferença entre rodar em 1 segundo e rodar em 8 minutos.</p>
+    </div>
+  </div>
+  <p style="margin-top:1rem;font-size:0.85rem;opacity:0.5;">NumPy é a interface entre o Python e a álgebra linear que move a IA moderna. Todo o RL deste curso depende dele.</p>
+</div>
+
+<!-- 10 · NumPy ESSENCIAL -->
+<div class="slide" data-notes="Três operações que serão usadas em toda aula daqui pra frente: arrays, broadcasting, argmax. Mostrar cada uma com exemplo.">
+  <h2>NumPy em 3 atos</h2>
+  <div class="slide-code" style="font-size:0.82rem;">
+    <span class="co"># Ato 1: Arrays e operações elemento a elemento</span><br>
+    a = np.array([1, 2, 3]); b = np.array([4, 5, 6])<br>
+    a + b  <span class="co"># → array([5, 7, 9]) — sem laço</span><br><br>
+    <span class="co"># Ato 2: Broadcasting — arrays de dimensões diferentes</span><br>
+    Q = np.zeros((16, 4))  <span class="co"># tabela Q: 16 estados × 4 ações</span><br>
+    Q[0] += np.array([0, -0.01, -0.01, -0.01])  <span class="co"># broadcasting!</span><br><br>
+    <span class="co"># Ato 3: argmax — coração da decisão do agente</span><br>
+    <span class="hl">melhor_acao = np.argmax(Q[estado])</span>  <span class="co"># ação com maior Q</span>
+  </div>
+</div>
+
+<!-- 11 · GRIDWORLD -->
+<div class="slide" data-notes="Mostrar a implementação. Enfatizar: este mesmo GridWorld será usado nas semanas 10-14 para RL. Cada decisão de design ecoa.">
+  <h2>GridWorld — implementação do zero</h2>
+  <div class="slide-code" style="font-size:0.68rem;max-width:900px;">
+    <span class="kw">class</span> <span class="bu">GridWorld</span>:
+    &nbsp;&nbsp;<span class="kw">def</span> <span class="bu">__init__</span>(self, tamanho=4):
+    &nbsp;&nbsp;&nbsp;&nbsp;self.pos = np.array([0, 0])
+    &nbsp;&nbsp;&nbsp;&nbsp;self.objetivo = np.array([tamanho-1]*2)
+    &nbsp;&nbsp;&nbsp;&nbsp;self.obstaculos = [(1,1), (2,2)]
+
+    &nbsp;&nbsp;<span class="kw">def</span> reset(self):
+    &nbsp;&nbsp;&nbsp;&nbsp;self.pos = np.array([0, 0])
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">return</span> tuple(self.pos)
+
+    &nbsp;&nbsp;<span class="kw">def</span> step(self, acao):         <span class="co"># 0=↑ 1=↓ 2=← 3=→</span>
+    &nbsp;&nbsp;&nbsp;&nbsp;mov = {0:(-1,0),1:(1,0),2:(0,-1),3:(0,1)}
+    &nbsp;&nbsp;&nbsp;&nbsp;nova = self.pos + mov[acao]
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">if</span> 0<=nova[0]&lt;self.tamanho <span class="kw">and</span> 0<=nova[1]&lt;self.tamanho:
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">if</span> tuple(nova) <span class="kw">not in</span> self.obstaculos:
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;self.pos = nova
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">if</span> np.array_equal(self.pos, self.objetivo):
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">return</span> tuple(self.pos), 1.0, True
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">return</span> tuple(self.pos), -0.01, False
+  </div>
+  <p style="margin-top:0.6rem;font-size:0.8rem;opacity:0.5;">Este GridWorld será o ambiente das Semanas 10–14. O que você escrever hoje treinará um agente de RL daqui a 8 semanas.</p>
+</div>
+
+<!-- 12 · PREVIEW DO CURSO -->
+<div class="slide" data-notes="Mostrar como a S2 se conecta com o resto. Cada técnica das próximas semanas é uma resposta às propriedades do ambiente que classificamos hoje.">
+  <h2>O que vem por aí: o mapa completo</h2>
+  <table style="width:100%;max-width:950px;font-size:0.72rem;border-collapse:collapse;margin-top:0.5rem;">
+    <tr style="border-bottom:1px solid #444;"><th style="text-align:left;padding:0.3rem 0.4rem;color:var(--c0);">Semana</th><th style="text-align:left;padding:0.3rem 0.4rem;color:var(--c0);">Tema</th><th style="text-align:left;padding:0.3rem 0.4rem;color:var(--c0);">Responde a...</th></tr>
+    <tr><td style="padding:0.2rem 0.4rem;">3–4</td><td style="padding:0.2rem 0.4rem;">Busca cega e informada (BFS, A*)</td><td style="padding:0.2rem 0.4rem;opacity:0.6;">"Como agir se o modelo do mundo é conhecido?"</td></tr>
+    <tr><td style="padding:0.2rem 0.4rem;">5</td><td style="padding:0.2rem 0.4rem;">Jogos (minimax, α-β)</td><td style="padding:0.2rem 0.4rem;opacity:0.6;">"E se há outro agente decidindo contra mim?"</td></tr>
+    <tr><td style="padding:0.2rem 0.4rem;">7</td><td style="padding:0.2rem 0.4rem;">Probabilidade e Bayes</td><td style="padding:0.2rem 0.4rem;opacity:0.6;">"E se o mundo é estocástico?"</td></tr>
+    <tr><td style="padding:0.2rem 0.4rem;">8–9</td><td style="padding:0.2rem 0.4rem;">Gradiente, Perceptron, Redes</td><td style="padding:0.2rem 0.4rem;opacity:0.6;">"Como aprender f de dados?"</td></tr>
+    <tr><td style="padding:0.2rem 0.4rem;">10–11</td><td style="padding:0.2rem 0.4rem;">MDPs e Bellman</td><td style="padding:0.2rem 0.4rem;opacity:0.6;">"Como decidir sequencialmente sob incerteza?"</td></tr>
+    <tr><td style="padding:0.2rem 0.4rem;">12–13</td><td style="padding:0.2rem 0.4rem;">MC, TD, Q-learning</td><td style="padding:0.2rem 0.4rem;opacity:0.6;">"E se o modelo do mundo é desconhecido?"</td></tr>
+    <tr><td style="padding:0.2rem 0.4rem;">14</td><td style="padding:0.2rem 0.4rem;">Deep RL</td><td style="padding:0.2rem 0.4rem;opacity:0.6;">"E se o espaço de estados é contínuo?"</td></tr>
+  </table>
+  <p style="margin-top:0.8rem;font-size:0.8rem;opacity:0.45;">Cada módulo é a resposta a uma propriedade do ambiente. PEAS + 6 propriedades = mapa do curso.</p>
+</div>
+
+<!-- 13 · 🌉 PONTE -->
+<div class="slide" data-notes="Conexão explícita com Deep RL.">
+  <h2>🌉 Do GridWorld ao Deep RL</h2>
+  <p style="font-size:1.3rem;max-width:750px;line-height:1.6;">Mesma interface: <span style="font-family:'JetBrains Mono',monospace;color:var(--c0);">reset() / step()</span>.<br>Mesmo GridWorld que você implementou hoje.<br>Única diferença: <span style="color:var(--c2);">quem decide</span>.</p>
+  <div style="display:flex;gap:2rem;margin-top:2rem;align-items:center;">
+    <span style="font-size:0.9rem;opacity:0.5;">Agente reativo<br>3 ifs</span>
+    <span style="font-size:1.5rem;">→</span>
+    <span style="font-size:0.9rem;opacity:0.5;">Busca A*<br>Semanas 3-4</span>
+    <span style="font-size:1.5rem;">→</span>
+    <span style="font-size:0.9rem;opacity:0.5;">Q-learning<br>Semanas 10-13</span>
+    <span style="font-size:1.5rem;">→</span>
+    <span style="font-size:0.9rem;opacity:0.5;">DQN (Deep RL)<br>Semana 14</span>
+  </div>
+</div>
+
+<!-- 14 · RECAPITULAÇÃO -->
+<div class="slide" data-notes="Slide final de conteúdo.">
+  <h1 style="font-size:2.3rem;max-width:950px;line-height:1.3;">PEAS descreve o agente.<br>As <span style="color:var(--c1);">6 propriedades</span> escolhem a técnica.<br>A interface <span style="color:var(--c2);">reset()/step()</span> unifica<br>o curso inteiro — do aspirador ao AlphaGo.</h1>
+  <p style="margin-top:1.5rem;font-size:0.95rem;opacity:0.6;">Semana 2 de 16. Próxima aula: Busca cega — BFS, DFS e custo uniforme.</p>
+</div>
+
+<!-- 15 · 📚 PARA IR ALÉM -->
+<div class="slide" data-notes="Deixar projetado enquanto os alunos saem.">
+  <h2>📚 Para ir além</h2>
+  <div style="display:flex;gap:1.5rem;width:100%;max-width:1050px;margin-top:0.6rem;text-align:left;">
+    <div style="flex:1;font-size:0.68rem;line-height:1.45;">
+      <div style="font-size:0.6rem;opacity:0.4;letter-spacing:0.06em;margin-bottom:0.35rem;">WIKIPEDIA</div>
+      <div style="margin-bottom:0.4rem;">🔗 <a href="https://pt.wikipedia.org/wiki/Agente_inteligente" target="_blank" rel="noopener" style="color:var(--c0);">Agente inteligente</a><br><span style="opacity:0.45;">Definição formal, arquiteturas, PEAS.</span></div>
+      <div style="margin-bottom:0.4rem;">🔗 <a href="https://en.wikipedia.org/wiki/Intelligent_agent" target="_blank" rel="noopener" style="color:var(--c0);">Intelligent agent (EN)</a><br><span style="opacity:0.45;">Agent types, rational agency, BDI.</span></div>
+    </div>
+    <div style="flex:1;font-size:0.68rem;line-height:1.45;">
+      <div style="font-size:0.6rem;opacity:0.4;letter-spacing:0.06em;margin-bottom:0.35rem;">PAPERS & LIVROS</div>
+      <div style="margin-bottom:0.4rem;">📖 <a href="https://github.com/aimacode/aima-python" target="_blank" rel="noopener" style="color:var(--c1);">AIMA — código Python</a><br><span style="opacity:0.45;">Agentes reativos, GridWorld, busca (cap 2–4).</span></div>
+      <div style="margin-bottom:0.4rem;">📄 <a href="https://gymnasium.farama.org/" target="_blank" rel="noopener" style="color:var(--c1);">Gymnasium (Farama Foundation)</a><br><span style="opacity:0.45;">A biblioteca padrão de ambientes para RL.</span></div>
+    </div>
+    <div style="flex:1;font-size:0.68rem;line-height:1.45;">
+      <div style="font-size:0.6rem;opacity:0.4;letter-spacing:0.06em;margin-bottom:0.35rem;">VÍDEOS</div>
+      <div style="margin-bottom:0.4rem;">▶️ <a href="https://www.youtube.com/watch?v=QUT1VHiLmmI" target="_blank" rel="noopener" style="color:var(--c2);">NumPy visualized (3Blue1Brown)</a><br><span style="opacity:0.45;">Intuição visual de operações matriciais.</span></div>
+      <div style="margin-bottom:0.4rem;">▶️ <a href="https://www.youtube.com/watch?v=5NgNicANyqM" target="_blank" rel="noopener" style="color:var(--c2);">Harvard CS50 — Introduction to AI</a><br><span style="opacity:0.45;">Curso completo (2023). Search, ML, LLMs.</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="slide-footer">Prof. Marcelo Keese Albertini · FACOM · UFU · GBC063 · S2</div>
+</div>
+
+<div id="presenterNotes">
+  <div class="note-label">📝 NOTAS DO APRESENTADOR</div>
+  <div id="notesContent"></div>
+  <div class="next-slide-preview" id="nextSlidePreview"></div>
+</div>
+<div id="controls">
+  <button onclick="prevSlide()">◀</button>
+  <span class="slide-num" id="slideNum">1 / 16</span>
+  <button onclick="nextSlide()">▶</button>
+  <button onclick="toggleNotes()" class="btn-notes">📝</button>
+</div>
+
+<script>
+let currentSlide=0;
+const slides=document.querySelectorAll('.slide'), totalSlides=slides.length;
+function showSlide(n){
+  slides.forEach(s=>s.classList.remove('active'));
+  currentSlide=Math.max(0,Math.min(n,totalSlides-1));
+  slides[currentSlide].classList.add('active');
+  document.getElementById('slideNum').textContent=(currentSlide+1)+' / '+totalSlides;
+  updateNotes();
+}
+function nextSlide(){showSlide(currentSlide+1)}
+function prevSlide(){showSlide(currentSlide-1)}
+function updateNotes(){
+  document.getElementById('notesContent').textContent=slides[currentSlide]?.dataset?.notes||'(sem notas)';
+  const next=slides[currentSlide+1];
+  document.getElementById('nextSlidePreview').textContent=next?'Próximo ('+(currentSlide+2)+'/'+totalSlides+'): '+(next.dataset.notes||'').substring(0,80)+'...':'Último slide';
+}
+let notesVisible=false;
+function toggleNotes(){notesVisible=!notesVisible;document.getElementById('presenterNotes').classList.toggle('visible',notesVisible)}
+document.addEventListener('keydown',function(e){
+  if(e.target.tagName==='INPUT')return;
+  if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();nextSlide()}
+  if(e.key==='ArrowLeft'){e.preventDefault();prevSlide()}
+  if(e.key==='n'||e.key==='N'){e.preventDefault();toggleNotes()}
+});
+let tsX=0,tsY=0;
+document.addEventListener('touchstart',function(e){tsX=e.touches[0].clientX;tsY=e.touches[0].clientY});
+document.addEventListener('touchend',function(e){
+  const dx=e.changedTouches[0].clientX-tsX, dy=e.changedTouches[0].clientY-tsY;
+  if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>50){if(dx<0)nextSlide();else prevSlide()}
+});
+function scaleDeck(){document.getElementById('slideContainer').style.transform='scale('+Math.min(window.innerWidth/1280,window.innerHeight/720)+')'}
+window.addEventListener('resize',scaleDeck);scaleDeck();showSlide(0);
+</script>
+</body>
+</html>
