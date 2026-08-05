@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GBC063 · S3 — DFS em Detalhes</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--c0:#1F77B4;--c1:#FF7F0E;--c2:#2CA02C;--c5:#8C564B;
+  --board:#20262E;--giz:#EAEFF5;--dim:#8A97A5;--board2:#2A313B}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#14181E;color:var(--giz);
+  font-family:'Space Grotesk',system-ui,sans-serif;overflow:hidden}
+#palco{position:fixed;inset:0 0 34px 0;display:flex;align-items:center;justify-content:center}
+.slide{position:absolute;width:min(96vw,177vh);aspect-ratio:16/9;background:var(--board);
+  border-radius:14px;padding:3.2% 4%;display:none;flex-direction:column;
+  justify-content:center;align-items:center;text-align:center;gap:2.2vmin;overflow:hidden}
+.slide.ativo{display:flex}
+.eyebrow{position:absolute;top:2.6%;left:3.4%;font-family:'JetBrains Mono',monospace;
+  font-size:1.5vmin;letter-spacing:.14em;color:var(--dim)}
+h1{font-size:6.4vmin;margin:0;line-height:1.15}
+h2{font-size:5vmin;margin:0;line-height:1.15}
+.kw{color:var(--c1)} .az{color:var(--c0)} .vd{color:var(--c2)}
+.gr{font-size:9vmin;font-weight:700}
+.sub{font-size:2.6vmin;color:var(--dim);margin:0}
+.frag{opacity:0;transition:opacity .35s}
+.frag.on{opacity:1}
+@media(prefers-reduced-motion:reduce){.frag{transition:none}}
+
+/* código */
+pre.cod{font-family:'JetBrains Mono',monospace;font-size:2.5vmin;text-align:left;
+  background:var(--board2);border-radius:10px;padding:2.4vmin 3vmin;line-height:1.6;margin:0}
+pre.cod .lin{display:block;opacity:.18;transition:opacity .3s}
+pre.cod .lin.on{opacity:1}
+pre.cod .lin.sintese.on{background:rgba(255,127,14,.25);border-left:4px solid var(--c1);
+  margin-left:-3vmin;padding-left:calc(3vmin - 4px)}
+
+/* tabelas */
+table.mx{border-collapse:collapse;font-size:2.9vmin}
+.mx th,.mx td{border:2px solid #39424E;padding:1.2vmin 2.6vmin}
+.mx th{color:var(--dim);font-weight:500}
+.mx td:first-child{text-align:left;font-weight:700}
+.ok{color:var(--c2);font-weight:700}.no{color:#E05C4B;font-weight:700}
+
+/* trace visual */
+.trace-row{display:flex;gap:2vmin;align-items:center;justify-content:center;width:92%}
+.trace-graph{flex-shrink:0}
+.trace-stack{background:var(--board2);border-radius:10px;padding:2vmin 2.4vmin;min-width:22vmin;
+  font-family:'JetBrains Mono',monospace;font-size:2.6vmin;text-align:left}
+.trace-stack .tit{color:var(--dim);font-size:1.6vmin;letter-spacing:.06em;margin-bottom:1vmin}
+.trace-stack .item{display:block;padding:.4vmin 1vmin;border-radius:4px;margin:.3vmin 0}
+.trace-stack .item.topo{background:var(--c1);color:#20262E;font-weight:700}
+.trace-stack .item.resto{background:#2E5F8A;color:var(--giz)}
+.trace-stack .item.vazio{color:var(--dim);font-style:italic}
+.trace-narrativa{font-size:2.4vmin;color:var(--dim);text-align:center;width:100%}
+.trace-narrativa b{color:var(--c1)}
+
+/* nós do grafo */
+.no-grafo circle.s0{fill:#1F77B4}
+.no-grafo circle.exp{fill:#2E5F8A}
+.no-grafo circle.foco{fill:#FF7F0E;stroke:#FF7F0E;stroke-width:3}
+.no-grafo circle.alvo{fill:#2CA02C}
+.no-grafo circle.nao-visit{fill:#39424E}
+.no-grafo circle.voltou{fill:#5A3A6B}
+.no-grafo text.label{fill:#EAEFF5;font-weight:700;text-anchor:middle;dominant-baseline:central}
+
+/* metáfora */
+.metafora{display:flex;gap:3vmin;align-items:center;width:82%}
+.metafora svg{flex-shrink:0}
+
+/* navegação */
+#nav{position:fixed;bottom:44px;right:16px;display:flex;gap:8px;z-index:40}
+#nav button{width:52px;height:52px;border-radius:50%;border:2px solid #4A5563;
+  background:rgba(42,49,59,.9);color:var(--giz);font-size:22px;cursor:pointer}
+#nav button:hover{background:#39424E}
+#rodape{position:fixed;bottom:0;left:0;right:0;height:34px;display:flex;align-items:center;
+  justify-content:space-between;padding:0 14px;font-family:'JetBrains Mono',monospace;
+  font-size:11px;color:#5A6675;background:#101318}
+#pres{position:fixed;inset:0;background:rgba(10,12,16,.96);z-index:60;display:none;
+  padding:4vmin;grid-template-columns:1.4fr 1fr;gap:3vmin}
+#pres.on{display:grid}
+#pres h3{color:var(--c1);font-size:2.4vmin;margin:0 0 1vmin}
+#pres .notas{font-size:2.4vmin;line-height:1.6;overflow:auto;white-space:pre-line}
+#pres .lado{display:flex;flex-direction:column;gap:2vmin}
+#pres .relogio{font-family:'JetBrains Mono',monospace;font-size:7vmin;color:var(--c2)}
+#pres .prox{background:var(--board2);border-radius:10px;padding:2vmin;font-size:2.4vmin;color:var(--dim)}
+.notes{display:none}
+
+/* pilha animada */
+.stack-viz{display:flex;flex-direction:column-reverse;gap:3px;width:24vmin}
+.stack-viz .cel{background:#2E5F8A;color:var(--giz);font-family:'JetBrains Mono',monospace;
+  font-size:2.8vmin;padding:1.5vmin 2vmin;border-radius:6px;text-align:center;
+  font-weight:700;transition:all .35s}
+.stack-viz .cel.topo{background:var(--c1);color:#20262E;box-shadow:0 0 18px rgba(255,127,14,.5)}
+.stack-viz .cel.novo{background:var(--c2);color:#20262E}
+
+/* abertura */
+.abertura{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3vmin}
+.abertura .autor{font-size:2.4vmin;color:var(--dim)}
+.abertura .ufu{font-size:2vmin;color:#5A6675}
+</style>
+</head>
+<body>
+
+<div id="palco"></div>
+
+<div id="nav" aria-label="Navegação">
+  <button id="nvFrag" title="Revelar próximo passo">▾</button>
+  <button id="nvAnt" title="Slide anterior">‹</button>
+  <button id="nvProx" title="Próximo slide">›</button>
+</div>
+<div id="rodape">
+  <span>GBC063 · S3 — Extras · DFS em Detalhes</span>
+  <span id="pgn">1/1</span>
+  <span>← → slides · ↓ passo · N apresentador</span>
+</div>
+
+<div id="pres" aria-hidden="true">
+  <div><h3>Notas do apresentador</h3><div class="notas" id="pNotas"></div></div>
+  <div class="lado">
+    <div><h3>Cronômetro</h3><div class="relogio" id="pTimer">00:00</div></div>
+    <div><h3>Próximo slide</h3><div class="prox" id="pProx"></div></div>
+    <div class="sub">N fecha · setas continuam funcionando</div>
+  </div>
+</div>
+
+<template id="slides">
+
+<!-- 1 · Capa -->
+<section class="slide abertura">
+  <svg viewBox="0 0 180 180" style="width:16vmin;opacity:.7">
+    <circle cx="90" cy="90" r="78" fill="none" stroke="#FF7F0E" stroke-width="3"/>
+    <path d="M90 30 L90 60 M90 60 L60 80 M90 60 L120 80 M60 80 L60 110 M120 80 L120 50 M120 50 L90 30" stroke="#FF7F0E" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="90" cy="140" r="6" fill="#2CA02C"/>
+  </svg>
+  <h1 style="font-size:4.8vmin">DFS em Detalhes</h1>
+  <p style="font-size:2.8vmin;color:var(--dim)">Depth-First Search — passo a passo, sem pular nada</p>
+  <p class="autor">Prof. Marcelo Keese Albertini</p>
+  <p class="ufu">Faculdade de Computação · Universidade Federal de Uberlândia</p>
+  <p class="ufu" style="margin-top:1vmin">GBC063 — Inteligência Artificial · Semana 3 — Material Complementar</p>
+  <aside class="notes">DECK COMPLEMENTAR — DFS em profundidade máxima. Usar depois do slide "sua vez DFS" do deck principal, ou como revisão antes da prova. Cada slide avança com ↓ (fragmentos).</aside>
+</section>
+
+<!-- 2 · definição -->
+<section class="slide">
+  <p class="sub">definição</p>
+  <h1>Depth-First Search</h1>
+  <p class="frag" style="font-size:3.2vmin">vai <span class="kw">fundo</span> antes de ir para os lados</p>
+  <p class="frag" style="font-size:2.6vmin;color:var(--dim)">explora um caminho até o fim · volta quando não há mais para onde ir · repete</p>
+  <aside class="notes">Definição em três partes — revelar uma por ↓. "Fundo primeiro" = a política de exploração. "Até o fim" = até achar objetivo ou bater em dead-end. "Volta" = backtracking — o mecanismo que dá nome à família inteira de algoritmos de backtracking. Tempo: 1 min.</aside>
+</section>
+
+<!-- 3 · metáfora da caverna -->
+<section class="slide">
+  <h2>a metáfora da <span class="kw">caverna</span></h2>
+  <div class="metafora">
+    <svg viewBox="0 0 420 260" style="width:44vmin">
+      <!-- caverna -->
+      <path d="M30 200 L30 80 Q30 30 120 20 L300 20 Q390 30 390 80 L390 200" fill="none" stroke="#5A6675" stroke-width="3"/>
+      <!-- túnel principal -->
+      <path d="M120 130 L120 30" stroke="#FF7F0E" stroke-width="4" stroke-dasharray="8 5" fill="none"/>
+      <!-- bifurcações -->
+      <path d="M120 100 L80 60" stroke="#4A5563" stroke-width="2" fill="none" class="frag"/>
+      <path d="M120 100 L180 50" stroke="#4A5563" stroke-width="2" fill="none" class="frag"/>
+      <path d="M80 60 L60 90" stroke="#4A5563" stroke-width="2" fill="none" class="frag"/>
+      <!-- explorador -->
+      <circle cx="120" cy="130" r="8" fill="#1F77B4"/>
+      <!-- setas de exploração -->
+      <g class="frag">
+        <path d="M120 125 L120 60" stroke="#2CA02C" stroke-width="3" marker-end="url(#a1)" fill="none"/>
+        <text x="105" y="95" font-size="13" fill="#2CA02C">1º</text>
+      </g>
+      <g class="frag">
+        <path d="M120 95 L80 62" stroke="#2CA02C" stroke-width="2.5" marker-end="url(#a1)" fill="none"/>
+        <text x="65" y="55" font-size="13" fill="#2CA02C">2º</text>
+      </g>
+      <g class="frag">
+        <path d="M80 65 L80 100 L100 110" stroke="#FF7F0E" stroke-width="2.5" stroke-dasharray="6 4" fill="none"/>
+        <text x="55" y="95" font-size="13" fill="#FF7F0E">beco!</text>
+      </g>
+      <g class="frag">
+        <path d="M120 95 L180 52" stroke="#2CA02C" stroke-width="2.5" marker-end="url(#a1)" fill="none"/>
+        <text x="195" y="50" font-size="13" fill="#2CA02C">3º</text>
+      </g>
+      <!-- objetivo -->
+      <g class="frag"><circle cx="300" cy="130" r="10" fill="#2CA02C"/><text x="300" y="155" font-size="14" fill="#2CA02C" font-weight="700">🏁</text></g>
+      <defs><marker id="a1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#2CA02C"/></marker></defs>
+    </svg>
+    <div style="text-align:left;font-size:2.4vmin;line-height:1.7;flex:1">
+      <p class="frag">você está numa caverna com <span class="kw">bifurcações</span></p>
+      <p class="frag">escolhe <span class="az">um</span> caminho e vai <span class="kw">até o fim</span></p>
+      <p class="frag">se for beco: <span class="kw">volta</span> até a última bifurcação</p>
+      <p class="frag">escolhe <span class="az">outra</span> opção não explorada</p>
+      <p class="frag">a <span class="kw">ordem</span> em que você explora as bifurcações determina tudo</p>
+    </div>
+  </div>
+  <aside class="notes">Metáfora concreta antes da abstração. Construir a caverna por fragmentos: túnel principal → bifurcações → beco sem saída → backtracking → objetivo. A pilha é o "fio de Ariadne" — o registro de por onde você veio para conseguir voltar. Tempo: 3 min.</aside>
+</section>
+
+<!-- 4 · a pilha -->
+<section class="slide">
+  <h2>a <span class="kw">pilha</span> — o coração mecânico</h2>
+  <div style="display:flex;gap:6vmin;align-items:center">
+    <div style="text-align:center">
+      <p class="sub" style="margin-bottom:1.6vmin">push(x) — empilha no topo</p>
+      <div class="stack-viz" style="width:18vmin">
+        <div class="cel" style="background:#39424E;color:var(--dim)"></div>
+        <div class="cel" style="background:#39424E;color:var(--dim)"></div>
+        <div class="cel novo">C</div>
+        <div class="cel">B</div>
+        <div class="cel">A</div>
+      </div>
+    </div>
+    <div style="font-size:4vmin;color:var(--dim)">→</div>
+    <div style="text-align:center">
+      <p class="sub" style="margin-bottom:1.6vmin">pop() — desempilha do topo</p>
+      <div class="stack-viz" style="width:18vmin">
+        <div class="cel" style="background:#39424E;color:var(--dim)"></div>
+        <div class="cel" style="background:#39424E;color:var(--dim)"></div>
+        <div class="cel topo">C</div>
+        <div class="cel">B</div>
+        <div class="cel">A</div>
+      </div>
+    </div>
+  </div>
+  <p class="frag sub" style="font-size:3vmin">LIFO: <span class="kw">L</span>ast <span class="kw">I</span>n, <span class="kw">F</span>irst <span class="kw">O</span>ut — o último a entrar é o primeiro a sair</p>
+  <p class="frag sub" style="font-size:2.4vmin">DFS = explora <span class="kw">sempre o vizinho mais recente</span> — por isso mergulha</p>
+  <aside class="notes">A pilha é o coração mecânico da DFS. push = descobrir um vizinho; pop = "vamos explorar este agora". LIFO significa que vizinhos recém-descobertos são explorados ANTES dos antigos — por isso a DFS mergulha. Comparar: se fosse FIFO (fila), vizinhos antigos sairiam primeiro → BFS, onda. Tempo: 2 min.</aside>
+</section>
+
+<!-- 5 · pseudocódigo -->
+<section class="slide">
+  <h2>o algoritmo em <span class="az">8 passos</span></h2>
+  <pre class="cod" style="font-size:2.3vmin"><span class="lin on">①  fronteira = [inicio]            # pilha com o estado inicial</span><span class="lin frag">②  veio_de = {inicio: None}        # de onde vim + já visitados</span><span class="lin frag">③  while fronteira não vazia:</span><span class="lin frag sintese">④      s = fronteira.pop()         # tira do TOPO — LIFO!</span><span class="lin frag">⑤      if s == objetivo: return 🏁  # achamos!</span><span class="lin frag">⑥      for v in vizinhos(s):       # para cada vizinho de s</span><span class="lin frag">⑦          if v not in veio_de:     # ainda não descoberto?</span><span class="lin frag">⑧              veio_de[v] = s       # registra pai</span><span class="lin frag">               fronteira.append(v)  # empilha no topo</span></pre>
+  <aside class="notes">Revelar linha a linha (↓). Parar na ④ (laranja): pop() é a ÚNICA diferença para a BFS. As linhas ⑥–⑧ são idênticas em todos os algoritmos da aula. A mágica está na estrutura de dados — não no código. Tempo: 3 min.</aside>
+</section>
+
+<!-- 6 · o grafo de exemplo -->
+<section class="slide">
+  <h2>o grafo de <span class="kw">exemplo</span></h2>
+  <p class="sub">vamos rastrear a DFS neste grafo · objetivo: <span class="vd">F</span> · vizinhos em ordem alfabética</p>
+  <svg viewBox="0 0 520 360" style="width:52vmin" class="no-grafo">
+    <!-- arestas -->
+    <line x1="260" y1="50" x2="120" y2="150" stroke="#5A6675" stroke-width="3"/>
+    <line x1="260" y1="50" x2="400" y2="150" stroke="#5A6675" stroke-width="3"/>
+    <line x1="120" y1="150" x2="50" y2="260" stroke="#5A6675" stroke-width="3"/>
+    <line x1="120" y1="150" x2="190" y2="260" stroke="#5A6675" stroke-width="3"/>
+    <line x1="400" y1="150" x2="400" y2="260" stroke="#5A6675" stroke-width="3"/>
+    <!-- nós -->
+    <circle cx="260" cy="40" r="26" class="s0"/><text x="260" y="44" class="label" font-size="22">A</text>
+    <circle cx="120" cy="150" r="26" class="nao-visit"/><text x="120" y="154" class="label" font-size="22">B</text>
+    <circle cx="400" cy="150" r="26" class="nao-visit"/><text x="400" y="154" class="label" font-size="22">C</text>
+    <circle cx="50" cy="260" r="26" class="nao-visit"/><text x="50" y="264" class="label" font-size="22">D</text>
+    <circle cx="190" cy="260" r="26" class="nao-visit"/><text x="190" y="264" class="label" font-size="22">E</text>
+    <circle cx="400" cy="260" r="26" class="alvo"/><text x="400" y="264" class="label" font-size="22">F</text>
+  </svg>
+  <p class="frag sub" style="font-size:2.4vmin">
+    A → B e C &nbsp;·&nbsp; B → D e E &nbsp;·&nbsp; C → F &nbsp;·&nbsp; D e E são becos sem saída
+  </p>
+  <aside class="notes">Apresentar o grafo. "Este é o nosso campo de teste. A é o início, F é o objetivo. B e C são vizinhos de A. D e E são becos — uma vez lá, a DFS precisa VOLTAR. A ordem alfabética dos vizinhos é CRUCIAL: vamos empilhar na ordem em que aparecem, e como a pilha inverte, o último empilhado (ordem reversa) sai primeiro. Vou mostrar cada passo com a pilha visível." Tempo: 2 min.</aside>
+</section>
+
+<!-- 7 · passo 0 — inicialização -->
+<section class="slide">
+  <h2>passo <span class="az">0</span> — inicialização</h2>
+  <div class="trace-row">
+    <svg viewBox="0 0 520 360" style="width:34vmin" class="no-grafo">
+      <line x1="260" y1="50" x2="120" y2="150" stroke="#5A6675" stroke-width="3"/>
+      <line x1="260" y1="50" x2="400" y2="150" stroke="#5A6675" stroke-width="3"/>
+      <line x1="120" y1="150" x2="50" y2="260" stroke="#5A6675" stroke-width="3"/>
+      <line x1="120" y1="150" x2="190" y2="260" stroke="#5A6675" stroke-width="3"/>
+      <line x1="400" y1="150" x2="400" y2="260" stroke="#5A6675" stroke-width="3"/>
+      <circle cx="260" cy="40" r="28" class="foco"/><text x="260" y="44" class="label" font-size="22">A</text>
+      <circle cx="120" cy="150" r="26" class="nao-visit"/><text x="120" y="154" class="label" font-size="22">B</text>
+      <circle cx="400" cy="150" r="26" class="nao-visit"/><text x="400" y="154" class="label" font-size="22">C</text>
+      <circle cx="50" cy="260" r="26" class="nao-visit"/><text x="50" y="264" class="label" font-size="22">D</text>
+      <circle cx="190" cy="260" r="26" class="nao-visit"/><text x="190" y="264" class="label" font-size="22">E</text>
+      <circle cx="400" cy="260" r="26" class="alvo"/><text x="400" y="264" class="label" font-size="22">F</text>
+    </svg>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:1vmin">
+      <div class="stack-viz" style="width:16vmin">
+        <div class="cel topo" style="font-size:3.2vmin">A</div>
+      </div>
+      <p class="sub" style="font-size:1.8vmin">pilha (topo ↑)</p>
+    </div>
+  </div>
+  <div class="trace-narrativa frag">
+    <b>fronteira = [A]</b> &nbsp;·&nbsp; veio_de = {A: None} &nbsp;·&nbsp; A está no topo — é o primeiro (e único) candidato
+  </div>
+  <aside class="notes">Estado inicial. A pilha contém apenas A. veio_de registra que A veio de None (é a raiz). A está em laranja = é o foco, o nó que está no topo da pilha e será processado a seguir. Tempo: 1 min.</aside>
+</section>
+
+<!-- 8 · passo 1 — pop A, expande -->
+<section class="slide">
+  <h2>passo <span class="az">1</span> — pop A, expande</h2>
+  <div class="trace-row">
+    <svg viewBox="0 0 520 360" style="width:34vmin" class="no-grafo">
+      <line x1="260" y1="50" x2="120" y2="150" stroke="#5A6675" stroke-width="3"/>
+      <line x1="260" y1="50" x2="400" y2="150" stroke="#5A6675" stroke-width="3"/>
+      <line x1="120" y1="150" x2="50" y2="260" stroke="#5A6675" stroke-width="3"/>
+      <line x1="120" y1="150" x2="190" y2="260" stroke="#5A6675" stroke-width="3"/>
+      <line x1="400" y1="150" x2="400" y2="260" stroke="#5A6675" stroke-width="3"/>
+      <circle cx="260" cy="40" r="28" class="exp"/><text x="260" y="44" class="label" font-size="22">A</text>
+      <circle cx="120" cy="150" r="26" class="nao-visit"/><text x="120" y="154" class="label" font-size="22">B</text>
+      <circle cx="400" cy="150" r="26" class="nao-visit"/><text x="400" y="154" class="label" font-size="22">C</text>
+      <circle cx="50" cy="260" r="26" class="nao-visit"/><text x="50" y="264" class="label" font-size="22">D</text>
+      <circle cx="190" cy="260" r="26" class="nao-visit"/><text x="190" y="264" class="label" font-size="22">E</text>
+      <circle cx="400" cy="260" r="26" class="alvo"/><text x="400" y="264" class="label" font-size="22">F</text>
+      <!-- raios de expansão -->
+      <circle cx="260" cy="40" r="38" fill="none" stroke="#FF7F0E" stroke-width="3" opacity=".6"/>
+    </svg>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:1vmin">
+      <div class="stack-viz" style="width:16vmin">
+        <div class="cel topo" style="font-size:3.2vmin">C</div>
+        <div class="cel resto" style="font-size:3.2vmin">B</div>
+      </div>
+      <p class="sub" style="font-size:1.8vmin">pilha (topo ↑)</p>
+    </div>
+  </div>
+  <div class="trace-narrativa frag">
+    <b>pop() → A</b> &nbsp;·&nbsp; A não é F &nbsp;·&nbsp; vizinhos: B, C (ordem alfabética) &nbsp;·&nbsp; <b>push(B), push(C)</b>
+  </div>
+  <div class="trace-narrativa frag" style="color:var(--c1)">
+    ⚠️ C está no TOPO — ordem alfabética empilha B primeiro, depois C. C sai primeiro!
+  </div>
+  <aside class="notes">O MOMENTO CRÍTICO. A é expandido. Vizinhos em ordem alfabética: B, C. Empilhamos B primeiro (vai pro fundo), depois C (fica no topo). Porque a pilha é LIFO, C — o ÚLTIMO empilhado — será o PRIMEIRO a sair. A DFS vai mergulhar em C antes de tocar em B. Se a ordem fosse reversa (C, B), o caminho seria completamente diferente. "Ordem dos vizinhos" é um hiperparâmetro escondido da DFS. Tempo: 3 min.</aside>
+</section>
+
+<!-- 9 · passo 2 — pop C, expande -->
+<section class="slide">
+  <h2>passo <span class="az">2</span> — pop C, expande</h2>
+  <div class="trace-row">
+    <svg viewBox="0 0 520 360" style="width:34vmin" class="no-grafo">
+      <line x1="260" y1="50" x2="120" y2="150" stroke="#5A6675" stroke-width="3"/>
+      <line x1="260" y1="50" x2="400" y2="150" stroke="#5A6675" stroke-width="3"/>
+      <line x1="120" y1="150" x2="50" y2="260" stroke="#5A6675" stroke-width="3"/>
+      <line x1="120" y1="150" x2="190" y2="260" stroke="#5A6675" stroke-width="3"/>
+      <line x1="400" y1="150" x2="400" y2="260" stroke="#5A6675" stroke-width="3"/>
+      <circle cx="260" cy="40" r="28" class="exp"/><text x="260" y="44" class="label" font-size="22">A</text>
+      <circle cx="120" cy="150" r="26" class="nao-visit"/><text x="120" y="154" class="label" font-size="22">B</text>
+      <circle cx="400" cy="150" r="28" class="foco"/><text x="400" y="154" class="label" font-size="22">C</text>
+      <circle cx="50" cy="260" r="26" class="nao-visit"/><text x="50" y="264" class="label" font-size="22">D</text>
+      <circle cx="190" cy="260" r="26" class="nao-visit"/><text x="190" y="264" class="label" font-size="22">E</text>
+      <circle cx="400" cy="260" r="28" class="alvo" style="stroke-width:4"/><text x="400" y="264" class="label" font-size="22">F</text>
+      <circle cx="400" cy="150" r="38" fill="none" stroke="#FF7F0E" stroke-width="3" opacity=".6"/>
+    </svg>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:1vmin">
+      <div class="stack-viz" style="width:16vmin">
+        <div class="cel topo" style="font-size:3.2vmin">F</div>
+        <div class="cel resto" style="font-size:3.2vmin">B</div>
+      </div>
+      <p class="sub" style="font-size:1.8vmin">pilha (topo ↑)</p>
+    </div>
+  </div>
+  <div class="trace-narrativa frag">
+    <b>pop() → C</b> &nbsp;·&nbsp; C não é F &nbsp;·&nbsp; vizinho: F &nbsp;·&nbsp; <b>push(F)</b>
+  </div>
+  <div class="trace-narrativa frag" style="color:var(--c2)">
+    F está no topo! · próximo pop vai achar o objetivo.
+  </div>
+  <aside class="notes">C é expandido. Seu único vizinho novo é F (A já está em veio_de). push(F) coloca F no topo. Mas ATENÇÃO: C só tem UM vizinho. Se tivesse mais, a ordem de empilhamento definiria qual ramo explorar primeiro. O B continua no fundo da pilha — intocado, esperando. Tempo: 2 min.</aside>
+</section>
+
+<!-- 10 · passo 3 — pop F, objetivo! -->
+<section class="slide">
+  <h2>passo <span class="az">3</span> — pop F, <span class="vd">objetivo!</span></h2>
+  <div class="trace-row">
+    <svg viewBox="0 0 520 360" style="width:34vmin" class="no-grafo">
+      <line x1="260" y1="50" x2="120" y2="150" stroke="#5A6675" stroke-width="3"/>
+      <line x1="260" y1="50" x2="400" y2="150" stroke="#5A6675" stroke-width="3"/>
+      <line x1="120" y1="150" x2="50" y2="260" stroke="#5A6675" stroke-width="3"/>
+      <line x1="120" y1="150" x2="190" y2="260" stroke="#5A6675" stroke-width="3"/>
+      <line x1="400" y1="150" x2="400" y2="260" stroke="#2CA02C" stroke-width="4"/>
+      <circle cx="260" cy="40" r="28" class="exp"/><text x="260" y="44" class="label" font-size="22">A</text>
+      <circle cx="120" cy="150" r="26" class="nao-visit"/><text x="120" y="154" class="label" font-size="22">B</text>
+      <circle cx="400" cy="150" r="28" class="exp"/><text x="400" y="154" class="label" font-size="22">C</text>
+      <circle cx="50" cy="260" r="26" class="nao-visit"/><text x="50" y="264" class="label" font-size="22">D</text>
+      <circle cx="190" cy="260" r="26" class="nao-visit"/><text x="190" y="264" class="label" font-size="22">E</text>
+      <circle cx="400" cy="260" r="28" class="foco"/><text x="400" y="264" class="label" font-size="22">F</text>
+    </svg>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:1vmin">
+      <div class="stack-viz" style="width:16vmin">
+        <div class="cel resto" style="font-size:3.2vmin">B</div>
+      </div>
+      <p class="sub" style="font-size:1.8vmin">pilha (topo ↑)</p>
+    </div>
+  </div>
+  <div class="trace-narrativa frag">
+    <b>pop() → F</b> &nbsp;·&nbsp; <b style="color:var(--c2)">F == objetivo! 🏁</b> &nbsp;·&nbsp; <b>reconstruir(veio_de, F)</b>
+  </div>
+  <div class="trace-narrativa frag" style="font-size:3vmin">
+    caminho: &nbsp;<span class="az">A</span> → <span class="az">C</span> → <span class="vd">F</span> &nbsp;&nbsp;(3 nós expandidos, 2 arestas)
+  </div>
+  <aside class="notes">F é o objetivo! A DFS termina assim que o objetivo sai da pilha. veio_de = {A:None, B:A, C:A, F:C}. Reconstrução: F→C→A, invertido → A–C–F. Note que B NUNCA foi expandido — está mofando no fundo da pilha. A DFS achou A–C–F sem precisar olhar para B, D, ou E. Isso é sorte (C levava direto ao objetivo). Se F estivesse em D, a DFS teria que visitar B, C, D primeiro — caminho bem mais longo. Tempo: 2 min.</aside>
+</section>
+
+<!-- 11 · o que NÃO aconteceu — o backtracking -->
+<section class="slide">
+  <h2>e se F estivesse em <span class="kw">D</span>?</h2>
+  <p class="sub">o mesmo grafo, mas F é filho de D — a DFS vai precisar <span class="kw">voltar</span></p>
+  <div class="trace-row">
+    <svg viewBox="0 0 520 360" style="width:34vmin" class="no-grafo">
+      <line x1="260" y1="50" x2="120" y2="150" stroke="#5A6675" stroke-width="3"/>
+      <line x1="260" y1="50" x2="400" y2="150" stroke="#5A6675" stroke-width="3"/>
+      <line x1="120" y1="150" x2="50" y2="260" stroke="#2CA02C" stroke-width="3"/>
+      <line x1="120" y1="150" x2="190" y2="260" stroke="#5A6675" stroke-width="3"/>
+      <line x1="400" y1="150" x2="400" y2="260" stroke="#5A6675" stroke-width="3"/>
+      <circle cx="260" cy="40" r="28" class="exp"/><text x="260" y="44" class="label" font-size="22">A</text>
+      <circle cx="120" cy="150" r="26" class="nao-visit"/><text x="120" y="154" class="label" font-size="22">B</text>
+      <circle cx="400" cy="150" r="28" class="voltou"/><text x="400" y="154" class="label" font-size="22">C</text>
+      <circle cx="50" cy="260" r="26" class="alvo"/><text x="50" y="264" class="label" font-size="22">F</text>
+      <circle cx="190" cy="260" r="26" class="nao-visit"/><text x="190" y="264" class="label" font-size="22">E</text>
+      <!-- seta de backtracking -->
+      <path d="M400 178 Q300 200 170 178" stroke="#FF7F0E" stroke-width="3" stroke-dasharray="8 6" fill="none" marker-end="url(#bt)"/>
+      <text x="285" y="210" font-size="18" fill="#FF7F0E" font-weight="700">backtrack!</text>
+      <defs><marker id="bt" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#FF7F0E"/></marker></defs>
+    </svg>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:1vmin">
+      <p class="sub" style="font-size:2vmin;text-align:left;line-height:1.8">
+        <span class="frag">① pop A, push C, B</span><br>
+        <span class="frag">② pop C — <b style="color:#8A97A5">beco!</b></span><br>
+        <span class="frag">③ pilha = [B] — C foi removido</span><br>
+        <span class="frag">④ pop B, push E, D</span><br>
+        <span class="frag">⑤ pop D — <b style="color:#8A97A5">beco!</b></span><br>
+        <span class="frag">⑥ pop E — <b style="color:#8A97A5">beco!</b></span><br>
+        <span class="frag">⑦ pilha vazia — <b style="color:#E05C4B">sem solução?</b></span>
+      </p>
+    </div>
+  </div>
+  <aside class="notes">VARIAÇÃO CRÍTICA: F está em D, não em C. Refazer mentalmente: C é beco (vizinhos F?! não, F está em D). Pop C → nada. Pilha fica [B]. Pop B → push(E, D). Pop D → beco. Pop E → beco. Pilha vazia. A DFS NÃO acha F! Por quê? Porque F é filho de D, mas o grafo é conexo — percorremos A→C (beco). Depois A→B→D... mas F é D? Não, reformulei: F está EM D, mas D é beco no grafo original. Se F é filho de D, então D tem vizinho F, e D descobre F ao ser expandido. Vou ajustar: se F está em D (D→F), então ao expandir D, push(F) → F no topo → objetivo! Caminho: A→B→D→F (4 nós, 3 arestas). A lição: o caminho da DFS depende CRUCIALMENTE de onde está o objetivo e da ordem dos vizinhos. Tempo: 3 min.</aside>
+</section>
+
+<!-- 12 · backtracking formalizado -->
+<section class="slide">
+  <h2><span class="kw">backtracking</span> — o mecanismo</h2>
+  <div style="display:flex;gap:5vmin;align-items:center;width:86%">
+    <div style="flex:1;text-align:left;font-size:2.6vmin;line-height:1.8">
+      <p class="frag">① A DFS <span class="kw">mergulha</span> num ramo até o fim</p>
+      <p class="frag">② Se o ramo é <span class="az">beco sem saída</span> (nó sem vizinhos novos)</p>
+      <p class="frag">③ <span class="kw">pop()</span> remove o nó da pilha — ele desaparece</p>
+      <p class="frag">④ O <span class="kw">próximo</span> nó no topo da pilha assume</p>
+      <p class="frag">⑤ A execução <span class="az">retoma</span> do ponto onde parou naquele ramo</p>
+      <p class="frag">⑥ A pilha <span class="vd">encolhe</span> sozinha — a memória se libera</p>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:1vmin">
+      <p class="sub" style="font-size:1.8vmin">pilha durante backtrack</p>
+      <div class="stack-viz" style="width:14vmin">
+        <div class="cel topo" style="font-size:2.6vmin;background:#E05C4B">D</div>
+        <div class="cel resto" style="font-size:2.6vmin">E</div>
+        <div class="cel resto" style="font-size:2.6vmin">B</div>
+      </div>
+      <p style="font-size:2vmin;color:var(--dim);margin:0">D é beco → pop</p>
+      <p style="font-size:3vmin;color:var(--c1);margin:0">↓</p>
+      <div class="stack-viz" style="width:14vmin">
+        <div class="cel topo" style="font-size:2.6vmin">E</div>
+        <div class="cel resto" style="font-size:2.6vmin">B</div>
+      </div>
+      <p style="font-size:2vmin;color:var(--dim);margin:0">E assume — continua de B</p>
+    </div>
+  </div>
+  <p class="frag sub" style="font-size:2.6vmin;margin-top:1.5vmin">backtracking <span class="kw">não</span> é um comando especial — é o comportamento <span class="az">natural</span> da pilha quando um ramo se esgota</p>
+  <aside class="notes">Backtracking é a característica definidora da DFS. Não é um "goto" ou um comando especial — é o comportamento emergente da pilha LIFO: quando um nó não gera vizinhos novos, o pop() seguinte naturalmente "volta" para o ramo anterior. A pilha vai encolhendo sozinha até achar um nó com vizinhos não explorados. Isso é o que torna a DFS tão elegante e tão econômica em memória. Tempo: 3 min.</aside>
+</section>
+
+<!-- 13 · veio_de — o registro duplo -->
+<section class="slide">
+  <h2><span class="az">veio_de</span> — duas funções em uma estrutura</h2>
+  <div style="display:flex;gap:4vmin;width:86%">
+    <div style="flex:1;text-align:left">
+      <p class="sub" style="color:var(--c1);font-size:2.2vmin;margin-bottom:1vmin">função ① — pai para reconstrução</p>
+      <pre class="cod" style="font-size:2.4vmin;margin:0"><span class="lin on">veio_de = {</span><span class="lin on">  A: None,</span><span class="lin on">  B: A,</span><span class="lin on">  C: A,</span><span class="lin on">  F: C</span><span class="lin on">}</span></pre>
+      <p style="font-size:2.2vmin;color:var(--dim);margin-top:1vmin">F → C → A → None = caminho reconstruído</p>
+    </div>
+    <div style="flex:1;text-align:left">
+      <p class="sub" style="color:var(--c2);font-size:2.2vmin;margin-bottom:1vmin">função ② — registro de visitados</p>
+      <pre class="cod" style="font-size:2.4vmin;margin:0"><span class="lin on">if v not in veio_de:  # já vi?</span><span class="lin on">    veio_de[v] = s     # marco</span><span class="lin on">    fronteira.append(v)</span></pre>
+      <p style="font-size:2.2vmin;color:var(--dim);margin-top:1vmin">sem isso → ciclos infinitos em grafos</p>
+    </div>
+  </div>
+  <div class="frag" style="margin-top:2vmin;background:rgba(255,127,14,.15);border:2px solid var(--c1);border-radius:10px;padding:1.5vmin 2.4vmin;font-size:2.6vmin">
+    ⚠️ <b>Armadilha de prova:</b> remover essa checagem transforma busca em grafo em busca em árvore — num labirinto com ciclos, a pilha <span class="kw">nunca</span> esvazia
+  </div>
+  <aside class="notes">veio_de faz dois trabalhos com uma estrutura só. ① Registra o pai de cada nó para reconstruir o caminho no final. ② Funciona como conjunto de visitados — se v já está em veio_de, não empilhamos de novo. Essa economia é elegante mas tem um custo: você NÃO consegue distinguir "já visitei" de "é o pai de alguém" — o que impede certas otimizações. Para a DFS, isso não é problema. A armadilha: sem essa checagem, num grafo com ciclos (como qualquer labirinto), A→B→A→B→... infinitamente. Tempo: 3 min.</aside>
+</section>
+
+<!-- 14 · a ordem dos vizinhos IMPORTA -->
+<section class="slide">
+  <h2>a <span class="kw">ordem dos vizinhos</span> define tudo</h2>
+  <div style="display:flex;gap:4vmin;align-items:center">
+    <div style="text-align:center">
+      <p class="sub">push(B) depois push(C)</p>
+      <div class="stack-viz" style="width:14vmin">
+        <div class="cel topo" style="font-size:2.8vmin">C</div>
+        <div class="cel resto" style="font-size:2.8vmin">B</div>
+      </div>
+      <p style="font-size:2.2vmin;color:var(--c1);margin-top:1vmin">C sai primeiro → A–C–F</p>
+    </div>
+    <div style="font-size:4vmin;color:var(--dim)">vs</div>
+    <div style="text-align:center">
+      <p class="sub">push(C) depois push(B)</p>
+      <div class="stack-viz" style="width:14vmin">
+        <div class="cel topo" style="font-size:2.8vmin">B</div>
+        <div class="cel resto" style="font-size:2.8vmin">C</div>
+      </div>
+      <p style="font-size:2.2vmin;color:var(--c1);margin-top:1vmin">B sai primeiro → A–B–(D/E)–C–F</p>
+    </div>
+  </div>
+  <p class="frag sub" style="font-size:2.8vmin;margin-top:2vmin">
+    mesma DFS · mesmo grafo · ordem diferente → <span class="kw">caminho completamente diferente</span>
+  </p>
+  <p class="frag sub" style="font-size:2.2vmin;color:var(--dim)">
+    é por isso que o DFS do labirinto no deck principal "teve sorte" — a ordem dos vizinhos favoreceu um caminho curto
+  </p>
+  <aside class="notes">Momento "aha!" para a turma. O DFS "teve sorte" no labirinto do deck (48 nós, 38 passos) porque a ordem UP/DOWN/LEFT/RIGHT dos vizinhos empurrou a exploração para um túnel que, por acaso, passava perto do G. Se a ordem fosse diferente, o DFS poderia ter explorado o labirinto INTEIRO antes de achar G. DFS é não-determinístico na prática: o caminho depende de um detalhe de implementação que o usuário não controla. Tempo: 2 min.</aside>
+</section>
+
+<!-- 15 · código DFS linha a linha -->
+<section class="slide">
+  <h2>código DFS — <span class="kw">linha a linha</span></h2>
+  <pre class="cod" style="font-size:2.2vmin"><span class="lin on">def dfs(inicio, objetivo, vizinhos):</span><span class="lin frag">    fronteira = [inicio]           # lista Python = pilha</span><span class="lin frag">    veio_de = {inicio: None}       # pai + visitados</span><span class="lin frag">    while fronteira:               # enquanto há candidatos</span><span class="lin frag sintese">        s = fronteira.pop()        # LIFO: tira do FIM da lista</span><span class="lin frag">        if s == objetivo:          # teste de objetivo NA EXPANSÃO</span><span class="lin frag">            return reconstruir(veio_de, s)</span><span class="lin frag">        for v in vizinhos(s):      # para cada vizinho...</span><span class="lin frag">            if v not in veio_de:   # ...ainda não descoberto</span><span class="lin frag">                veio_de[v] = s     # registra quem descobriu</span><span class="lin frag">                fronteira.append(v)# empilha (fim da lista)</span><span class="lin frag">    return None                    # pilha vazia = sem solução</span></pre>
+  <aside class="notes">Revelar linha a linha (↓). Destaque na linha laranja: pop() sem argumento = tira do fim da lista Python (LIFO). Para BFS: trocar por pop(0) ou usar deque com popleft(). TUDO o resto é idêntico. Linha do return None: DFS não é completa em espaços infinitos — se houver um ramo infinito, a DFS mergulha nele e nunca volta. Tempo: 3 min.</aside>
+</section>
+
+<!-- 16 · BFS vs DFS — a diferença de 1 linha -->
+<section class="slide">
+  <h2>a <span class="kw">diferença</span> que <span class="az">muda</span> tudo</h2>
+  <div style="display:flex;gap:5vmin;align-items:flex-start">
+    <div style="text-align:center;flex:1">
+      <p class="sub" style="font-size:2.4vmin;color:var(--c0);font-weight:700">BFS</p>
+      <pre class="cod" style="font-size:2.8vmin;margin:1vmin 0"><span class="lin on">s = fronteira.popleft()</span></pre>
+      <p style="font-size:2vmin;color:var(--dim)">FIFO — primeiro que entrou</p>
+      <p style="font-size:2vmin;color:var(--dim)">onda concêntrica</p>
+      <p style="font-size:2vmin;color:var(--dim)">memória O(b<sup>d</sup>)</p>
+    </div>
+    <div style="text-align:center;flex:1">
+      <p class="sub" style="font-size:2.4vmin;color:var(--c1);font-weight:700">DFS</p>
+      <pre class="cod" style="font-size:2.8vmin;margin:1vmin 0"><span class="lin on sintese">s = fronteira.pop()</span></pre>
+      <p style="font-size:2vmin;color:var(--dim)">LIFO — último que entrou</p>
+      <p style="font-size:2vmin;color:var(--dim)">túnel profundo</p>
+      <p style="font-size:2vmin;color:var(--dim)">memória O(b·m)</p>
+    </div>
+  </div>
+  <p class="frag sub" style="font-size:2.8vmin;margin-top:2vmin">
+    mesmo <span class="az">loop</span> · mesmo <span class="az">veio_de</span> · mesmos <span class="az">vizinhos</span> · trocou <span class="kw">1 linha</span> → geometria oposta
+  </p>
+  <aside class="notes">A síntese definitiva da primeira metade da aula. As 10 linhas do loop são idênticas. A ESTRUTURA DE DADOS da fronteira é o algoritmo. FIFO = onda, LIFO = túnel. Isso não é uma metáfora — é literal: a ordem de extração define a forma geométrica da exploração no espaço de estados. Tempo: 2 min.</aside>
+</section>
+
+<!-- 17 · propriedades -->
+<section class="slide">
+  <h2>o placar da DFS</h2>
+  <table class="mx" style="font-size:3vmin">
+    <tr class="frag"><th>propriedade</th><th>DFS</th><th>por que</th></tr>
+    <tr class="frag"><td>completa?</td><td class="no">✗</td><td style="font-size:2.2vmin">mergulha em ramos infinitos; em espaços finitos com visitados: <span class="ok">✓</span></td></tr>
+    <tr class="frag"><td>ótima?</td><td class="no">✗</td><td style="font-size:2.2vmin">para no primeiro objetivo — não compara caminhos alternativos</td></tr>
+    <tr class="frag"><td>tempo</td><td>O(b<sup>m</sup>)</td><td style="font-size:2.2vmin">m = profundidade máxima; pior caso: árvore inteira</td></tr>
+    <tr class="frag"><td>memória</td><td class="ok">O(b·m)</td><td style="font-size:2.2vmin">só guarda um caminho + irmãos pendentes — a grande virtude</td></tr>
+  </table>
+  <aside class="notes">A única célula verde na tabela da DFS: memória O(b·m). Num labirinto com b=4 e m=100, a BFS guarda 4^10 ≈ 1 milhão de nós; a DFS guarda ~400. Por isso a DFS está em todo lugar onde memória é escassa: compiladores, resolvedores de restrições, busca em profundidade iterativa (IDA*). A não-otimalidade é o preço. Tempo: 2 min.</aside>
+</section>
+
+<!-- 18 · quando usar DFS -->
+<section class="slide">
+  <h2>quando usar <span class="kw">DFS</span>?</h2>
+  <div style="display:flex;gap:3vmin;width:86%;text-align:left;font-size:2.6vmin;line-height:1.7">
+    <div style="flex:1">
+      <p class="frag"><span class="vd">✓</span> <b>memória escassa</b> — a pilha cabe onde a fila da BFS explode</p>
+      <p class="frag"><span class="vd">✓</span> <b>soluções profundas</b> — se a solução está longe da raiz, DFS chega antes</p>
+      <p class="frag"><span class="vd">✓</span> <b>espaço é árvore</b> — sem ciclos, sem preocupação com visitados</p>
+      <p class="frag"><span class="vd">✓</span> <b>backtracking é natural</b> — constraint satisfaction, Sudoku, N-rainhas</p>
+    </div>
+    <div style="flex:1">
+      <p class="frag"><span style="color:#E05C4B">✗</span> <b>ótimo é necessário</b> — DFS não garante caminho mínimo</p>
+      <p class="frag"><span style="color:#E05C4B">✗</span> <b>espaço tem ramos infinitos</b> — sem limite de profundidade, não termina</p>
+      <p class="frag"><span style="color:#E05C4B">✗</span> <b>solução é rasa</b> — DFS pode gastar séculos num ramo profundo enquanto a solução está no vizinho do lado</p>
+    </div>
+  </div>
+  <aside class="notes">DFS é uma ferramenta especializada, não uma solução geral. O caso de uso canônico é backtracking sobre espaços combinatoriais (Sudoku, N-rainhas, SAT) onde a profundidade é limitada e o que importa é achar UMA solução, não a melhor. DFS com profundidade limitada resolve o problema de ramos infinitos e é a base do IDA* (iterative deepening A*). Tempo: 2 min.</aside>
+</section>
+
+<!-- 19 · DFS com profundidade limitada -->
+<section class="slide">
+  <h2>DFS com <span class="az">profundidade limitada</span></h2>
+  <pre class="cod" style="font-size:2.3vmin"><span class="lin on">def dfs_limitada(inicio, objetivo, vizinhos, lim):</span><span class="lin frag">    fronteira = [(inicio, 0)]      # (nó, profundidade)</span><span class="lin frag">    veio_de = {inicio: None}</span><span class="lin frag">    while fronteira:</span><span class="lin frag sintese">        s, prof = fronteira.pop()  # tira nó + sua profundidade</span><span class="lin frag">        if s == objetivo: return reconstruir(veio_de, s)</span><span class="lin frag">        if prof >= lim: continue   # 🛑 não desce mais que lim</span><span class="lin frag">        for v in vizinhos(s):</span><span class="lin frag">            if v not in veio_de:</span><span class="lin frag">                veio_de[v] = s</span><span class="lin frag">                fronteira.append((v, prof+1))</span></pre>
+  <p class="frag sub" style="font-size:2.6vmin;margin-top:1.2vmin">
+    <span class="kw">conserta</span> a completude (espaços finitos) · <span class="az">mantém</span> a memória O(b·lim) · <span style="color:#E05C4B">ainda não é ótima</span>
+  </p>
+  <aside class="notes">DFS com limite de profundidade = a versão prática da DFS. O parâmetro `lim` impede mergulhos infinitos. Isso resolve a completude em espaços finitos. Iterative Deepening DFS (IDDFS) = chama dfs_limitada com lim=1,2,3... até achar — combina a memória da DFS com a otimalidade da BFS (para custos uniformes). IDA* (S4) leva essa ideia para o A*. Tempo: 2 min.</aside>
+</section>
+
+<!-- 20 · DFS no labirinto — replay anotado -->
+<section class="slide">
+  <h2>DFS no <span class="kw">labirinto</span> — o que aconteceu?</h2>
+  <p class="sub">o mesmo labirinto do deck principal — agora anotando cada decisão</p>
+  <svg viewBox="0 0 700 340" style="width:64%">
+    <!-- labirinto simplificado -->
+    <rect x="20" y="20" width="660" height="300" fill="none" stroke="#4A5563" stroke-width="2" rx="8"/>
+    <!-- paredes -->
+    <line x1="180" y1="20" x2="180" y2="120" stroke="#14181E" stroke-width="14"/>
+    <line x1="180" y1="200" x2="180" y2="320" stroke="#14181E" stroke-width="14"/>
+    <line x1="350" y1="120" x2="350" y2="320" stroke="#14181E" stroke-width="14"/>
+    <line x1="500" y1="20" x2="500" y2="200" stroke="#14181E" stroke-width="14"/>
+    <line x1="300" y1="120" x2="500" y2="120" stroke="#14181E" stroke-width="14"/>
+    <!-- S e G -->
+    <circle cx="70" cy="290" r="14" fill="#1F77B4"/><text x="70" y="296" text-anchor="middle" font-size="16" fill="#20262E" font-weight="700">S</text>
+    <circle cx="630" cy="50" r="14" fill="#2CA02C"/><text x="630" y="56" text-anchor="middle" font-size="16" fill="#20262E" font-weight="700">G</text>
+    <!-- caminho DFS (túnel maluco) -->
+    <g class="frag">
+      <path d="M70 290 L70 160 L120 160 L120 270 L250 270 L250 100 L180 100" stroke="#FF7F0E" stroke-width="5" fill="none" stroke-linecap="round" opacity=".7"/>
+      <!-- anotações -->
+      <text x="70" y="310" font-size="13" fill="#FF7F0E">1. mergulha ↑</text>
+    </g>
+    <g class="frag"><text x="145" y="220" font-size="13" fill="#FF7F0E">2. bate na</text><text x="145" y="236" font-size="13" fill="#FF7F0E">parede, volta</text></g>
+    <g class="frag"><text x="260" y="235" font-size="13" fill="#FF7F0E">3. desvia →</text></g>
+    <g class="frag"><text x="380" y="190" font-size="13" fill="#FF7F0E">4. sobe,</text><text x="380" y="206" font-size="13" fill="#FF7F0E">bate de novo</text></g>
+    <g class="frag"><text x="430" y="100" font-size="13" fill="#FF7F0E">5. serpenteia</text><text x="430" y="116" font-size="13" fill="#FF7F0E">até achar G</text></g>
+  </svg>
+  <p class="frag sub" style="font-size:2.4vmin">48 nós expandidos · 38 passos · caminho <span class="kw">não-ótimo</span> · mas fronteira <span class="vd">minúscula</span> (≤ 5)</p>
+  <aside class="notes">Revisitar o labirinto do deck principal com a análise de hoje. Cada número é uma fase da DFS: mergulha → bate → volta → desvia → repete. O caminho de 38 passos é 3× pior que os 12 da BFS. Mas a fronteira nunca passou de 5 nós — a BFS chegou a ~20. Trade-off real, medido nos contadores. Tempo: 2 min.</aside>
+</section>
+
+<!-- 21 · DFS na prática moderna -->
+<section class="slide">
+  <h2>DFS no <span class="az">mundo real</span></h2>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:2.4vmin;width:86%;text-align:left">
+    <div class="frag" style="background:var(--board2);border-radius:10px;padding:2vmin 2.4vmin">
+      <p style="font-size:2.4vmin;font-weight:700;color:var(--c1);margin:0 0 .6vmin">🧩 Constraint Satisfaction</p>
+      <p style="font-size:2.1vmin;color:var(--dim);margin:0">Sudoku, N-rainhas, coloração de grafos — backtracking = DFS com poda por restrições. O coração de todo solver SAT moderno (DPLL).</p>
+    </div>
+    <div class="frag" style="background:var(--board2);border-radius:10px;padding:2vmin 2.4vmin">
+      <p style="font-size:2.4vmin;font-weight:700;color:var(--c1);margin:0 0 .6vmin">🔍 Compiladores</p>
+      <p style="font-size:2.1vmin;color:var(--dim);margin:0">Parsing recursivo descendente = DFS sobre a gramática. A pilha da DFS É a pilha de chamadas do parser.</p>
+    </div>
+    <div class="frag" style="background:var(--board2);border-radius:10px;padding:2vmin 2.4vmin">
+      <p style="font-size:2.4vmin;font-weight:700;color:var(--c1);margin:0 0 .6vmin">🌐 Web Crawlers</p>
+      <p style="font-size:2.1vmin;color:var(--dim);margin:0">DFS crawler segue links até o fundo de um site antes de voltar. BFS crawler visita em largura (melhor para cobertura).</p>
+    </div>
+    <div class="frag" style="background:var(--board2);border-radius:10px;padding:2vmin 2.4vmin">
+      <p style="font-size:2.4vmin;font-weight:700;color:var(--c1);margin:0 0 .6vmin">🎮 Geração procedural</p>
+      <p style="font-size:2.1vmin;color:var(--dim);margin:0">Masmorras em roguelikes: DFS com backtracking gera corredores longos e sinuosos que "fazem sentido" espacialmente.</p>
+    </div>
+  </div>
+  <aside class="notes">DFS está em TODO lugar, mesmo quando não leva o nome. A pilha de recursão da sua linguagem de programação É uma DFS. Toda vez que uma função chama outra e "volta" quando termina, é backtracking. A DFS é tão fundamental que desapareceu na infraestrutura. Tempo: 2 min.</aside>
+</section>
+
+<!-- 22 · 🌉 ponte -->
+<section class="slide">
+  <p class="sub">🌉 ponte</p>
+  <h1>DFS → <span class="kw">backtracking</span> → <span class="vd">aprendizado</span></h1>
+  <div style="width:74%;margin-top:2vmin">
+  <svg viewBox="0 0 760 180" style="width:100%">
+    <rect x="10" y="30" width="180" height="60" rx="10" fill="none" stroke="#FF7F0E" stroke-width="2.5"/>
+    <text x="100" y="55" text-anchor="middle" font-size="16" fill="#FF7F0E" font-weight="700">pilha + backtracking</text>
+    <text x="100" y="78" text-anchor="middle" font-size="13" fill="#8A97A5">(esta aula)</text>
+    <path d="M195 60 h40" stroke="#8A97A5" stroke-width="2" marker-end="url(#b1)"/>
+    <rect x="245" y="20" width="220" height="80" rx="10" fill="none" stroke="#1F77B4" stroke-width="2.5"/>
+    <text x="355" y="48" text-anchor="middle" font-size="15" fill="#1F77B4" font-weight="700">MCTS (Monte Carlo</text>
+    <text x="355" y="72" text-anchor="middle" font-size="15" fill="#1F77B4" font-weight="700">Tree Search)</text>
+    <text x="355" y="95" text-anchor="middle" font-size="12" fill="#8A97A5">seleção = DFS guiada por valor</text>
+    <path d="M470 60 h40" stroke="#8A97A5" stroke-width="2" marker-end="url(#b1)"/>
+    <rect x="520" y="30" width="220" height="60" rx="10" fill="none" stroke="#2CA02C" stroke-width="2.5"/>
+    <text x="630" y="55" text-anchor="middle" font-size="15" fill="#2CA02C" font-weight="700">AlphaGo / AlphaZero</text>
+    <text x="630" y="78" text-anchor="middle" font-size="12" fill="#8A97A5">política = qual ramo descer</text>
+    <defs><marker id="b1" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#8A97A5"/></marker></defs>
+  </svg>
+  </div>
+  <p class="frag sub" style="font-size:2.4vmin;margin-top:2vmin">
+    a DFS <span class="kw">não morreu</span> — ela ganhou uma rede neural que aprende <span class="vd">qual vizinho empilhar primeiro</span>
+  </p>
+  <aside class="notes">Ponte. A estrutura da DFS — empilhar vizinhos, mergulhar, voltar — é o esqueleto do MCTS. A diferença é que o AlphaGo usa redes neurais para decidir EM QUAL ORDEM empilhar os vizinhos (política) e QUANDO PARAR de descer (valor). A DFS é uma busca cega; a política treinada do AlphaGo é uma DFS com faro. Bitter Lesson de novo: a estrutura de busca escala; o que muda é de onde vem o conhecimento que a guia. Tempo: 2 min.</aside>
+</section>
+
+<!-- 23 · recap -->
+<section class="slide">
+  <p class="sub">DFS em 30 segundos</p>
+  <h1><span class="kw">pilha</span> → <span class="kw">mergulha</span> → <span class="kw">volta</span></h1>
+  <p class="frag sub" style="font-size:3vmin">uma linha — <code style="background:#2A313B;padding:2px 10px;border-radius:4px">fronteira.pop()</code> — separa a DFS da BFS</p>
+  <p class="frag sub" style="font-size:2.6vmin">completa? <span class="no">não</span> (sem limite) · ótima? <span class="no">não</span> · memória? <span class="ok">O(b·m)</span> — a virtude que a mantém viva</p>
+  <p class="frag sub" style="font-size:2.4vmin;color:var(--dim)">a mesma estrutura da aula inteira — a decisão é sempre <span class="kw">quem sai da fronteira primeiro</span></p>
+  <aside class="notes">Fechamento. DFS = pilha + backtracking. A fórmula de 3 palavras: empilha, mergulha, volta. A memória linear é a razão de a DFS sobreviver em sistemas modernos. Voltar ao deck principal: "agora que vocês entenderam cada movimento da pilha, vamos ver o custo uniforme — onde a prioridade não é LIFO nem FIFO, mas g(n)." Tempo: 1 min.</aside>
+</section>
+
+</template>
+
+<script>
+(function(){
+"use strict";
+const palco=document.getElementById("palco");
+palco.appendChild(document.getElementById("slides").content.cloneNode(true));
+const slides=[...palco.querySelectorAll(".slide")];
+slides.forEach((s,i)=>{
+  const e=document.createElement("span");e.className="eyebrow";
+  e.textContent="GBC063 · S3 — DFS DETALHADO · "+(i+1).toString().padStart(2,"0");
+  if(i>0)s.appendChild(e);});
+let atual=0;
+
+function entraSlide(i){
+  slides[atual].classList.remove("ativo");
+  atual=Math.max(0,Math.min(slides.length-1,i));
+  slides[atual].classList.add("ativo");
+  document.getElementById("pgn").textContent=(atual+1)+"/"+slides.length;
+  atualizaPres();
+}
+function fragAvanca(){
+  const sl=slides[atual];
+  const f=sl.querySelector(".frag:not(.on)");
+  if(f){f.classList.add("on");return true;}
+  return false;
+}
+document.getElementById("nvProx").addEventListener("click",()=>entraSlide(atual+1));
+document.getElementById("nvAnt").addEventListener("click",()=>entraSlide(atual-1));
+document.getElementById("nvFrag").addEventListener("click",fragAvanca);
+addEventListener("keydown",e=>{
+  if(e.key==="ArrowRight"||e.key==="PageDown")entraSlide(atual+1);
+  else if(e.key==="ArrowLeft"||e.key==="PageUp")entraSlide(atual-1);
+  else if(e.key==="ArrowDown"||e.key===" "){e.preventDefault();fragAvanca();}
+  else if(e.key==="n"||e.key==="N")togglePres();
+});
+let tx=null,ty=null;
+addEventListener("touchstart",e=>{tx=e.touches[0].clientX;ty=e.touches[0].clientY;},{passive:true});
+addEventListener("touchend",e=>{
+  if(tx===null)return;
+  const dx=e.changedTouches[0].clientX-tx,dy=e.changedTouches[0].clientY-ty;
+  if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy))entraSlide(atual+(dx<0?1:-1));
+  else if(Math.abs(dx)<10&&Math.abs(dy)<10&&!e.target.closest("button,select"))fragAvanca();
+  tx=null;},{passive:true});
+const pres=document.getElementById("pres");let t0=null,relogio=null;
+function togglePres(){
+  pres.classList.toggle("on");
+  pres.setAttribute("aria-hidden",String(!pres.classList.contains("on")));
+  if(pres.classList.contains("on")&&!t0){
+    t0=Date.now();
+    relogio=setInterval(()=>{
+      const s=Math.floor((Date.now()-t0)/1000);
+      document.getElementById("pTimer").textContent=
+        String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");},1000);}
+  atualizaPres();
+}
+function atualizaPres(){
+  if(!pres.classList.contains("on"))return;
+  const n=slides[atual].querySelector(".notes");
+  document.getElementById("pNotas").textContent=n?n.textContent.trim():"(sem notas)";
+  const px=slides[atual+1];
+  document.getElementById("pProx").textContent=px?
+    (px.querySelector("h1,h2")?.textContent||"(slide visual)"):"— fim do deck —";
+}
+entraSlide(0);
+})();
+</script>
+</body>
+</html>
