@@ -1,0 +1,914 @@
+%% ============================================================
+%%  Handout — Aula 10: Aprendizado rápido II
+%%  Aprendizagem por Reforço — Universidade Federal de Uberlândia
+%%  Prof. Marcelo Keese Albertini
+%%  Adaptado de CS234 (Stanford), Emma Brunskill, Lecture 10
+%%  Compilar com XeLaTeX (2x): latexmk -xelatex handout10.tex
+%% ============================================================
+\documentclass[11pt]{article}
+
+\usepackage{handoutAprendizadoRL}
+\usepackage{babel}
+\babelprovide[import, main]{brazilian}
+\usepackage{multicol}
+
+\setaula{Aula 10 --- Aprendizado rápido II}
+\setprof{Prof.\ Marcelo Keese Albertini}
+
+%% Macros locais desta aula
+\newcommand{\Qh}{\widehat{Q}}
+\newcommand{\muh}{\widehat{\mu}}
+\newcommand{\Ind}{\mathbf{1}}
+\newcommand{\ucb}{\mathrm{UCB}}
+\newcommand{\Dist}{\mathcal{D}}
+
+\hyphenation{ar-re-pen-di-men-to con-cen-tra-ção sub-gaus-si-a-na
+  a-li-nha-men-to pre-fe-rên-cias re-com-pen-sa sen-sa-cio-na-lis-ta
+  sub-es-pe-ci-fi-ca-do i-den-ti-fi-ca-bi-li-da-de ob-je-ti-va-men-te
+  em-pi-ri-ca-men-te re-co-men-da-ção es-pe-ci-fi-car de-ge-ne-res-cên-cia
+  pro-ba-bi-li-ty mat-ching re-ward hack-ing in-te-gra-dor}
+\setlength{\emergencystretch}{2.4em}
+
+\begin{document}
+
+\capa{Aula 10 --- Aprendizado rápido II}
+     {A cota de arrependimento do UCB \textbullet\ PAC e bandits bayesianos
+      \textbullet\ O problema do alinhamento de valores}
+     {Prof.\ Marcelo Keese Albertini \textbullet\ Universidade Federal de Uberlândia}
+     {Material adaptado e expandido de \textit{CS234: Reinforcement Learning},
+      Emma Brunskill (Stanford), \textit{Lecture 10}, com palestra convidada
+      sobre alinhamento por Wanheng Hu. Referência técnica principal:
+      Lattimore \& Szepesvári, \textit{Bandit Algorithms} (2020), seção 7.1.}
+
+\section*{Como usar este resumo}
+
+Este texto acompanha os slides da Aula 10 e é mais completo que eles em três
+pontos: a prova da cota do UCB aparece com \emph{todas} as passagens
+algébricas, há uma seção de exercícios com respostas comentadas, e a discussão
+sobre alinhamento vem organizada como uma taxonomia que você pode usar para
+classificar casos novos.
+
+A aula tem duas metades de natureza muito diferente. A primeira é a mais
+técnica do curso até aqui; a segunda, a menos técnica. O elo entre elas está no
+último parágrafo da Seção~\ref{sec:elo}: uma cota de arrependimento garante que
+otimizamos \emph{bem} o objetivo que escrevemos, e é completamente silenciosa
+sobre esse objetivo ser o correto.
+
+\section{O problema e o critério}
+
+\begin{defbox}{bandit multiarmado}
+Um par $(\gA,\Dist)$, com $\gA$ um conjunto \emph{conhecido} de $K$ ações
+(``braços'') e $\Dist_a(r) = \Prob[r\mid a]$ distribuições \emph{desconhecidas}
+de recompensa. A cada passo $t$ o agente escolhe $a_t\in\gA$ e o ambiente
+devolve $r_t \sim \Dist_{a_t}$, independentemente do passado dado $a_t$.
+\end{defbox}
+
+Notação usada em todo o texto:
+\begin{itemize}
+  \item $Q(a) = \E[r\mid a]$ --- média verdadeira (desconhecida) do braço $a$;
+  \item $V^{*} = \max_a Q(a)$, com braço ótimo $a_1$ (sem perda de generalidade);
+  \item $\Delta_i = V^{*} - Q(a_i) \ge 0$ --- a \textbf{lacuna} do braço $i$;
+  \item $N_t(a)$ --- número de puxadas de $a$ até o instante $t$;
+  \item $\Qh_t(a)$ --- média empírica das recompensas observadas em $a$;
+  \item $\muh_{i,s}$ --- média das $s$ \emph{primeiras} recompensas do braço $i$.
+\end{itemize}
+
+\begin{defbox}{arrependimento}
+$\ell_t = \E[V^{*} - Q(a_t)]$ (um passo) e
+$L_n = \E\bigl[\sum_{t=1}^{n}(V^{*}-Q(a_t))\bigr]$ (acumulado em $n$ passos).
+\end{defbox}
+
+Como $nV^{*}$ não depende do algoritmo, \emph{maximizar recompensa acumulada é
+exatamente o mesmo problema que minimizar arrependimento}. A pergunta
+interessante não é se $L_n$ é pequeno --- ele cresce com $n$ em qualquer
+algoritmo --- e sim \emph{como} cresce. Arrependimento sublinear ($L_n/n\to0$)
+significa que o agente acaba jogando quase sempre o braço ótimo; arrependimento
+linear significa que erra uma fração constante do tempo, para sempre.
+
+\begin{teobox}{Decomposição do arrependimento por braço}
+Para qualquer algoritmo e qualquer horizonte $n$,
+\[
+  L_n \;=\; \sum_{i=1}^{K} \Delta_i\,\E[N_n(a_i)].
+\]
+\end{teobox}
+
+\begin{provabox}
+Cada passo $t$ contribui com $V^{*}-Q(a_t)$, e há exatamente $N_n(a_i)$ passos
+em que $a_t = a_i$. Como $\sum_i N_n(a_i) = n$,
+\[
+  \sum_{t=1}^{n}\bigl(V^{*}-Q(a_t)\bigr)
+  = \sum_{i=1}^{K} N_n(a_i)\,\bigl(V^{*}-Q(a_i)\bigr)
+  = \sum_{i=1}^{K} \Delta_i\, N_n(a_i).
+\]
+Tomando esperança dos dois lados obtém-se o resultado.
+\end{provabox}
+
+\begin{ideiabox}
+Esta identidade é o organizador de toda a análise: ela converte um problema
+sobre \emph{recompensas} num problema sobre \emph{contagens}. Provar uma cota
+de arrependimento passa a ser uma única tarefa --- limitar $\E[N_n(a_i)]$ para
+cada braço subótimo. Braços péssimos ($\Delta_i$ grande) são fáceis de
+descartar; o trabalho está nos braços \emph{quase} tão bons quanto o ótimo.
+\end{ideiabox}
+
+\section{A ferramenta: concentração}
+
+\begin{defbox}{variável $\sigma$-subgaussiana}
+$X$ com $\E[X]=0$ é $\sigma$-subgaussiana se
+$\E[e^{\lambda X}] \le e^{\lambda^{2}\sigma^{2}/2}$ para todo $\lambda\in\R$.
+Recompensas limitadas em $[0,1]$ são $\tfrac12$-subgaussianas (Hoeffding);
+ruído $\mathcal{N}(0,\sigma^2)$ é $\sigma$-subgaussiano. Assumimos $\sigma=1$
+para não carregar constantes.
+\end{defbox}
+
+\begin{teobox}{Cota de concentração (a única que será usada)}
+Se $\muh_s$ é a média de $s$ amostras i.i.d.\ de média $\mu$ com ruído
+$1$-subgaussiano, então para todo $\varepsilon>0$
+\[
+  \Prob(\muh_s \ge \mu + \varepsilon) \le e^{-s\varepsilon^{2}/2},
+  \qquad
+  \Prob(\muh_s \le \mu - \varepsilon) \le e^{-s\varepsilon^{2}/2}.
+\]
+Fazendo $\delta = e^{-s\varepsilon^2/2}$, isto é
+$\varepsilon = \sqrt{2\log(1/\delta)/s}$: com probabilidade ao menos
+$1-\delta$, $\;\abs{\muh_s - \mu} < \sqrt{2\log(1/\delta)/s}$.
+\end{teobox}
+
+A segunda forma é uma \textbf{barra de erro}: após $s$ amostras, a média
+verdadeira dista menos de $\sqrt{2\log(1/\delta)/s}$ da estimativa, salvo com
+probabilidade $\delta$. É exatamente esse comprimento que o UCB usa como bônus
+--- e nada além disso será usado na prova.
+
+\begin{algbox}{$\ucb(\delta)$}
+\begin{enumerate}[leftmargin=1.6em]
+  \item Puxe cada braço uma vez.
+  \item Para $t = K+1,\dots,n$, escolha
+  \[
+    a_t \;=\; \argmax_{a\in\gA}\ \ucb_a(t-1,\delta),
+    \qquad
+    \ucb_a(t,\delta) \;=\; \Qh_{t}(a) + \sqrt{\frac{2\log(1/\delta)}{N_{t}(a)}} .
+  \]
+  \item Observe $r_t$; atualize $\Qh_t(a_t)$ e $N_t(a_t)$.
+\end{enumerate}
+\end{algbox}
+
+\subsection*{Duas leituras do índice}
+
+O índice $\ucb_a$ é (i) o extremo superior de um intervalo de confiança de
+nível $1-\delta$ para $Q(a)$; e (ii) o valor que o braço teria \emph{no melhor
+dos mundos ainda plausíveis} --- daí o nome ``otimismo diante da incerteza''.
+
+Por que otimismo funciona: se o braço escolhido é de fato bom, jogá-lo é
+barato; se é ruim, jogá-lo revela isso depressa e o índice cai. Não existe um
+terceiro desfecho em que o algoritmo se prenda indefinidamente a um braço ruim
+--- exatamente o desfecho possível com um bônus \emph{constante}, que não
+distingue o que é pouco conhecido do que é bem conhecido.
+
+\section{A cota de arrependimento do UCB}
+\label{sec:prova}
+
+\begin{teobox}{Teorema (Lattimore \& Szepesvári, Thm.\ 7.1)}
+Considere o $\ucb(\delta)$ num bandit estocástico de $K$ braços com ruído
+$1$-subgaussiano. Para qualquer horizonte $n$, com $\delta = 1/n^{2}$,
+\[
+  L_n \;\le\; 3\sum_{i=1}^{K}\Delta_i
+    \;+\; \sum_{i\,:\,\Delta_i>0}\frac{16\log n}{\Delta_i}.
+\]
+\end{teobox}
+
+A prova tem cinco passos. Fixe um braço subótimo $a_i$ e um inteiro $u_i$ (a
+escolher no Passo 4).
+
+\subsection{Passo 1 --- o evento bom}
+
+\begin{defbox}{evento bom $G_i$}
+\[
+  G_i \;=\;
+  \underbrace{\Bigl\{\, Q(a_1) < \min_{t\in[n]}\ucb_{a_1}(t,\delta)\,\Bigr\}}_{(*)}
+  \;\cap\;
+  \underbrace{\Bigl\{\, \muh_{i,u_i} + \sqrt{\tfrac{2\log(1/\delta)}{u_i}} < Q(a_1)\,\Bigr\}}_{(**)}
+\]
+\end{defbox}
+
+Em palavras: $(*)$ diz que \emph{o braço ótimo nunca é subestimado} --- seu
+índice permanece acima da média verdadeira em todos os $n$ passos; $(**)$ diz
+que \emph{o braço $i$ já foi desmascarado} --- depois de $u_i$ puxadas, mesmo
+somando o bônus, seu índice cai abaixo de $Q(a_1)$.
+
+\subsection{Passo 2 --- no evento bom, o braço $i$ é puxado no máximo $u_i$ vezes}
+
+\begin{teobox}{Afirmação}
+Se $G_i$ ocorre, então $N_n(a_i) \le u_i$.
+\end{teobox}
+
+\begin{provabox}
+Por contradição. Suponha $N_n(a_i) > u_i$. Então existe um instante $t$ em que
+o braço $i$ foi escolhido tendo sido puxado exatamente $u_i$ vezes antes, isto
+é, $N_{t-1}(a_i)=u_i$ e $a_t = a_i$. Nesse instante,
+\[
+  \ucb_{a_i}(t-1,\delta)
+   = \muh_{i,u_i} + \sqrt{\frac{2\log(1/\delta)}{u_i}}
+   \;\overset{(**)}{<}\; Q(a_1)
+   \;\overset{(*)}{<}\; \ucb_{a_1}(t-1,\delta).
+\]
+Como o UCB escolhe o \emph{maior} índice, ele teria selecionado $a_1$, não
+$a_i$ --- contradição.
+\end{provabox}
+
+\begin{ideiabox}
+Este passo é \emph{puramente determinístico}: toda a aleatoriedade foi
+empurrada para a definição de $G_i$, e aqui só se usa que o algoritmo é um
+$\argmax$. É o padrão de toda análise de bandits --- argumentar deterministica\-mente
+dentro do evento bom e usar a cota trivial fora dele.
+\end{ideiabox}
+
+Dividindo a esperança conforme $G_i$ ocorra ou não, e usando $N_n(a_i)\le n$ no
+segundo caso:
+\begin{equation}
+  \E[N_n(a_i)]
+  = \E\bigl[\Ind\{G_i\}N_n(a_i)\bigr] + \E\bigl[\Ind\{G_i^{c}\}N_n(a_i)\bigr]
+  \;\le\; u_i + n\,\Prob(G_i^{c}).
+  \label{eq:split}
+\end{equation}
+O primeiro termo é o \textbf{custo do aprendizado} (quantas amostras bastam
+para distinguir $a_i$ de $a_1$); o segundo é o \textbf{custo do azar} (se as
+barras de erro falharem, o algoritmo pode gastar todo o horizonte no braço
+errado).
+
+\subsection{Passo 3 --- limitando $\Prob(G_i^{c})$}
+
+\subsubsection*{(a) A probabilidade de $(*)$ falhar}
+
+Se $(*)$ falha, existe algum $t$ com $Q(a_1) \ge \ucb_{a_1}(t,\delta)$. O
+número de puxadas do braço $1$ nesse instante é algum $s\in\{1,\dots,n\}$, logo
+\[
+  \Bigl\{Q(a_1)\ge\min_{t\in[n]}\ucb_{a_1}(t,\delta)\Bigr\}
+  \;\subseteq\;
+  \bigcup_{s=1}^{n}\Bigl\{Q(a_1) \ge \muh_{1,s} + \sqrt{\tfrac{2\log(1/\delta)}{s}}\Bigr\}.
+\]
+Pela cota da união e pela concentração com
+$\varepsilon = \sqrt{2\log(1/\delta)/s}$:
+\begin{equation}
+  \Prob\bigl((*)\text{ falha}\bigr)
+  \;\le\; \sum_{s=1}^{n}
+    \Prob\Bigl(\muh_{1,s} \le Q(a_1) - \sqrt{\tfrac{2\log(1/\delta)}{s}}\Bigr)
+  \;\le\; \sum_{s=1}^{n} e^{-s\cdot\frac{2\log(1/\delta)}{2s}}
+  \;=\; n\delta .
+  \label{eq:estrela}
+\end{equation}
+Note o cancelamento: o expoente $s\varepsilon^{2}/2$ elimina exatamente o $s$
+do denominador, de modo que \emph{cada} barra de erro falha com probabilidade
+$\delta$, e pagamos o fator $n$ por exigir que todas valham simultaneamente. É
+essa exigência uniforme em $t$ que obrigará $\delta$ a ser da ordem de
+$n^{-2}$.
+
+\subsubsection*{(b) A probabilidade de $(**)$ falhar}
+
+Suponha que $u_i$ seja grande o bastante para que, para algum $c\in(0,1)$,
+\begin{equation}
+  \Delta_i - \sqrt{\frac{2\log(1/\delta)}{u_i}} \;\ge\; c\,\Delta_i .
+  \label{eq:cond}
+\end{equation}
+Usando $Q(a_1) = Q(a_i) + \Delta_i$:
+\begin{align*}
+  \Prob\bigl((**)\text{ falha}\bigr)
+   &= \Prob\Bigl(\muh_{i,u_i} + \sqrt{\tfrac{2\log(1/\delta)}{u_i}} \ge Q(a_i)+\Delta_i\Bigr)\\
+   &= \Prob\Bigl(\muh_{i,u_i} - Q(a_i) \ge \Delta_i - \sqrt{\tfrac{2\log(1/\delta)}{u_i}}\Bigr)\\
+   &\le \Prob\bigl(\muh_{i,u_i} - Q(a_i) \ge c\,\Delta_i\bigr)
+     &&\text{por \eqref{eq:cond}}\\
+   &\le \exp\!\Bigl(-\frac{u_i c^{2}\Delta_i^{2}}{2}\Bigr)
+     &&\text{concentração.}
+\end{align*}
+Somando com \eqref{eq:estrela} e substituindo em \eqref{eq:split}:
+\begin{equation}
+  \E[N_n(a_i)] \;\le\; u_i + n\Bigl(n\delta + \exp\bigl(-\tfrac{u_i c^{2}\Delta_i^{2}}{2}\bigr)\Bigr).
+  \label{eq:parcial}
+\end{equation}
+
+\subsection{Passo 4 --- escolhendo $u_i$}
+
+A condição \eqref{eq:cond} é uma desigualdade em $u_i$. Resolvendo-a:
+\[
+  (1-c)\Delta_i \ge \sqrt{\frac{2\log(1/\delta)}{u_i}}
+  \iff (1-c)^{2}\Delta_i^{2} \ge \frac{2\log(1/\delta)}{u_i}
+  \iff u_i \ge \frac{2\log(1/\delta)}{(1-c)^{2}\Delta_i^{2}} .
+\]
+Tomamos o menor inteiro admissível,
+\[
+  u_i = \left\lceil \frac{2\log(1/\delta)}{(1-c)^{2}\Delta_i^{2}} \right\rceil
+      \;\le\; 1 + \frac{2\log(1/\delta)}{(1-c)^{2}\Delta_i^{2}} ,
+\]
+o que permite estimar o termo exponencial de \eqref{eq:parcial}:
+\[
+  \exp\!\Bigl(-\frac{u_i c^{2}\Delta_i^{2}}{2}\Bigr)
+  \;\le\; \exp\!\Bigl(-\frac{c^{2}}{(1-c)^{2}}\log\tfrac1\delta\Bigr)
+  \;=\; \delta^{\,c^{2}/(1-c)^{2}} .
+\]
+Portanto
+\begin{equation}
+  \E[N_n(a_i)] \;\le\;
+    1 + \frac{2\log(1/\delta)}{(1-c)^{2}\Delta_i^{2}}
+    + n^{2}\delta + n\,\delta^{\,c^{2}/(1-c)^{2}} .
+  \label{eq:quase}
+\end{equation}
+
+\subsection{Passo 5 --- fechando as contas}
+
+Escolha $c = \tfrac12$ e $\delta = 1/n^{2}$. Então
+$c^{2}/(1-c)^{2} = 1$, $(1-c)^{2} = \tfrac14$ e $\log(1/\delta) = 2\log n$,
+de modo que os termos de \eqref{eq:quase} viram
+\[
+  \frac{2\cdot 2\log n}{\tfrac14\,\Delta_i^{2}} = \frac{16\log n}{\Delta_i^{2}},
+  \qquad
+  n^{2}\delta + n\delta = 1 + \frac1n \;\le\; 2 .
+\]
+Logo, para todo braço subótimo,
+\[
+  \mdestaque{rlLaranja}{\E[N_n(a_i)] \;\le\; 3 + \frac{16\log n}{\Delta_i^{2}}}
+\]
+e, pela decomposição por braço,
+\[
+  L_n = \sum_{i}\Delta_i\,\E[N_n(a_i)]
+   \;\le\; 3\sum_{i=1}^{K}\Delta_i + \sum_{i:\Delta_i>0}\frac{16\log n}{\Delta_i}.
+  \qquad\blacksquare
+\]
+A constante $3$ é $1$ (do teto em $u_i$) somado a $2$ (do custo do azar); ela
+não depende de $n$.
+
+\begin{discbox}
+Onde exatamente a prova usa que o problema é \emph{estacionário}? E se as
+recompensas tivessem caudas pesadas (variância infinita), qual dos cinco passos
+quebraria primeiro?
+\end{discbox}
+
+\section{Como ler a cota}
+
+\[
+  L_n \;\le\; \underbrace{3\sum_{i=1}^{K}\Delta_i}_{\text{constante em } n}
+    \;+\; \underbrace{\sum_{i:\Delta_i>0}\frac{16\log n}{\Delta_i}}_{\text{cresce como } \log n}
+\]
+
+\begin{itemize}
+  \item \textbf{Em $n$:} crescimento $O(\log n)$ --- extraordinariamente lento.
+        Com $n = 10^{6}$, $\log n \approx 14$. Em particular $L_n/n \to 0$.
+  \item \textbf{Em $\Delta_i$:} cada braço subótimo custa $\approx
+        16\log n/\Delta_i$. Braços \emph{péssimos} custam pouco, porque são
+        identificados em poucas amostras.
+  \item \textbf{Em $K$:} linear, escondida no somatório.
+  \item \textbf{O que a cota não diz:} nada sobre a variância do arrependimento
+        nem sobre qualquer execução individual. É uma afirmação sobre a média.
+\end{itemize}
+
+\begin{alertabox}
+A expressão \emph{explode} quando $\Delta_i \to 0$, o que é um artefato da
+forma como a escrevemos e não do algoritmo: se $\Delta_i$ é minúsculo, puxar o
+braço $i$ quase não custa nada. É preciso uma segunda leitura.
+\end{alertabox}
+
+\subsection*{A tensão: braços quase ótimos}
+
+Um braço com lacuna $\Delta$ contribui ao arrependimento no máximo
+$\min\{\,n\Delta,\; 16\log n/\Delta\,\}$: o primeiro termo porque ele não pode
+ser puxado mais de $n$ vezes, o segundo pelo teorema. Braços com $\Delta$
+grande são descartados depressa; braços com $\Delta$ minúsculo podem ser
+puxados quase sempre, mas cada puxada custa quase nada. O pior caso está no
+meio --- $\Delta$ grande o bastante para doer, pequeno o bastante para
+confundir. Formalizando essa observação:
+
+\begin{teobox}{Corolário (cota independente da distribuição)}
+Para o mesmo $\ucb(1/n^{2})$ e \emph{qualquer} instância de $K$ braços,
+\[
+  L_n \;\le\; 3\sum_{i=1}^{K}\Delta_i \;+\; 8\sqrt{K\,n\log n}.
+\]
+\end{teobox}
+
+\begin{provabox}
+Fixe um limiar arbitrário $\Delta > 0$ e parta o somatório da decomposição:
+\[
+  L_n = \sum_{i:\Delta_i<\Delta}\Delta_i\,\E[N_n(a_i)]
+      + \sum_{i:\Delta_i\ge\Delta}\Delta_i\,\E[N_n(a_i)].
+\]
+No primeiro grupo, $\Delta_i < \Delta$ e $\sum_i \E[N_n(a_i)] = n$, o que dá no
+máximo $n\Delta$. No segundo, aplica-se o teorema a cada braço, e como há no
+máximo $K$ deles com $\Delta_i \ge \Delta$, obtém-se
+$3\sum_i\Delta_i + 16K\log n/\Delta$. Portanto
+\[
+  L_n \;\le\; 3\sum_i \Delta_i + n\Delta + \frac{16K\log n}{\Delta}.
+\]
+A função $\Delta \mapsto n\Delta + 16K\log n/\Delta$ tem derivada
+$n - 16K\log n/\Delta^{2}$, que se anula em
+$\Delta^{*} = \sqrt{16K\log n/n}$, onde o valor é
+$2\sqrt{16Kn\log n} = 8\sqrt{Kn\log n}$. Como $\Delta$ era arbitrário, a cota
+vale com essa escolha.
+\end{provabox}
+
+\begin{ideiabox}
+Duas cotas, dois regimes. A cota logarítmica é \emph{dependente da instância}:
+excelente quando as lacunas são bem separadas, inútil quando não são. A cota
+$\sqrt{Kn\log n}$ é \emph{uniforme}: vale mesmo quando as lacunas conspiram
+contra o algoritmo. Um bom algoritmo precisa das duas, e o UCB tem as duas.
+\end{ideiabox}
+
+\subsection*{Isso é bom? As cotas inferiores}
+
+\begin{teobox}{Lai \& Robbins (1985)}
+Para todo algoritmo \emph{consistente} (arrependimento subpolinomial em toda
+instância), em bandits de Bernoulli,
+\[
+  \liminf_{n\to\infty}\frac{L_n}{\log n}
+  \;\ge\; \sum_{i:\Delta_i>0}\frac{\Delta_i}{\mathrm{KL}(\Dist_{a_i}\|\Dist_{a^{*}})}.
+\]
+\end{teobox}
+
+\begin{teobox}{Cota inferior minimax}
+Para todo algoritmo existe uma instância de $K$ braços em que
+$L_n = \Omega(\sqrt{Kn})$.
+\end{teobox}
+
+Comparando com o que provamos: o fator $\log n$ é \textbf{inevitável} --- o UCB
+é ótimo em ordem, com constante subótima (aparece $1/\Delta_i$ no lugar de
+$\Delta_i/\mathrm{KL}$). O fator $\sqrt{Kn}$ também é inevitável, e o UCB paga
+um $\sqrt{\log n}$ a mais que o mínimo. Variantes como \textbf{MOSS} e
+\textbf{KL-UCB} eliminam esses fatores e atingem a constante de Lai--Robbins.
+A moral é forte: otimismo diante da incerteza não é uma heurística razoável ---
+é essencialmente \emph{a} resposta certa, a menos de constantes.
+
+\subsection*{Letras miúdas}
+
+\begin{itemize}
+  \item \textbf{$\delta = 1/n^{2}$ exige conhecer $n$.} O algoritmo analisado é
+        ``de horizonte conhecido''. A versão \emph{anytime} usa
+        $\delta_t = 1/t^{2}$, isto é, bônus $\sqrt{2\log t/N_t(a)}$ --- é o
+        ``UCB1'' de Auer et al.\ (2002), como aparece na maioria dos textos.
+  \item \textbf{Independência.} A concentração foi aplicada às $u_i$
+        \emph{primeiras} amostras do braço $i$, e não às efetivamente
+        coletadas: $N_n(a_i)$ é uma variável aleatória que depende dos dados, e
+        condicionar nela quebraria a hipótese i.i.d. A construção formal usa
+        uma tabela de recompensas pré-sorteadas (\emph{stack of rewards}), em
+        que $\muh_{i,s}$ está bem definida para todo $s$, seja o braço puxado
+        $s$ vezes ou não.
+  \item \textbf{Ruído.} Com recompensas em $[0,1]$ o parâmetro subgaussiano é
+        $\tfrac12$, o que melhora as constantes por um fator $4$.
+  \item \textbf{Estacionariedade.} A prova usa que $Q(a)$ é fixo ao longo do
+        tempo. Em ambientes não estacionários é preciso esquecer o passado
+        (janelas deslizantes, descontos) e a garantia muda de forma.
+\end{itemize}
+
+\section{Além do arrependimento}
+
+O arrependimento é um critério entre outros. Vale ter os três em mente porque
+eles respondem a perguntas diferentes --- não são versões melhores ou piores do
+mesmo problema.
+
+\begin{center}
+\begin{tabular}{@{}p{3.0cm}p{5.0cm}p{6.2cm}@{}}
+\toprule
+\textbf{Critério} & \textbf{Pergunta que responde} & \textbf{Garantia típica} \\
+\midrule
+arrependimento & quanta recompensa perdi ao longo do caminho? &
+  $L_n = O(\log n)$; $O(\sqrt{Kn\log n})$ no pior caso \\[0.3em]
+PAC / complexidade amostral & quantas amostras até eu \emph{apontar} um braço
+  quase ótimo? & $O\bigl(\sum_i \Delta_i^{-2}\log(K/\delta)\bigr)$ puxadas \\[0.3em]
+bayesiano & quão bem me saio em média sobre instâncias sorteadas de um prior? &
+  $\mathrm{BayesReg}_n = O(\sqrt{Kn\log K})$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\medskip
+Arrependimento importa quando cada decisão é real (tratar um paciente, mostrar
+um anúncio). PAC importa quando há uma fase de teste barata seguida de uma
+implantação cara (testes A/B, ensaios clínicos de fase II). O critério
+bayesiano importa quando há conhecimento prévio honesto sobre o problema.
+
+\subsection*{O critério PAC}
+
+\begin{defbox}{algoritmo $(\varepsilon,\delta)$-PAC}
+Após um número $T$ de puxadas devolve um braço $\hat a$ com
+$\Prob\bigl(Q(\hat a) \ge V^{*}-\varepsilon\bigr) \ge 1-\delta$. O menor $T$
+que garante isso é a \emph{complexidade amostral}.
+\end{defbox}
+
+\begin{algbox}{Eliminação sucessiva}
+Comece com $\gA_1 = \gA$. Na rodada $\ell$: puxe cada braço sobrevivente uma
+vez e atualize as médias; elimine todo braço $a$ com
+$\Qh(a) + \beta_\ell < \max_{a'}\Qh(a') - \beta_\ell$, onde
+$\beta_\ell = \sqrt{2\log(K\ell^{2}/\delta)/\ell}$; pare quando restar um único
+braço ou $2\beta_\ell \le \varepsilon$.
+\end{algbox}
+
+A complexidade amostral é
+$O\bigl(\sum_{i:\Delta_i>0}\Delta_i^{-2}\log(K/\delta)\bigr)$ --- a
+\emph{mesma} dependência $\Delta^{-2}$ que apareceu no $u_i$ do Passo 4. Não é
+coincidência: $\Delta^{-2}$ é o custo estatístico de distinguir duas médias
+separadas por $\Delta$, e esse custo aparece em qualquer formulação. A
+diferença de espírito é que, sob PAC, ``desperdiçar'' puxadas em braços ruins
+é gratuito, desde que a resposta final esteja certa.
+
+\subsection*{Bandits bayesianos e amostragem de Thompson}
+
+\begin{defbox}{modelo Beta--Bernoulli}
+Braço $a$ com recompensa em $\{0,1\}$ e média $\theta_a$, com prior
+$\theta_a \sim \mathrm{Beta}(\alpha_a,\beta_a)$. Após $S_a$ sucessos e $F_a$
+falhas, a posterior é $\mathrm{Beta}(\alpha_a+S_a,\ \beta_a+F_a)$ ---
+conjugação que torna a atualização trivial.
+\end{defbox}
+
+\begin{algbox}{Amostragem de Thompson (1933)}
+A cada passo $t$: sorteie $\tilde\theta_a \sim \Prob(\theta_a \mid \text{dados})$
+para cada braço; jogue $a_t = \argmax_a \tilde\theta_a$; observe $r_t$ e
+atualize a posterior do braço jogado.
+\end{algbox}
+
+Uma linha de código e uma ideia profunda: jogar cada braço com a
+\emph{probabilidade de que ele seja o melhor} (\emph{probability matching}).
+Braços incertos têm posteriores largas e, portanto, chance razoável de sortear
+um valor alto --- a exploração \emph{emerge} da amostragem, sem bônus
+explícito. Empiricamente costuma superar o UCB; teoricamente atinge as mesmas
+ordens, $O(\log n)$ dependente da instância e $O(\sqrt{Kn\log K})$ no critério
+bayesiano, via a técnica do \emph{information ratio}.
+
+\begin{ideiabox}
+UCB é otimismo \emph{determinístico}: age sempre segundo o melhor cenário
+plausível. Thompson é otimismo \emph{estocástico}: age segundo um cenário
+plausível sorteado. Caminhos opostos, mesmo destino --- e a comparação entre os
+dois é um bom exercício de intuição sobre por que exploração precisa ser
+proporcional à incerteza.
+\end{ideiabox}
+
+\subsection*{Para onde isso vai}
+
+Num MDP, escolher uma ação afeta também o \emph{estado} seguinte: explorar
+deixa de ser ``puxar um braço'' e passa a ser ``alcançar uma região do espaço
+de estados''. Os três critérios reaparecem: arrependimento (UCRL e o otimismo
+aplicado a MDPs), PAC (R-max, MBIE, a família PAC-MDP) e bayesiano (RL
+bayesiano, PSRL). O bônus $\sqrt{\log(1/\delta)/N}$ provado aqui reaparece
+aplicado a pares $(s,a)$ --- mas com uma diferença crucial: o otimismo precisa
+ser \emph{propagado} pela equação de Bellman, e não apenas somado localmente,
+porque o valor de um estado depende do que se pode alcançar a partir dele.
+
+\section{Alinhamento de valores}
+\label{sec:elo}
+
+Tudo que o curso fez até aqui responde a uma única pergunta: \emph{dada uma
+função recompensa, como maximizá-la bem e depressa?} Esta seção faz a pergunta
+anterior a essa: \emph{qual função recompensa --- e quem decide?}
+
+\begin{alertabox}
+Quanto melhor o otimizador, mais fielmente ele persegue exatamente o que foi
+escrito, \emph{inclusive os erros}. Capacidade e alinhamento não são a mesma
+coisa: melhorar a primeira sem a segunda amplifica o problema em vez de
+atenuá-lo.
+\end{alertabox}
+
+\subsection*{O maximizador de clipes}
+
+O exemplo canônico (Bostrom, 2014): uma IA encarregada de gerenciar a produção
+de uma fábrica recebe o objetivo de maximizar a fabricação de clipes de papel
+--- e passa a converter primeiro a Terra, depois porções crescentes do universo
+observável, em clipes. O exemplo é absurdo de propósito, mas o mecanismo é
+banal: o objetivo estava \emph{subespecificado} e o otimizador preencheu a
+lacuna. As restrições que qualquer gerente humano assumiria (não desmontar o
+prédio, não violar leis, não demitir todos) eram implícitas --- e implícito não
+entra na função recompensa. Nenhuma superinteligência é necessária: sistemas
+modestos fazem isso o tempo todo, em escala menor.
+
+\begin{ideiabox}
+\textbf{Lei de Goodhart.} Quando uma medida se torna um alvo, deixa de ser uma
+boa medida. Em aprendizagem por reforço isso não é um risco ocasional --- é o
+comportamento \emph{esperado} de um bom otimizador, e melhora com a capacidade
+do agente.
+\end{ideiabox}
+
+\subsection*{Casos documentados}
+
+\begin{itemize}
+  \item \textbf{Do barco à pista.} Num jogo de corrida de barcos, o agente
+        descobriu que dar voltas em círculo colhendo itens de bônus rendia mais
+        pontos que terminar a prova, e nunca cruzou a linha de chegada. A
+        recompensa era ``pontos''; o objetivo era ``vencer''.
+  \item \textbf{Enganar o avaliador.} Um braço robótico treinado com feedback
+        humano aprendeu a posicionar a mão \emph{entre a câmera e o objeto}, de
+        modo a parecer tê-lo agarrado. Otimizou a aparência da tarefa, não a
+        tarefa.
+  \item \textbf{Do entretenimento ao tratamento.} Sistemas de recomendação que
+        maximizam engajamento tendem a favorecer conteúdo sensacionalista e a
+        estreitar o repertório do usuário --- consequências que ninguém
+        escreveu na função objetivo.
+  \item \textbf{Bugs de simulação.} Agentes em simuladores físicos exploram
+        rotineiramente falhas do integrador numérico para ``voar'': solução
+        ótima do problema formulado, inútil para o problema pretendido.
+\end{itemize}
+
+O padrão é sempre o mesmo: existe uma medida observável e barata correlacionada
+com o que queremos, e o otimizador encontra exatamente a região do espaço em
+que a correlação quebra.
+
+\subsection*{Três interpretações de ``o que realmente queremos''}
+
+\begin{defbox}{alinhamento de valores}
+Como projetar agentes de IA que façam o que \emph{realmente queremos} que eles
+façam?
+\end{defbox}
+
+A dificuldade central não é técnica no primeiro momento: o que realmente
+queremos é quase sempre mais sutil que o que \emph{dizemos} querer, porque
+operamos com um pano de fundo de pressupostos difíceis de formalizar e fáceis
+de esquecer por serem óbvios. Não se resolve isso ``dando instruções
+melhores'': especificar completamente uma instrução é tão difícil quanto
+especificar completamente uma função recompensa. E piora quando quem instrui
+não é especialista. Além disso, a própria expressão ``o que realmente
+queremos'' admite ao menos três leituras, seguindo a taxonomia de Gabriel
+(2020).
+
+\paragraph{1. Intenções.} Um agente é alinhado se faz o que o usuário
+\emph{pretendia}. A IA dos clipes falhou em inferir a intenção verdadeira
+(maximizar a produção \emph{sujeito a restrições}) a partir da instrução
+literal. A solução seria construir sistemas que traduzam instruções
+subespecificadas em intenções plenamente especificadas, incluindo condições não
+ditas --- o que, como observa Gabriel, pode exigir um modelo praticamente
+completo da linguagem e da interação humanas.
+\emph{Objeção:} nossas intenções nem sempre rastreiam o que realmente queremos,
+por informação incompleta e racionalidade imperfeita.
+
+\paragraph{2. Preferências reveladas.} Um agente é alinhado se faz o que o
+usuário \emph{prefere}, inferido do comportamento e do \emph{feedback} e não das
+declarações. É a leitura tecnicamente mais familiar: é o que fazem a
+aprendizagem por reforço inverso (inferir $\rec$ a partir de trajetórias) e o
+RLHF (ajustar um modelo de recompensa a comparações entre respostas).
+\emph{Dificuldades:} (i) exige treinar sobre observação do usuário --- caro,
+ruidoso e invasivo; (ii) \textbf{não identificabilidade} --- há infinitas
+funções de recompensa consistentes com um conjunto finito de comportamentos, o
+resultado clássico de degenerescência do IRL (Ng \& Russell, 2000), em que a
+recompensa constante explica qualquer política; (iii) preferências sobre
+situações inéditas não se extrapolam de comportamento rotineiro.
+E a objeção reaparece um nível acima: preferências podem divergir do que é bom
+para a pessoa.
+
+\paragraph{3. Melhores interesses.} Um agente é alinhado se faz o que é
+objetivamente melhor para o usuário. Diferentemente das duas anteriores, o
+``melhor interesse objetivo'' não é determinável empiricamente: é uma questão
+filosófica, não científica. A má notícia é que filósofos discordam sobre o que
+é bom para uma pessoa (prazer? satisfação de desejos? bens objetivos como saúde
+e conhecimento?). A boa notícia é que há muito acordo prático: saúde, segurança,
+liberdade, conhecimento, relações sociais, propósito, dignidade e felicidade são
+quase universalmente reconhecidos como bons para quem os tem.
+
+\subsection*{Autonomia e paternalismo}
+
+Um dos bens mais amplamente reconhecidos é a \textbf{autonomia}: a capacidade de
+escolher por si mesmo como viver, mesmo quando a escolha não é a melhor. Isso
+cria uma tensão interna à terceira interpretação --- agir pelo bem de alguém
+contra a vontade dessa pessoa é \emph{paternalismo}, que por si só prejudica um
+interesse real. A consequência de projeto é que mesmo um sistema que mire os
+melhores interesses tem razão para levar a sério intenções e preferências
+declaradas. As três interpretações não são alternativas excludentes: são pesos
+num compromisso.
+
+\begin{center}
+\begin{tabular}{@{}p{3.2cm}p{5.2cm}p{5.8cm}@{}}
+\toprule
+\textbf{Alinhar a\ldots} & \textbf{Mecanismo técnico} & \textbf{Falha característica} \\
+\midrule
+intenções & seguir instruções, esclarecer ambiguidade, pedir confirmação &
+  literalismo; obediência a pedidos ruins \\[0.3em]
+preferências reveladas & IRL, RLHF, modelos de recompensa aprendidos &
+  bajulação; reforço de vícios; não identificabilidade \\[0.3em]
+melhores interesses & regras, restrições, recusas, atrito deliberado &
+  paternalismo; imposição de valores de quem projetou \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{Estudo de caso 1 --- bajulação}
+
+\begin{defbox}{bajulação (\emph{sycophancy})}
+O sistema concorda com o usuário ou valida suas crenças mesmo quando elas são
+falsas, prejudiciais ou irracionais.
+\end{defbox}
+
+Observada em modelos de linguagem treinados com RLHF, com mecanismo transparente
+à luz desta aula: avaliadores humanos recompensam respostas que \emph{parecem}
+úteis, educadas e agradáveis --- então o modelo otimiza para agradar, não
+necessariamente para ser verdadeiro ou benéfico. É Goodhart em estado puro:
+``aprovação humana'' é uma medida barata e correlacionada com ``resposta boa'',
+e o otimizador encontra exatamente a região onde as duas se descolam.
+
+\begin{discbox}
+Qual das três interpretações de alinhamento a bajulação melhor ilustra? Se você
+projetasse o processo de RLHF, o que mudaria para reduzi-la --- e qual efeito
+colateral sua correção provavelmente teria?
+\end{discbox}
+
+\subsection*{Estudo de caso 2 --- agentes de IA}
+
+Considere um agente pessoal capaz de reservar viagens, fazer compras, negociar
+com outros agentes, gerenciar agenda e comunicação e interagir com serviços na
+web. Alinhado a \emph{preferências reveladas}, ele aprende seus padrões e age
+automaticamente, por rapidez e conveniência, às vezes sem perguntar. Alinhado a
+\emph{melhores interesses}, ele acrescenta atrito para proteger o bem-estar de
+longo prazo: pergunta, recusa ou amplia a informação quando necessário. Note que
+``quanto atrito'' não é uma decisão de interface --- é uma decisão sobre qual
+interpretação de alinhamento o sistema encarna.
+
+\begin{discbox}
+Quando o agente deve agir sem perguntar? Quando deve deferir ao usuário? E
+existe algum caso em que ele deve \emph{resistir} ao usuário --- sob que
+autoridade?
+\end{discbox}
+
+\subsection*{Quem ficou de fora}
+
+Toda a discussão anterior tem exatamente \emph{um} beneficiário: o usuário.
+Intenções de quem? Preferências de quem? Interesses de quem? Mas quase toda
+decisão de um agente tem terceiros afetados --- o candidato não contratado, o
+vizinho vigiado, o autor não creditado, a contraparte de uma negociação
+automatizada. Um agente perfeitamente alinhado ao seu usuário pode ser
+perfeitamente prejudicial a todos os demais, e nada na formulação ``maximize a
+utilidade do usuário'' detecta isso. No vocabulário econômico:
+\textbf{externalidades}. No vocabulário desta disciplina: a função recompensa
+foi definida sobre o espaço errado.
+
+\begin{discbox}
+Se dois agentes pessoais, cada um perfeitamente alinhado ao seu dono, negociam
+entre si, o resultado é bom para alguém? Que garantias de aprendizagem por
+reforço sobrevivem quando o ambiente contém outros agentes que também aprendem?
+\end{discbox}
+
+\subsection*{Onde o filosófico vira técnico}
+
+\begin{itemize}
+  \item \textbf{Sobreotimização do modelo de recompensa.} Em RLHF treina-se a
+        política contra um modelo $\hat r$ aprendido. Quanto mais se otimiza
+        $\hat r$, mais a política se afasta da região em que $\hat r$ é fiel ---
+        e a qualidade verdadeira \emph{cai} depois de certo ponto. As curvas de
+        sobreotimização são a versão empírica e mensurável da lei de Goodhart.
+  \item \textbf{Regularização por KL.} A correção padrão é penalizar
+        $\mathrm{KL}(\pol\,\|\,\pol_{\text{ref}})$, mantendo a política perto de
+        uma referência. Isso não conserta o objetivo: apenas limita quão longe o
+        otimizador pode ir ao explorar as falhas dele.
+  \item \textbf{Recompensas verificáveis (RLVR).} Em matemática e programação a
+        recompensa pode ser \emph{checada} em vez de estimada, o que elimina a
+        bajulação --- mas só existe onde há verificador.
+  \item \textbf{Supervisão escalável.} Se o avaliador humano não consegue julgar
+        a tarefa, o \emph{feedback} deixa de ser sinal e vira ruído dirigido.
+        Debate, decomposição de tarefas e crítica assistida por modelos são
+        tentativas de resposta.
+  \item \textbf{Incerteza sobre a recompensa.} Uma linha promissora trata $\rec$
+        como desconhecida e mantém uma \emph{posterior} sobre ela --- exatamente
+        a maquinaria bayesiana da seção anterior, aplicada ao objetivo em vez de
+        à dinâmica. Um agente genuinamente incerto sobre o que você quer tem
+        incentivo a perguntar, e a não desativar o próprio botão de desligar.
+\end{itemize}
+
+\begin{ideiabox}
+\textbf{O elo entre as duas metades da aula.} A cota de arrependimento é
+\emph{condicional à função recompensa}: garante convergência rápida ao ótimo de
+$\rec$ e é inteiramente silenciosa sobre a escolha de $\rec$. Toda a segunda
+metade desta aula mora nesse silêncio.
+\end{ideiabox}
+
+\section{Exercícios}
+
+\begin{exbox}{L10E1 --- a cota na prática}
+Um bandit tem $K=4$ braços com médias $0{,}5$, $0{,}45$, $0{,}3$ e $0{,}1$.
+Calcule a cota do teorema para $n = 10^{4}$ e identifique qual braço domina o
+resultado. Compare com a cota trivial $L_n \le n\max_i \Delta_i$.
+\end{exbox}
+
+\begin{exbox}{L10E2 --- o bônus constante}
+Mostre, com um exemplo de dois braços, que o algoritmo
+$a_t = \argmax_a \Qh_t(a) + b$ com $b>0$ constante pode sofrer arrependimento
+$\Theta(n)$. Onde exatamente o Passo 2 da prova falha para esse algoritmo?
+\end{exbox}
+
+\begin{exbox}{L10E3 --- o expoente do bônus}
+Suponha bônus $\bigl(2\log(1/\delta)/N_t(a)\bigr)^{1/4}$ em vez de $1/2$.
+Refaça o Passo 4 e diga como a cota de $\E[N_n(a_i)]$ muda em função de
+$\Delta_i$. O algoritmo continua com arrependimento sublinear?
+\end{exbox}
+
+\begin{exbox}{L10E4 --- o preço do horizonte}
+A prova usa $\delta = 1/n^{2}$. Suponha que se use $\delta = 1/n$. Refaça o
+Passo 5 e mostre o que acontece com o termo $n(n\delta + \delta)$. Qual a
+consequência para a cota final?
+\end{exbox}
+
+\begin{exbox}{L10E5 --- alinhamento}
+Escolha um sistema de IA que você usa e escreva (a) a métrica que você acredita
+estar sendo otimizada, (b) um comportamento em que ela se descola do que os
+usuários realmente querem, e (c) a qual das três interpretações de alinhamento
+sua crítica corresponde.
+\end{exbox}
+
+\subsection*{Respostas comentadas}
+
+{\small
+\textbf{L10E1.} As lacunas são $\Delta = (0;\ 0{,}05;\ 0{,}2;\ 0{,}4)$, logo
+$\sum_i\Delta_i = 0{,}65$ e $3\sum_i\Delta_i \approx 1{,}95$. Com
+$\log(10^{4}) \approx 9{,}21$, o segundo termo é
+$16\cdot 9{,}21\,(1/0{,}05 + 1/0{,}2 + 1/0{,}4)
+= 147{,}4\,(20 + 5 + 2{,}5) \approx 4\,053$. Total $\approx 4\,055$. O braço com
+$\Delta = 0{,}05$ responde por $\approx 2\,948$ dele, ou seja, quase três
+quartos --- é o braço \emph{quase ótimo} que custa caro, exatamente como a
+discussão da tensão previa. A cota trivial daria $10^{4}\cdot 0{,}4 = 4\,000$,
+que aqui é \emph{melhor} que a do teorema: com $n$ pequeno em relação a
+$1/\Delta^{2}$, a cota logarítmica ainda não compensou. É por isso que a versão
+minimax existe: ela dá $8\sqrt{4\cdot 10^{4}\cdot 9{,}21}\approx 4\,856$, e o
+melhor de todas as leituras é o mínimo entre elas.
+
+\textbf{L10E2.} Dois braços com $Q(a_1)=0{,}6$ e $Q(a_2)=0{,}4$. Se as
+primeiras amostras derem $\Qh(a_1)=0$ e $\Qh(a_2)=1$, o índice de $a_2$ fica
+maior por $1 + b$ contra $0 + b$: o bônus, sendo idêntico nos dois, cancela-se
+e não corrige nada. O algoritmo continua puxando $a_2$, cujas estimativas
+convergem para $0{,}4$, enquanto $\Qh(a_1)$ permanece congelado em $0$ --- e
+$a_1$ nunca mais é escolhido. Arrependimento $\Theta(n)$. Na prova, o passo que
+falha é $(**)$: com bônus constante, o índice de um braço subótimo \emph{não}
+decresce com o número de puxadas, então não existe $u_i$ finito que o coloque
+abaixo de $Q(a_1)$; e $(*)$ também falha, pois nada garante que o índice do
+braço ótimo fique acima da sua média se ele parar de ser amostrado.
+
+\textbf{L10E3.} A condição \eqref{eq:cond} vira
+$\Delta_i - (2\log(1/\delta)/u_i)^{1/4} \ge c\Delta_i$, ou seja
+$u_i \ge 2\log(1/\delta)/\bigl((1-c)\Delta_i\bigr)^{4}$. A dependência passa de
+$\Delta_i^{-2}$ para $\Delta_i^{-4}$, e o arrependimento por braço, de
+$\log n/\Delta_i$ para $\log n/\Delta_i^{3}$. Continua sublinear em $n$ --- o
+algoritmo ainda concentra as puxadas no braço ótimo --- mas é
+substancialmente pior quando as lacunas são pequenas. Moral: bônus que encolhem
+devagar demais exploram em excesso; bônus que encolhem depressa demais (ou não
+encolhem) exploram de menos e podem custar tudo.
+
+\textbf{L10E4.} Com $\delta = 1/n$ e $c=\tfrac12$, o termo do azar vira
+$n(n\delta + \delta) = n(1 + 1/n) = n + 1$, que é \emph{linear em $n$}. A cota
+final passaria a $L_n \le \sum_i \Delta_i(n+2) + \sum_i 8\log n/\Delta_i$, ou
+seja, arrependimento linear --- inútil. O expoente $2$ em $1/n^{2}$ não é
+decorativo: ele existe justamente para vencer o fator $n$ da cota da união do
+Passo 3a mais o fator $n$ da cota trivial do Passo 2.
+
+\textbf{L10E5.} Resposta aberta; a discussão em aula tende a girar em torno de
+recomendadores (engajamento como medida, retenção de longo prazo como
+objetivo --- interpretação 3), assistentes de escrita (bajulação ---
+interpretação 2) e sistemas de precificação dinâmica (onde os terceiros
+afetados são o ponto central).}
+
+\section{Autoavaliação}
+
+Você domina esta aula se consegue, sem consultar o material:
+
+\begin{multicols}{2}
+{\small
+\begin{itemize}[leftmargin=1.5em, itemsep=0.3ex, topsep=0.2ex, label=$\square$]
+  \item enunciar e provar a decomposição $L_n = \sum_i\Delta_i\E[N_n(a_i)]$;
+  \item escrever a cota de concentração subgaussiana nas duas formas
+        (com $\varepsilon$ e com $\delta$);
+  \item escrever o índice do UCB e explicar as duas leituras do bônus;
+  \item definir o evento bom $G_i$ e dizer o que cada metade significa;
+  \item reproduzir o argumento por contradição do Passo 2;
+  \item explicar por que a cota da união introduz o fator $n$ e por que isso
+        força $\delta \sim n^{-2}$;
+  \item resolver a condição $(\star)$ para $u_i$ e fechar as contas com
+        $c = \tfrac12$;
+  \item derivar a cota minimax $8\sqrt{Kn\log n}$ a partir da cota dependente
+        da instância;
+  \item explicar por que a cota explode quando $\Delta_i\to 0$ e por que isso
+        não é um problema real;
+  \item enunciar as duas cotas inferiores e dizer em que sentido o UCB é ótimo;
+  \item comparar arrependimento, PAC e critério bayesiano;
+  \item descrever a amostragem de Thompson e compará-la ao UCB;
+  \item enunciar a lei de Goodhart e dar um exemplo de \emph{reward hacking};
+  \item distinguir as três interpretações de alinhamento e apontar a falha
+        característica de cada uma;
+  \item explicar por que autonomia impede que a interpretação dos ``melhores
+        interesses'' simplesmente domine as outras.
+\end{itemize}}
+\end{multicols}
+
+\section{Para ir além}
+
+{\small
+\begin{itemize}[itemsep=0.25ex]
+  \item T. Lattimore e C. Szepesvári. \emph{Bandit Algorithms}. Cambridge
+        University Press, 2020. Seção 7.1 para a prova deste handout;
+        capítulos 8--9 para minimax e cotas inferiores;
+        capítulos 15--16 para o caso adversarial.
+  \item P. Auer, N. Cesa-Bianchi e P. Fischer. Finite-time analysis of the
+        multiarmed bandit problem. \emph{Machine Learning}, 47:235--256, 2002.
+  \item T. L. Lai e H. Robbins. Asymptotically efficient adaptive allocation
+        rules. \emph{Advances in Applied Mathematics}, 6(1):4--22, 1985.
+  \item D. Russo, B. Van Roy, A. Kazerouni, I. Osband e Z. Wen. A tutorial on
+        Thompson sampling. \emph{Foundations and Trends in Machine Learning},
+        11(1):1--96, 2018.
+  \item H. Bastani et al. Efficient and targeted COVID-19 border testing via
+        reinforcement learning. \emph{Nature}, 599:108--113, 2021.
+  \item A. Ng e S. Russell. Algorithms for inverse reinforcement learning.
+        \emph{ICML}, 2000.
+  \item I. Gabriel. Artificial intelligence, values, and alignment.
+        \emph{Minds and Machines}, 30:411--437, 2020.
+  \item N. Bostrom. \emph{Superintelligence: Paths, Dangers, Strategies}.
+        Oxford University Press, 2014.
+  \item E. Brunskill. \emph{CS234: Reinforcement Learning}, Stanford University
+        --- \emph{Lecture 10: Fast Reinforcement Learning}, com palestra
+        convidada sobre alinhamento de valores por Wanheng Hu.
+\end{itemize}}
+
+\end{document}
