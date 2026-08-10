@@ -1,0 +1,1025 @@
+%% ============================================================
+%%  handout04.tex — Aula 4: Controle sem modelo e aproximação
+%%  Aprendizagem por Reforço — Universidade Federal de Uberlândia
+%%  Compilar com XeLaTeX (2x): latexmk -xelatex handout04.tex
+%% ============================================================
+\documentclass[11pt]{article}
+
+\usepackage{handoutAprendizadoRL}
+\usepackage{babel}
+\babelprovide[import, main]{brazilian}
+\usepackage{multirow}
+
+\setaula{Aula 4 — Controle sem modelo}
+\setprof{Marcelo Keese Albertini}
+
+%% ---- notação local desta aula
+\newcommand{\Qhat}{\widehat{Q}}
+\newcommand{\Vhat}{\widehat{V}}
+\newcommand{\Phat}{\widehat{P}}
+\newcommand{\rhat}{\widehat{\rec}}
+\newcommand{\wv}{\mathbf{w}}
+\newcommand{\wtar}{\mathbf{w}^{-}}
+\newcommand{\xv}{\mathbf{x}}
+\newcommand{\polb}{\pol_b}
+\newcommand{\Qstar}{Q^{*}}
+
+%% ---- pseudocódigo numerado
+\newcounter{plin}
+\newcommand{\pl}[2][0em]{%
+  \stepcounter{plin}%
+  \par\noindent
+  \hangindent=2.3em \hangafter=1
+  \makebox[1.6em][r]{\color{rlCinza}\scriptsize\theplin:}\hspace{0.5em}\hspace*{#1}\ignorespaces#2\par}
+\setlength{\emergencystretch}{2.2em}
+\hyphenation{off-po-licy on-po-licy boot-strap-ping bootstrap-ping mini-batch}
+
+\newenvironment{pseudo}%
+  {\par\setcounter{plin}{0}\small\setlength{\parskip}{0.3ex}}%
+  {\par}
+
+\begin{document}
+
+\capa{Controle sem modelo e aproximação de função valor}
+     {MC e TD em lote \textbullet\ $\epsilon$-guloso e GLIE \textbullet\ SARSA e Q-learning \textbullet\ VFA \textbullet\ DQN}
+     {Prof.\ Marcelo Keese Albertini}
+     {Adaptado de CS234: Reinforcement Learning, Emma Brunskill (Stanford), Lecture 4. Leitura complementar: Sutton \& Barto (2018), seções 5.2--5.4, 6.4--6.7 e 9.3--9.4.}
+
+\noindent
+Na Aula 3 aprendemos a \emph{medir} uma política sem conhecer o modelo do mundo.
+Esta aula fecha esse assunto e passa ao problema difícil: \emph{escolher} a
+política. O obstáculo novo é que, para decidir, o agente precisa de dados sobre
+ações que a política atual não toma --- e é daí que nascem a exploração, o
+$\epsilon$-guloso, o SARSA e o Q-learning. Na segunda metade abandonamos a
+tabela e passamos a representar $Q$ por uma função parametrizada, o que abre a
+porta para o Deep Q-Learning e, junto com ela, para a instabilidade.
+
+\begin{ideiabox}
+  \textbf{Fio condutor.} Todos os algoritmos desta aula são a mesma linha,
+  \[ \text{estimativa} \;\leftarrow\; \text{estimativa} \;+\; \alpha\,\bigl(\text{alvo} - \text{estimativa}\bigr), \]
+  com escolhas diferentes de \emph{alvo}. Quando um algoritmo novo aparecer, a
+  primeira pergunta útil quase sempre é: \emph{qual é o alvo, e ele é
+  enviesado?}
+\end{ideiabox}
+
+\medskip
+\noindent\textbf{Roteiro.}
+\begin{enumerate}[label=\textcolor{rlLaranja}{\bfseries\arabic*.}, leftmargin=1.6em, itemsep=0.1em]
+  \item Avaliação de política em lote: o que MC e TD realmente calculam.
+  \item Melhoria de política generalizada: por que $Q$, e por que explorar.
+  \item Controle tabular sem modelo: MC-controle, GLIE, SARSA, Q-learning.
+  \item Aproximação de função valor.
+  \item Controle com aproximação e Deep Q-Learning.
+\end{enumerate}
+
+%% ============================================================
+\section{Avaliação de política em lote}
+
+Nas versões vistas na Aula 3, cada tupla $(s,a,r,s')$ era usada uma vez e
+descartada. No cenário \textbf{em lote} (\emph{batch}, ou \emph{offline}) temos
+um conjunto fixo de $K$ episódios e podemos reprocessá-lo quantas vezes
+quisermos:
+
+\begin{algbox}{Avaliação de política em lote}
+  \begin{pseudo}
+    \pl{Dado o conjunto fixo de $K$ episódios}
+    \pl{\textbf{repita} até convergir}
+    \pl[1.3em]{amostre um episódio $k \sim \{1,\dots,K\}$}
+    \pl[1.3em]{aplique a atualização de MC (ou de TD(0)) a esse episódio}
+    \pl{\textbf{fim}}
+  \end{pseudo}
+\end{algbox}
+
+A pergunta interessante é: rodando MC e TD(0) sobre \emph{os mesmos} dados até a
+convergência, eles chegam à mesma resposta? A resposta é não --- e entender por
+quê é entender a diferença conceitual entre os dois métodos.
+
+\subsection{O exemplo A--B}
+
+\textit{(Sutton \& Barto, 2018, Exemplo 6.4.)} Dois estados, $A$ e $B$, com
+$\gamma = 1$. Observamos oito episódios:
+
+\begin{center}\small
+\begin{tabular}{ll}
+  \toprule
+  Episódio & Frequência \\
+  \midrule
+  $A,\,0,\,B,\,0$ & 1 vez \\
+  $B,\,1$         & 6 vezes \\
+  $B,\,0$         & 1 vez \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+Note que $A$ aparece \textbf{uma única vez} em toda a base. Partindo de $B$,
+houve recompensa $1$ em $6$ das $8$ visitas, logo $V(B) = 6/8 = 0{,}75$ pelos
+dois métodos. Mas para $V(A)$:
+
+\[
+  \mdestaque{rlAzulClaro}{V_{\mathrm{MC}}(A) = 0}
+  \qquad\text{e}\qquad
+  \mdestaque{rlLaranja}{V_{\mathrm{TD}}(A) = 0{,}75}
+\]
+
+\textbf{Monte Carlo.} O único retorno já observado a partir de $A$ foi
+$G = 0 + 0 = 0$. MC minimiza o erro quadrático em relação aos retornos
+\emph{observados}, e responde $0$.
+
+\textbf{TD(0).} O alvo é $r + \gamma V(B) = 0{,}75$. TD encadeia a informação
+obtida em $B$, mesmo que $A$ tenha sido visitado uma vez só. Implicitamente, TD
+construiu este MDP:
+
+\begin{center}
+\begin{tikzpicture}[node distance=22mm]
+  \node[estado destacado] (a) {$A$};
+  \node[estado, right=of a] (b) {$B$};
+  \node[estado terminal, right=of b] (t) {$\bot$};
+  \draw[trans] (a) -- node[probl] {$1{,}0$} node[above=1mm, font=\scriptsize, text=rlCinza] {$r=0$} (b);
+  \draw[trans] (b) -- node[probl] {$1{,}0$} node[above=1mm, font=\scriptsize, text=rlVerde!70!black] {$\E[r]=0{,}75$} (t);
+\end{tikzpicture}
+\end{center}
+
+\subsection{Para onde cada método converge}
+
+\begin{teobox}{Monte Carlo em lote}
+  Converge para os valores que minimizam o erro quadrático médio em relação aos
+  retornos observados,
+  \[ V \;=\; \argmin_{V}\; \sum_{k=1}^{K}\sum_{t=1}^{L_k} \bigl(G_{k,t} - V(s_{k,t})\bigr)^2 . \]
+\end{teobox}
+
+\begin{teobox}{TD(0) em lote}
+  Converge para o $\Vpi$ do \textbf{MDP de máxima verossimilhança} estimado a
+  partir dos dados --- isto é, produz exatamente o mesmo resultado da
+  programação dinâmica com \emph{equivalência de certeza}:
+  \begin{align*}
+    \Phat(s' \mid s,a) &= \frac{1}{N(s,a)}\sum_{k} \mathbf{1}\{s_k = s,\; a_k = a,\; s_{k+1} = s'\},\\
+    \rhat(s,a) &= \frac{1}{N(s,a)}\sum_{k} \mathbf{1}\{s_k = s,\; a_k = a\}\, r_k .
+  \end{align*}
+\end{teobox}
+
+Qual das duas respostas é ``a certa'' depende inteiramente de acreditarmos, ou
+não, na hipótese de Markov.
+
+\begin{ideiabox}
+  \textbf{Se o ambiente é markoviano}, TD está certo: o que se aprende sobre $B$
+  vale para \emph{qualquer} caminho que leve a $B$, inclusive o que passa por
+  $A$. TD usa a estrutura do problema; MC a ignora.
+\end{ideiabox}
+
+\begin{alertabox}
+  \textbf{Se o ambiente não é markoviano} --- estado parcialmente observado,
+  variáveis latentes não registradas --- TD propaga uma hipótese falsa. MC, que
+  só olha retornos completos, é mais robusto, ao custo de variância.
+\end{alertabox}
+
+\begin{discbox}
+  Em um problema de saúde, com prontuários incompletos e comorbidades não
+  registradas, o estado observado quase certamente não é markoviano. Isso torna
+  o TD inutilizável, ou apenas enviesado de forma controlável? Que evidência
+  empírica você exigiria antes de decidir?
+\end{discbox}
+
+\subsection{Critérios de comparação}
+
+\begin{center}\small
+\begin{tabular}{lccc}
+  \toprule
+  & \textbf{Monte Carlo} & \textbf{TD(0)} & \textbf{Eq.\ de certeza} \\
+  \midrule
+  Supõe Markov              & não     & sim     & sim \\
+  Viés do alvo              & não     & sim     & sim \\
+  Variância                 & alta    & baixa   & baixa \\
+  Precisa do episódio completo & sim  & não     & não \\
+  Custo por atualização     & $O(1)$  & $O(1)$  & alto (sistema linear) \\
+  Eficiência de dados       & baixa   & média   & alta \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+Em um episódio de comprimento $L$, tanto MC quanto TD(0) custam $O(L)$ por
+episódio --- mas o TD já atualiza no primeiro passo, enquanto o MC precisa
+esperar o fim. A equivalência de certeza é a mais eficiente em dados e a mais
+cara em computação: há uma escada de eficiência estatística paga em tempo de
+processamento, e boa parte da pesquisa em RL sem modelo vive nessa tensão.
+
+%% ============================================================
+\section{Melhoria de política generalizada}
+
+O esqueleto do controle é o mesmo da Aula 2:
+
+\begin{algbox}{Iteração de política generalizada}
+  \begin{pseudo}
+    \pl{Inicialize $\pol$}
+    \pl{\textbf{repita}}
+    \pl[1.3em]{\emph{Avaliação:} estime $\Qpi$}
+    \pl[1.3em]{\emph{Melhoria:} atualize $\pol$ a partir de $\Qpi$}
+    \pl{\textbf{fim}}
+  \end{pseudo}
+\end{algbox}
+
+\noindent
+mas agora com três buracos: (i) se $\pol$ é determinística, nunca observamos
+$Q(s,a)$ para $a \neq \pol(s)$; (ii) a melhoria usa um $\Qhat$ estimado, com
+ruído; (iii) não é óbvio quanto avaliar antes de melhorar.
+
+\subsection{Por que $Q$ e não $V$}
+
+Com modelo, a melhoria gulosa se faz a partir de $V$:
+\[ \pol'(s) = \argmax_{a \in \gA}\; \Bigl[\rec(s,a) + \gamma \sum_{s'} \tran{s'}{s,a}\, V(s')\Bigr]. \]
+Sem modelo, $\rec$ e $P$ são desconhecidos e essa expressão é inútil. Já com $Q$:
+\[ \pol'(s) = \argmax_{a \in \gA}\; Q(s,a), \]
+sem nenhum conhecimento da dinâmica.
+
+\begin{ideiabox}
+  $Q$ é exatamente $V$ com \emph{a informação de um passo do modelo já
+  embutida}. É por isso que praticamente todo algoritmo de controle sem modelo
+  aprende $Q$, e não $V$. O preço: a tabela cresce de $\abs{\gS}$ para
+  $\abs{\gS}\abs{\gA}$ entradas, e cada entrada precisa ser \emph{visitada}
+  para ser estimada.
+\end{ideiabox}
+
+\subsection{O problema da exploração}
+
+\begin{itemize}
+  \item \textbf{Explorar:} não há como aprender sobre uma ação sem
+    experimentá-la; dados sobre $a$ só existem se $\pol$ der probabilidade
+    positiva a $a$.
+  \item \textbf{Explotar:} cada passo gasto experimentando é um passo não gasto
+    colhendo a recompensa que já sabemos existir --- e em domínios como saúde e
+    educação, explorar tem custo real.
+\end{itemize}
+
+\begin{alertabox}
+  Uma política \textbf{gulosa pura} sobre $\Qhat$ pode travar para sempre: basta
+  que a primeira amostra de uma ação boa seja ruim por azar para que ela nunca
+  mais seja escolhida --- e, portanto, nunca mais corrigida.
+\end{alertabox}
+
+\begin{defbox}{Política $\epsilon$-gulosa em relação a $Q(s,a)$}
+  Seja $\abs{\gA}$ o número de ações e $\epsilon \in [0,1]$. Então
+  \[
+    \pol(a \mid s) =
+    \begin{cases}
+      1 - \epsilon + \dfrac{\epsilon}{\abs{\gA}}, & \text{se } a = \argmax_{a'} Q(s,a'),\\[2ex]
+      \dfrac{\epsilon}{\abs{\gA}}, & \text{caso contrário.}
+    \end{cases}
+  \]
+  Isto é: com probabilidade $1-\epsilon$ escolha a ação gulosa; com
+  probabilidade $\epsilon$ escolha uniformemente ao acaso entre \emph{todas} as
+  ações.
+\end{defbox}
+
+Toda ação tem probabilidade pelo menos $\epsilon/\abs{\gA} > 0$, de modo que a
+exploração é garantida. Os casos extremos são $\epsilon = 1$ (passeio
+aleatório) e $\epsilon = 0$ (guloso puro). Uma alternativa comum é a política
+\emph{softmax} (Boltzmann), $\pol(a \mid s) \propto e^{Q(s,a)/\tau}$, que
+explora preferencialmente as ações \emph{quase} boas em vez de tratar todas as
+não-gulosas igualmente.
+
+\begin{alertabox}
+  Erro frequente: com $\epsilon = 1/3$ e $\abs{\gA} = 2$, a probabilidade de
+  escolher a ação gulosa \textbf{não} é $2/3$, e sim
+  $1 - \tfrac{1}{3} + \tfrac{1}{6} = \tfrac{5}{6}$ --- a exploração uniforme
+  também pode cair sobre a ação gulosa.
+\end{alertabox}
+
+\subsection{A melhoria monotônica sobrevive à exploração}
+
+Na Aula 2 provamos que a iteração de política melhora monotonicamente, mas a
+prova supunha que a melhoria produzisse uma política \emph{determinística}. Uma
+política $\epsilon$-gulosa é estocástica de propósito. A garantia se perde?
+
+\begin{teobox}{Teorema — melhoria monotônica $\epsilon$-gulosa}
+  Seja $\pol_i$ uma política $\epsilon$-gulosa qualquer e seja $\pol_{i+1}$ a
+  política $\epsilon$-gulosa em relação a $Q^{\pol_i}$. Então
+  $V^{\pol_{i+1}}(s) \ge V^{\pol_i}(s)$ para todo $s \in \gS$.
+\end{teobox}
+
+\begin{provabox}
+  \begin{align*}
+    Q^{\pol_i}\bigl(s, \pol_{i+1}(s)\bigr)
+      &= \sum_{a \in \gA} \pol_{i+1}(a\mid s)\, Q^{\pol_i}(s,a) \\
+      &= \frac{\epsilon}{\abs{\gA}} \sum_{a \in \gA} Q^{\pol_i}(s,a)
+         \;+\; (1-\epsilon)\, \max_{a} Q^{\pol_i}(s,a) \\
+      &\ge \frac{\epsilon}{\abs{\gA}} \sum_{a \in \gA} Q^{\pol_i}(s,a)
+         \;+\; (1-\epsilon) \sum_{a \in \gA}
+           \underbrace{\frac{\pol_i(a\mid s) - \epsilon/\abs{\gA}}{1-\epsilon}}_{w_a}\,
+           Q^{\pol_i}(s,a) \\
+      &= \sum_{a \in \gA} \pol_i(a \mid s)\, Q^{\pol_i}(s,a) \;=\; V^{\pol_i}(s).
+  \end{align*}
+  A desigualdade vale porque o máximo é maior ou igual a \emph{qualquer}
+  combinação convexa. Os pesos $w_a$ são não-negativos precisamente porque
+  $\pol_i$ é $\epsilon$-gulosa, logo $\pol_i(a\mid s) \ge \epsilon/\abs{\gA}$, e
+  somam $1$ porque $\sum_a \pol_i(a\mid s) = 1$. De
+  $Q^{\pol_i}(s,\pol_{i+1}(s)) \ge V^{\pol_i}(s)$ segue
+  $V^{\pol_{i+1}} \ge V^{\pol_i}$ pelo teorema de melhoria de política da
+  Aula 2. \hfill$\blacksquare$
+\end{provabox}
+
+\begin{ideiabox}
+  Podemos explorar \emph{para sempre} e ainda assim nunca piorar. O custo é que
+  a melhor política entre as $\epsilon$-gulosas não é $\polstar$ --- ela carrega
+  o $\epsilon$ de ruído. É esse resíduo que a condição GLIE, a seguir, elimina.
+\end{ideiabox}
+
+%% ============================================================
+\section{Controle tabular sem modelo}
+
+\subsection{Monte Carlo para \texorpdfstring{$Q$}{Q}}
+
+A avaliação Monte Carlo da Aula 3, com o par $(s,a)$ no lugar de $s$, e a
+melhoria feita a cada episódio:
+
+\begin{algbox}{Controle MC \emph{on-policy} com $\epsilon$-guloso}
+  \begin{pseudo}
+    \pl{Inicialize $Q(s,a) = 0$ e $N(s,a) = 0$ para todo $(s,a)$; $\epsilon = 1$; $k = 1$}
+    \pl{$\pol_k \leftarrow \epsilon\text{-guloso}(Q)$}
+    \pl{\textbf{repita}}
+    \pl[1.3em]{gere o episódio $k$ seguindo $\pol_k$ e calcule os retornos $G_{k,t} = \sum_{j \ge t} \gamma^{\,j-t} r_{k,j}$}
+    \pl[1.3em]{\textbf{para} $t = 1,\dots,T$ \textbf{faça}}
+    \pl[2.6em]{\textbf{se} é a primeira visita a $(s_t,a_t)$ no episódio $k$ \textbf{então}}
+    \pl[3.9em]{$N(s_t,a_t) \mathrel{+}= 1$}
+    \pl[3.9em]{$Q(s_t,a_t) \mathrel{+}= \frac{1}{N(s_t,a_t)}\bigl(G_{k,t} - Q(s_t,a_t)\bigr)$}
+    \pl[2.6em]{\textbf{fim}}
+    \pl[1.3em]{\textbf{fim}}
+    \pl[1.3em]{$k \mathrel{+}= 1$; \quad $\epsilon \leftarrow 1/k$ \hfill \textit{(exploração decrescente)}}
+    \pl[1.3em]{$\pol_k \leftarrow \epsilon\text{-guloso}(Q)$ \hfill \textit{(melhoria de política)}}
+    \pl{\textbf{fim}}
+  \end{pseudo}
+\end{algbox}
+
+A melhoria acontece a \emph{cada} episódio, sem esperar a avaliação convergir:
+é a versão impaciente da iteração de política --- e ainda assim funciona.
+
+\begin{exbox}{1 — MC-controle no \emph{Mars Rover}}
+  Sete estados, duas ações, $\gamma = 1$, com
+  $\rec(\cdot, a_1) = [\,1\;0\;0\;0\;0\;0\;{+}10\,]$ e
+  $\rec(\cdot, a_2) = [\,0\;0\;0\;0\;0\;0\;{+}5\,]$. Comece com $Q(s,a) = 0$ para
+  todo par, $\pol(s) = a_1$ para todo $s$ e $\epsilon = 0{,}5$. Amostrou-se a
+  trajetória
+  \[ \tau = (s_3, a_1, 0,\; s_2, a_2, 0,\; s_3, a_1, 0,\; s_2, a_2, 0,\; s_1, a_1, 1,\; \bot). \]
+  \textbf{(a)} Calcule a estimativa MC de primeira visita de $Q$ para cada par.
+  \textbf{(b)} Qual passa a ser a política gulosa?
+  \textbf{(c)} Com $\epsilon = 1/3$, qual a probabilidade de escolher $a_1$ em $s_1$?
+
+  \smallskip
+  \textit{Resposta.} (a) $Q(\cdot,a_1) = [\,1\;0\;1\;0\;0\;0\;0\,]$ e
+  $Q(\cdot,a_2) = [\,0\;1\;0\;0\;0\;0\;0\,]$: toda primeira visita ocorre antes
+  da recompensa $1$ recebida em $s_1$ e, com $\gamma = 1$, cada par visitado
+  recebe retorno $1$. (b) $\pol = [\,a_1\;\;a_2\;\;a_1\;\;$empate$\;\cdots]$.
+  (c) $5/6$.
+\end{exbox}
+
+\subsection{GLIE}
+
+\begin{defbox}{GLIE --- \emph{Greedy in the Limit with Infinite Exploration}}
+  Uma sequência de políticas $\{\pol_i\}$ é GLIE se
+  \begin{enumerate}[itemsep=0.1em]
+    \item todo par estado-ação é visitado infinitas vezes,
+      $\lim_{i \to \infty} N_i(s,a) \to \infty$;
+    \item a política de comportamento converge para a gulosa,
+      $\lim_{i \to \infty} \pol_i(a \mid s) \to \argmax_{a} Q(s,a)$ com
+      probabilidade $1$.
+  \end{enumerate}
+\end{defbox}
+
+As duas condições puxam em direções opostas: a primeira exige exploração
+eterna, a segunda exige que ela desapareça. A estratégia GLIE mais simples
+concilia ambas: $\epsilon$-guloso com $\epsilon_i = 1/i$, pois
+$\sum_i 1/i$ diverge (exploração infinita) mas $\epsilon_i \to 0$ (guloso no
+limite).
+
+\begin{teobox}{Teorema --- convergência do controle MC com GLIE}
+  O controle Monte Carlo GLIE converge para a função valor de ação ótima:
+  $Q(s,a) \to \Qstar(s,a)$.
+\end{teobox}
+
+\subsection{On-policy e off-policy}
+
+\begin{defbox}{}
+  \textbf{Aprendizado \emph{on-policy}} estima e melhora a política a partir da
+  experiência gerada por ela mesma: a política que age é a política que se
+  aprende (MC-controle, SARSA).
+
+  \smallskip
+  \textbf{Aprendizado \emph{off-policy}} estima e melhora uma política
+  \emph{alvo} usando dados coletados por uma política de \emph{comportamento}
+  diferente, $\polb$ (Q-learning, DQN, praticamente todo RL \emph{offline}
+  moderno).
+\end{defbox}
+
+Off-policy é o que permite aprender de dados de arquivo --- registros médicos,
+logs de recomendação, demonstrações humanas --- e reutilizar experiência
+antiga, que é a base do \emph{replay} do DQN. Em troca, é a fonte de boa parte
+da instabilidade que aparece quando se combina off-policy com aproximação de
+função.
+
+\subsection{SARSA e Q-learning}
+
+O nome SARSA vem da quíntupla usada na atualização, $(s,a,r,s',a')$.
+
+\begin{defbox}{Atualização SARSA}
+  \[ Q(s_t, a_t) \leftarrow Q(s_t,a_t) + \alpha\Bigl(
+     \termo{r_t + \gamma\, Q(s_{t+1}, a_{t+1})}{alvo: a ação realmente tomada} - Q(s_t,a_t)\Bigr) \]
+\end{defbox}
+
+\begin{defbox}{Atualização Q-learning \textnormal{(Watkins, 1989)}}
+  \[ Q(s_t, a_t) \leftarrow Q(s_t,a_t) + \alpha\Bigl(
+     \termo{r_t + \gamma \max_{a'} Q(s_{t+1}, a')}{alvo: a melhor ação disponível} - Q(s_t,a_t)\Bigr) \]
+\end{defbox}
+
+\begin{algbox}{SARSA com exploração $\epsilon$-gulosa}
+  \begin{pseudo}
+    \pl{Inicialize $Q(s,a)$; $t = 0$; estado inicial $s_0$; $\pol \leftarrow \epsilon\text{-guloso}(Q)$}
+    \pl{Tome $a_t \sim \pol(s_t)$}
+    \pl{\textbf{repita}}
+    \pl[1.3em]{observe $(r_t, s_{t+1})$ e tome $a_{t+1} \sim \pol(s_{t+1})$}
+    \pl[1.3em]{$Q(s_t,a_t) \mathrel{+}= \alpha\bigl(r_t + \gamma Q(s_{t+1},a_{t+1}) - Q(s_t,a_t)\bigr)$}
+    \pl[1.3em]{$\pol \leftarrow \epsilon\text{-guloso}(Q)$; \quad $t \mathrel{+}= 1$}
+    \pl{\textbf{fim}}
+  \end{pseudo}
+\end{algbox}
+
+\begin{algbox}{Q-learning com exploração $\epsilon$-gulosa}
+  \begin{pseudo}
+    \pl{Inicialize $Q(s,a)$ para todo $s \in \gS,\, a \in \gA$; $t = 0$; estado inicial $s_0$}
+    \pl{Defina $\polb \leftarrow \epsilon\text{-guloso}(Q)$ \hfill \textit{(política de comportamento)}}
+    \pl{\textbf{repita}}
+    \pl[1.3em]{tome $a_t \sim \polb(s_t)$ e observe $(r_t, s_{t+1})$}
+    \pl[1.3em]{$Q(s_t,a_t) \mathrel{+}= \alpha\bigl(r_t + \gamma \max_{a'} Q(s_{t+1},a') - Q(s_t,a_t)\bigr)$}
+    \pl[1.3em]{$\polb \leftarrow \epsilon\text{-guloso}(Q)$; \quad $t \mathrel{+}= 1$}
+    \pl{\textbf{fim}}
+  \end{pseudo}
+\end{algbox}
+
+\begin{ideiabox}
+  SARSA avalia a política $\epsilon$-gulosa \emph{incluindo o custo de
+  explorar}: aprende o valor de ser um agente que às vezes erra de propósito.
+  O $\max$ do Q-learning desacopla o que se \emph{aprende} do que se
+  \emph{faz} --- é a versão amostral do operador de backup de Bellman
+  \textbf{ótimo} da Aula 2, no lugar do operador de avaliação.
+\end{ideiabox}
+
+\begin{teobox}{Teorema --- convergência do Q-learning tabular}
+  Para MDPs com $\gS$ e $\gA$ finitos, o Q-learning converge para
+  $Q(s,a) \to \Qstar(s,a)$ desde que (i) a sequência de políticas satisfaça a
+  condição GLIE e (ii) os passos $\alpha_t$ satisfaçam as condições de
+  Robbins--Monro:
+  \[ \sum_{t=1}^{\infty} \alpha_t = \infty, \qquad \sum_{t=1}^{\infty} \alpha_t^2 < \infty. \]
+\end{teobox}
+
+A primeira soma garante que qualquer erro inicial \emph{pode} ser corrigido (os
+passos não somem cedo demais); a segunda garante que o ruído das amostras
+\emph{é} eventualmente amortecido. Por exemplo, $\alpha_t = 1/t$ satisfaz
+ambas. A demonstração se apoia em aproximação estocástica, na propriedade de
+contração do backup de Bellman (Aula 2) e em recompensas e valores limitados.
+
+\begin{alertabox}
+  Nenhuma dessas três hipóteses sobrevive intacta quando trocamos a tabela por
+  um aproximador de função --- guarde essa observação para a Seção 5.
+\end{alertabox}
+
+\subsection{A diferença em um único passo}
+
+\emph{Mars Rover} com $\alpha = 0{,}5$, $\gamma = 1$,
+$Q(\cdot,a_1) = [\,1\;0\;0\;0\;0\;0\;10\,]$ e
+$Q(\cdot,a_2) = [\,1\;0\;0\;0\;0\;0\;5\,]$. O agente parte de $s_6$, toma $a_1$,
+recebe $r = 0$ e vai para $s_7$, onde toma $a_2$.
+
+\begin{center}\small
+\begin{tabular}{ll}
+  \toprule
+  \textbf{SARSA} --- tupla $(s_6, a_1, 0, s_7, a_2)$ &
+  $Q(s_6,a_1) \leftarrow 0 + 0{,}5\,(0 + 1 \cdot \underbrace{5}_{Q(s_7,a_2)}) = \mathbf{2{,}5}$ \\
+  \addlinespace[0.6ex]
+  \textbf{Q-learning} --- tupla $(s_6, a_1, 0, s_7)$ &
+  $Q(s_6,a_1) \leftarrow 0 + 0{,}5\,(0 + 1 \cdot \underbrace{10}_{\max_{a'} Q(s_7,a')}) = \mathbf{5}$ \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+Mesma transição, dois números. O SARSA usou o valor da ação de fato tomada em
+$s_7$, possivelmente escolhida por exploração; o Q-learning usou o máximo,
+$\max\{10,5\} = 10$, ignorando qual ação o agente escolheu.
+
+\begin{alertabox}
+  A inicialização de $Q$ importa? \textbf{Assintoticamente não}, sob as
+  condições do teorema de convergência --- mas \textbf{muito} no início, e é ela
+  que produz a diferença $2{,}5$ contra $5$ acima. Inicializar otimisticamente
+  é, aliás, uma estratégia de exploração por si só.
+\end{alertabox}
+
+\subsection{O que essa diferença provoca: \emph{cliff walking}}\label{sec:cliff}
+
+\textit{(Sutton \& Barto, 2018, Exemplo 6.6.)} Grade $4 \times 12$, recompensa
+$-1$ por passo; cair no penhasco custa $-100$ e devolve o agente ao início.
+
+\begin{center}
+\begin{tikzpicture}[x=7.5mm, y=7.5mm, font=\scriptsize]
+  \foreach \x in {0,...,11}{\foreach \y in {0,...,2}{
+    \draw[rlAzul!30, fill=rlAzul!5] (\x,\y) rectangle ++(1,1);}}
+  \foreach \x in {1,...,10}{
+    \draw[rlVermelho!55, fill=rlVermelho!18] (\x,0) rectangle ++(1,1);}
+  \draw[rlVerde!60!black, fill=rlVerde!18] (0,0) rectangle ++(1,1);
+  \draw[rlVerde!60!black, fill=rlVerde!18] (11,0) rectangle ++(1,1);
+  \node at (0.5,0.5) {I};
+  \node at (11.5,0.5) {M};
+  \node[text=rlVermelho!85!black] at (5.5,0.5) {penhasco, $r = -100$};
+  \draw[rlLaranja, very thick, -{Stealth[length=2mm]}, rounded corners=2pt]
+    (0.5,0.8) -- (0.5,1.5) -- (11.5,1.5) -- (11.5,0.82);
+  \draw[rlAzulClaro, very thick, -{Stealth[length=2mm]}, rounded corners=2pt]
+    (0.3,0.8) -- (0.3,2.5) -- (11.7,2.5) -- (11.7,0.82);
+  \node[text=rlLaranja, fill=white, inner sep=1pt, anchor=west] at (3,1.72) {Q-learning: rota ótima};
+  \node[text=rlAzulClaro, fill=white, inner sep=1pt, anchor=west] at (3,2.72) {SARSA: rota segura};
+\end{tikzpicture}
+\end{center}
+
+O \textbf{Q-learning} aprende o caminho ótimo, rente ao penhasco --- mas,
+agindo com $\epsilon$-guloso, cai nele de vez em quando e obtém
+\emph{recompensa média pior}. O \textbf{SARSA} aprende o caminho seguro, pela
+rota de cima, porque seu alvo já contabiliza os passos exploratórios. Se
+$\epsilon \to 0$, ambos convergem para a política ótima; mas \emph{durante} o
+aprendizado o comportamento cauteloso do SARSA é frequentemente preferível ---
+especialmente se o ``penhasco'' for real.
+
+\begin{discbox}
+  Em que aplicações o critério relevante é a política final, e em quais é o
+  desempenho \emph{durante} o aprendizado? O que isso implica sobre escolher
+  entre SARSA e Q-learning num sistema que aprende em produção?
+\end{discbox}
+
+\subsection{Um viés escondido no \texorpdfstring{$\max$}{max}}
+
+O alvo do Q-learning usa $\max_{a'} \Qhat(s',a')$ como estimativa de
+$\max_{a'} Q(s',a')$. Mas o máximo de estimativas ruidosas é um estimador
+\textbf{enviesado para cima}: pela desigualdade de Jensen, como o $\max$ é uma
+função convexa,
+\[ \E\Bigl[\max_{a'} \Qhat(s',a')\Bigr] \;\ge\; \max_{a'} \E\bigl[\Qhat(s',a')\bigr]. \]
+Basta que uma ação tenha tido sorte nas amostras para que o $\max$ a selecione,
+e o erro é então propagado adiante pelo \emph{bootstrapping}. Esse
+\textbf{viés de maximização} é sistemático, não ruído: não desaparece com mais
+estados e piora quanto maior for $\abs{\gA}$.
+
+\begin{ideiabox}
+  A correção clássica é \textbf{desacoplar seleção e avaliação} da ação: usar um
+  conjunto de estimativas para escolher o $\argmax$ e outro para avaliá-lo. É a
+  ideia do \emph{Double Q-learning} e, depois, do \emph{Double DQN}.
+\end{ideiabox}
+
+%% ============================================================
+\section{Aproximação de função valor}
+
+\subsection{Por que a tabela não basta}
+
+\begin{center}\small
+\begin{tabular}{lr}
+  \toprule
+  Domínio & $\abs{\gS}$ aproximado \\
+  \midrule
+  \emph{Mars Rover} (Aula 2)        & $7$ \\
+  Gamão                             & $10^{20}$ \\
+  Go ($19 \times 19$)               & $10^{170}$ \\
+  Atari (4 quadros $84\times84$)    & $256^{28224}$ \\
+  Robô com estados contínuos        & incontável \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+Não é apenas uma questão de memória: mesmo que a tabela coubesse, seria preciso
+\emph{visitar} cada entrada ao menos uma vez para estimá-la. Queremos evitar
+armazenar por estado o modelo $(P,\rec)$, o valor $V$, o valor de ação $Q$ e a
+própria política $\pol$ --- reduzindo memória, computação e, sobretudo, a
+\textbf{experiência} necessária.
+
+\begin{ideiabox}
+  A palavra-chave é \textbf{generalização}: aprender sobre um estado e, com
+  isso, saber algo sobre estados parecidos que nunca foram visitados.
+\end{ideiabox}
+
+\subsection{O problema, primeiro com um oráculo}
+
+Suponha que exista um oráculo capaz de devolver o valor verdadeiro
+$Q^{\pol}(s,a)$ para qualquer par consultado. Então temos um problema de
+regressão comum sobre pares $\bigl((s,a),\, Q^{\pol}(s,a)\bigr)$, com perda
+\[ J(\wv) \;=\; \E_{\pol}\Bigl[\bigl(Q^{\pol}(s,a) - \Qhat(s,a;\wv)\bigr)^2\Bigr]. \]
+Como
+\[ \nabla_{\wv} J(\wv) = -2\,\E_{\pol}\bigl[(Q^{\pol}(s,a) - \Qhat(s,a;\wv))\,\nabla_{\wv}\Qhat(s,a;\wv)\bigr], \]
+o passo $\Delta \wv = -\tfrac{1}{2}\alpha \nabla_{\wv} J(\wv)$, aplicado a uma
+única amostra, fica
+\[ \Delta \wv = \alpha\bigl(Q^{\pol}(s,a) - \Qhat(s,a;\wv)\bigr)\,\nabla_{\wv}\Qhat(s,a;\wv). \]
+O gradiente estocástico usa uma (ou poucas) amostras no lugar da esperança; em
+média, o passo é o mesmo do gradiente completo.
+
+\subsection{Aproximadores lineares e o caso tabular}
+
+Descreva cada par por um vetor de atributos
+$\xv(s,a) = [x_1(s,a), \dots, x_d(s,a)]^{\top}$ e tome
+\[ \Qhat(s,a;\wv) = \wv^{\top}\xv(s,a), \qquad \nabla_{\wv}\Qhat(s,a;\wv) = \xv(s,a), \]
+de modo que a atualização fica
+$\Delta\wv = \alpha\bigl(\text{alvo} - \wv^{\top}\xv(s,a)\bigr)\,\xv(s,a)$.
+
+\begin{defbox}{O tabular como caso especial}
+  Tome $d = \abs{\gS}\abs{\gA}$ e atributos \emph{one-hot},
+  $x_i(s,a) = \mathbf{1}\{(s,a) = i\}$. Então $\wv$ \emph{é} a tabela,
+  $\nabla_{\wv}\Qhat$ seleciona uma única coordenada, e a atualização acima
+  reduz-se exatamente ao Q-learning tabular. Não há dois algoritmos: há um só,
+  com representações diferentes --- e no caso one-hot simplesmente não existe
+  generalização, o que é também a razão de nada poder ser estragado pela
+  aproximação.
+\end{defbox}
+
+\subsection{Sem oráculo: substituir o alvo}
+
+O retorno $G_t$ é uma amostra \textbf{não-enviesada}, ainda que ruidosa, de
+$Q^{\pol}(s_t,a_t)$. Basta então substituir o oráculo por $G_t$ e fazer
+regressão supervisionada sobre os pares $\langle (s_t,a_t), G_t\rangle$. Com
+aproximação linear, isso converge para o mínimo global da perda quadrática ---
+a única combinação desta aula com uma garantia tão confortável.
+
+\begin{algbox}{Avaliação de política MC com aproximação de função}
+  \begin{pseudo}
+    \pl{Inicialize $\wv$; $k = 1$}
+    \pl{\textbf{repita}}
+    \pl[1.3em]{gere o episódio $k$ seguindo $\pol$}
+    \pl[1.3em]{\textbf{para} $t = 1,\dots,L_k$ \textbf{faça}}
+    \pl[2.6em]{\textbf{se} é a primeira visita a $(s_t,a_t)$ \textbf{então}}
+    \pl[3.9em]{$G_t = \sum_{j=t}^{L_k} \gamma^{\,j-t} r_{k,j}$}
+    \pl[3.9em]{$\wv \mathrel{+}= \alpha\bigl(G_t - \Qhat(s_t,a_t;\wv)\bigr)\nabla_{\wv}\Qhat(s_t,a_t;\wv)$}
+    \pl[2.6em]{\textbf{fim}}
+    \pl[1.3em]{\textbf{fim}; \quad $k \mathrel{+}= 1$}
+    \pl{\textbf{fim}}
+  \end{pseudo}
+\end{algbox}
+
+Com TD(0), o alvo passa a ser $r + \gamma\Vhat^{\pol}(s';\wv)$: enviesado
+\emph{e} aproximado. São três aproximações empilhadas:
+
+\begin{alertabox}
+  \begin{enumerate}[itemsep=0.1em]
+    \item \textbf{Amostragem} --- usamos uma transição no lugar da esperança sobre $P$;
+    \item \textbf{Bootstrapping} --- usamos nossa própria estimativa no lugar do valor verdadeiro;
+    \item \textbf{Aproximação de função} --- projetamos o resultado numa família paramétrica que talvez não contenha $\Vpi$.
+  \end{enumerate}
+\end{alertabox}
+
+\begin{algbox}{Avaliação de política TD(0) com aproximação de função}
+  \begin{pseudo}
+    \pl{Inicialize $\wv$ e o estado $s$}
+    \pl{\textbf{repita}}
+    \pl[1.3em]{amostre $a \sim \pol(s)$; observe $r(s,a)$ e $s' \sim P(\cdot \mid s,a)$}
+    \pl[1.3em]{$\wv \mathrel{+}= \alpha\bigl(r + \gamma\Vhat(s';\wv) - \Vhat(s;\wv)\bigr)\nabla_{\wv}\Vhat(s;\wv)$}
+    \pl[1.3em]{\textbf{se} $s'$ não é terminal \textbf{então} $s \leftarrow s'$ \textbf{senão} reinicie o episódio}
+    \pl{\textbf{fim}}
+  \end{pseudo}
+\end{algbox}
+
+\needspace{6\baselineskip}
+\begin{ideiabox}
+  \textbf{Semigradiente.} O termo $\gamma\Vhat(s';\wv)$ também depende de $\wv$,
+  mas o tratamos como constante ao derivar --- logo a atualização acima não é o
+  gradiente verdadeiro de $J$. Derivar os dois lados produziria o
+  \emph{gradiente residual}: estável, porém lento e exigindo duas amostras
+  independentes do próximo estado. O semigradiente aprende mais rápido, ao custo
+  das garantias, e é o que se usa na prática.
+\end{ideiabox}
+
+%% ============================================================
+\section{Controle com aproximação e Deep Q-Learning}
+
+\subsection{Uma linha de código, três algoritmos}
+
+Representamos os valores de ação por $\Qhat^{\pol}(s,a;\wv) \approx Q^{\pol}$ e
+intercalamos avaliação aproximada com melhoria $\epsilon$-gulosa. Como
+$Q^{\pol}(s_t,a_t)$ é desconhecido, substituímos por um \textbf{alvo}:
+
+\begin{center}\small
+\begin{tabular}{ll}
+  \toprule
+  \textbf{Molde geral} & $\Delta\wv = \alpha\bigl(\text{alvo} - \Qhat(s_t,a_t;\wv)\bigr)\nabla_{\wv}\Qhat(s_t,a_t;\wv)$ \\
+  \midrule
+  Monte Carlo & alvo $= G_t$ \\
+  SARSA       & alvo $= r + \gamma\,\Qhat(s',a';\wv)$ \\
+  Q-learning  & alvo $= r + \gamma \max_{a'} \Qhat(s',a';\wv)$ \\
+  DQN         & alvo $= r + \gamma \max_{a'} \Qhat(s',a';\wtar)$, com $(s,a,r,s')$ do \emph{buffer} \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+Toda a Seção 3 reaparece aqui trocando ``entrada da tabela'' por ``saída da
+rede''.
+
+\subsection{A tríade mortal}
+
+\begin{center}
+\begin{tikzpicture}[font=\small]
+  \fill[rlVermelho, fill opacity=0.15] (0,0.75) circle (1.25);
+  \fill[rlLaranja,  fill opacity=0.15] (-0.9,-0.8) circle (1.25);
+  \fill[rlAmbar,    fill opacity=0.22] (0.9,-0.8) circle (1.25);
+  \draw[rlVermelho, thick] (0,0.75) circle (1.25);
+  \draw[rlLaranja, thick] (-0.9,-0.8) circle (1.25);
+  \draw[rlAmbar!85!black, thick] (0.9,-0.8) circle (1.25);
+  \node[align=center, text=rlVermelho!75!black, font=\scriptsize\bfseries] at (0,1.42) {aproximação\\de função};
+  \node[align=center, text=rlLaranja!85!black, font=\scriptsize\bfseries] at (-1.45,-1.22) {boot-\\strapping};
+  \node[align=center, text=rlAmbar!45!black, font=\scriptsize\bfseries] at (1.5,-1.22) {off-policy};
+  \node[font=\scriptsize\bfseries, text=rlVermelho!80!black] at (0,-0.35) {instável};
+\end{tikzpicture}
+\end{center}
+
+Cada atualização faz um backup de Bellman aproximado e em seguida
+\emph{projeta} o resultado sobre a família de funções escolhida. O backup de
+Bellman é uma \textbf{contração}, mas a projeção pode ser uma
+\textbf{expansão}: a composição pode não contrair, e aí a sequência oscila ou
+diverge. Dois a dois, os três elementos são seguros; os três juntos, não.
+
+\begin{alertabox}
+  O contraexemplo canônico é o de \textbf{Baird} (Sutton \& Barto, 2018), em que
+  o Q-learning com aproximação \emph{linear} diverge, com os pesos crescendo sem
+  limite, num MDP de apenas sete estados.
+\end{alertabox}
+
+\begin{center}\small
+\begin{tabular}{llccc}
+  \toprule
+  & Algoritmo & Tabular & Linear & Não-linear \\
+  \midrule
+  \multirow{3}{*}{\textbf{Avaliação}}
+    & Monte Carlo      & converge & converge          & converge \\
+    & TD(0) on-policy  & converge & converge$^{\dagger}$ & pode divergir \\
+    & TD(0) off-policy & converge & pode divergir     & pode divergir \\
+  \midrule
+  \multirow{3}{*}{\textbf{Controle}}
+    & MC-controle      & converge & oscila próximo    & pode divergir \\
+    & SARSA            & converge & oscila próximo    & pode divergir \\
+    & Q-learning       & converge & pode divergir     & pode divergir \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\noindent
+{\footnotesize $^{\dagger}$ para um ponto fixo cujo erro é limitado por
+$\frac{1}{1-\gamma}$ vezes o erro da melhor aproximação possível na família.}
+
+\begin{ideiabox}
+  Note onde está o Q-learning com rede neural: na célula sem garantia alguma. O
+  DQN não resolve isso teoricamente --- ele \emph{engenheira} o problema para
+  que, na prática, funcione.
+\end{ideiabox}
+
+\subsection{As duas ideias do DQN}
+
+Além da tríade, dois problemas concretos aparecem ao treinar $\Qhat$ com uma
+rede neural.
+
+\begin{enumerate}[itemsep=0.15em]
+  \item \textbf{Correlação entre amostras.} Transições consecutivas são
+    fortemente dependentes, e o SGD supõe amostras aproximadamente i.i.d.
+  \item \textbf{Alvos não-estacionários.} O alvo
+    $r + \gamma\max_{a'}\Qhat(s',a';\wv)$ usa os mesmos pesos que estamos
+    atualizando: perseguimos um alvo que se move a cada passo.
+\end{enumerate}
+
+\begin{defbox}{Repetição de experiência (\emph{experience replay})}
+  Mantenha um \emph{buffer} $\mathcal{D}$ com as tuplas $(s,a,r,s')$ já vividas
+  (tipicamente $10^6$ transições, em janela deslizante) e treine amostrando
+  \emph{minibatches} aleatórios dele, em vez de usar a transição mais recente.
+\end{defbox}
+
+Isso só é possível porque o Q-learning é \textbf{off-policy}: as tuplas do
+\emph{buffer} foram geradas por políticas antigas, e isso não invalida o alvo,
+que já usa o $\max$ e não a ação realmente escolhida. O SARSA não pode fazer o
+mesmo sem correção.
+
+\begin{defbox}{Alvos fixos (\emph{fixed Q-targets})}
+  Mantenha dois conjuntos de pesos: $\wv$, os que estão sendo atualizados, e
+  $\wtar$, os de uma \emph{rede-alvo} congelada. O alvo passa a ser calculado
+  com $\wtar$,
+  \[ \Delta\wv = \alpha\Bigl(r + \gamma \max_{a'} \Qhat(s',a';\mdestaque{rlLaranja}{\wtar}) - \Qhat(s,a;\wv)\Bigr)\nabla_{\wv}\Qhat(s,a;\wv), \]
+  e a cada $C$ passos sincroniza-se $\wtar \leftarrow \wv$.
+\end{defbox}
+
+\begin{ideiabox}
+  Entre duas sincronizações, o problema vira uma regressão supervisionada comum,
+  com rótulos fixos. É a manobra que devolve estabilidade a um procedimento que,
+  de outro modo, persegue a própria cauda.
+\end{ideiabox}
+
+\begin{algbox}{Deep Q-Network \textnormal{(Mnih et al., 2015)}}
+  \begin{pseudo}
+    \pl{Entrada: $C$, $\alpha$, \emph{buffer} $\mathcal{D} = \{\}$; inicialize $\wv$, $\wtar \leftarrow \wv$, $t = 0$; obtenha $s_0$}
+    \pl{\textbf{repita}}
+    \pl[1.3em]{amostre $a_t$ pela política $\epsilon$-gulosa sobre $\Qhat(s_t,\cdot;\wv)$}
+    \pl[1.3em]{observe $r_t$ e $s_{t+1}$; armazene $(s_t,a_t,r_t,s_{t+1})$ em $\mathcal{D}$}
+    \pl[1.3em]{amostre um \emph{minibatch} aleatório $\{(s_i,a_i,r_i,s_{i+1})\}$ de $\mathcal{D}$}
+    \pl[1.3em]{\textbf{para} cada $i$ no \emph{minibatch} \textbf{faça}}
+    \pl[2.6em]{$y_i = r_i$ se o episódio terminou em $i+1$; \quad $y_i = r_i + \gamma \max_{a'} \Qhat(s_{i+1},a';\wtar)$ caso contrário}
+    \pl[2.6em]{passo de descida em $\bigl(y_i - \Qhat(s_i,a_i;\wv)\bigr)^2$: \quad $\wv \mathrel{+}= \alpha\bigl(y_i - \Qhat(s_i,a_i;\wv)\bigr)\nabla_{\wv}\Qhat(s_i,a_i;\wv)$}
+    \pl[1.3em]{\textbf{fim}; \quad $t \mathrel{+}= 1$}
+    \pl[1.3em]{\textbf{se} $t \bmod C = 0$ \textbf{então} $\wtar \leftarrow \wv$}
+    \pl{\textbf{fim}}
+  \end{pseudo}
+\end{algbox}
+
+\begin{alertabox}
+  A rede-alvo \textbf{dobra o requisito de memória} (dois conjuntos de pesos),
+  mas \textbf{não} dobra o tempo de computação: em ambos os casos há uma
+  passagem para frente (para o alvo) e uma para frente/para trás (para a
+  atualização). O extra é apenas a cópia $\wtar \leftarrow \wv$ a cada $C$
+  passos.
+\end{alertabox}
+
+\subsection{DQN em Atari}
+
+\begin{center}
+\begin{tikzpicture}[node distance=8mm, font=\scriptsize]
+  \node[draw=rlAzul, thick, fill=rlAzul!8, minimum height=13mm, minimum width=19mm,
+        align=center, rounded corners=1pt] (px) {4 quadros\\$84\times84$};
+  \node[draw=rlAzulClaro, thick, fill=rlAzulClaro!10, minimum height=13mm, minimum width=19mm,
+        align=center, right=of px, rounded corners=1pt] (cv) {3 camadas\\convolucionais};
+  \node[draw=rlTeal, thick, fill=rlTeal!10, minimum height=13mm, minimum width=16mm,
+        align=center, right=of cv, rounded corners=1pt] (fc) {camada\\densa};
+  \node[draw=rlLaranja, very thick, fill=rlLaranja!12, minimum height=13mm, minimum width=22mm,
+        align=center, right=of fc, rounded corners=1pt] (out) {$\Qhat(s,a_1)\;\dots$\\$\Qhat(s,a_{18})$};
+  \foreach \a/\b in {px/cv, cv/fc, fc/out}{\draw[trans] (\a) -- (\b);}
+\end{tikzpicture}
+\end{center}
+
+O estado $s$ é a pilha dos quatro últimos quadros de pixels brutos --- necessária
+para recuperar velocidade e direção, que um quadro único não revela. A saída é
+um valor $\Qhat(s,a)$ para cada uma das 18 posições de joystick, o que permite
+calcular $\max_{a'}\Qhat(s',a')$ com uma única passagem pela rede. A recompensa
+é a variação de pontuação no passo, recortada em $[-1,1]$. A mesma arquitetura
+e os mesmos hiperparâmetros foram usados em todos os jogos.
+
+\begin{center}\small
+\begin{tabular}{lrrrrr}
+  \toprule
+  Jogo & Linear & Rede & DQN com & DQN com & DQN com \emph{replay} \\
+       &        & profunda & alvo fixo & \emph{replay} & e alvo fixo \\
+  \midrule
+  Breakout       & 3    & 3    & 10   & 241  & \textbf{317} \\
+  Enduro         & 62   & 29   & 141  & 831  & \textbf{1006} \\
+  River Raid     & 2345 & 1453 & 2868 & 4102 & \textbf{7447} \\
+  Seaquest       & 656  & 275  & 1003 & 823  & \textbf{2894} \\
+  Space Invaders & 301  & 302  & 373  & 826  & \textbf{1089} \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+Trocar o modelo linear por uma rede profunda, \textbf{sozinho}, chegou a
+\emph{piorar} o desempenho (Enduro: $62 \to 29$; Seaquest: $656 \to 275$). O que
+fez a diferença foram o \emph{replay} e o alvo fixo --- e o \emph{replay} é, de
+longe, o fator mais decisivo. Por três razões:
+
+\begin{enumerate}[itemsep=0.15em]
+  \item \textbf{descorrelaciona} as amostras dentro do \emph{minibatch},
+    aproximando a hipótese i.i.d.\ que o SGD supõe;
+  \item \textbf{reaproveita} cada transição muitas vezes --- ganho enorme de
+    eficiência de dados, que é o recurso caro quando cada amostra exige uma
+    interação com o ambiente;
+  \item \textbf{estabiliza a distribuição de treino}: sem \emph{buffer}, uma
+    mudança de política altera a distribuição dos dados de imediato, e a rede
+    ``esquece'' o que aprendeu nas regiões que deixou de visitar --- o
+    esquecimento catastrófico.
+\end{enumerate}
+
+\begin{discbox}
+  O terceiro efeito costuma ser o mais subestimado. Que experimento você
+  desenharia para separar, empiricamente, a contribuição da descorrelação da
+  contribuição do reaproveitamento de dados?
+\end{discbox}
+
+\subsection{Aperfeiçoamentos imediatos}
+
+\begin{itemize}[itemsep=0.2em]
+  \item \textbf{Double DQN} (van Hasselt et al., AAAI 2016) --- corrige o viés
+    de maximização: a rede em treinamento \emph{escolhe} a ação e a rede-alvo a
+    \emph{avalia},
+    \[ y = r + \gamma\, \Qhat\bigl(s',\; \argmax_{a'} \Qhat(s',a';\wv);\; \wtar\bigr). \]
+  \item \textbf{Repetição priorizada} (Schaul et al., ICLR 2016) --- amostrar do
+    \emph{buffer} com probabilidade proporcional ao erro TD, em vez de
+    uniformemente: aprender mais onde ainda se erra mais.
+  \item \textbf{Dueling DQN} (Wang et al., ICML 2016) --- decompor
+    $\Qhat(s,a) = \Vhat(s) + \widehat{A}(s,a)$ em valor de estado e vantagem,
+    aprendendo $\Vhat(s)$ mesmo quando a escolha da ação é irrelevante naquele
+    estado.
+\end{itemize}
+
+As três extensões são ortogonais e podem ser combinadas --- é essencialmente o
+que faz o \emph{Rainbow} (Hessel et al., 2018), que soma seis delas.
+
+%% ============================================================
+\section{Síntese}
+
+\begin{center}\small
+\begin{tabular}{llll}
+  \toprule
+  \textbf{Algoritmo} & \textbf{Alvo} & \textbf{Tipo} & \textbf{Converge para} \\
+  \midrule
+  MC-controle (GLIE) & $G_t$ & on-policy & $\Qstar$ (tabular) \\
+  SARSA              & $r + \gamma Q(s',a')$ & on-policy & $\Qstar$ (tabular, GLIE) \\
+  Q-learning         & $r + \gamma \max_{a'} Q(s',a')$ & off-policy & $\Qstar$ (tabular, GLIE + R.--M.) \\
+  MC com VFA         & $G_t$ & on-policy & mínimo global (linear) \\
+  SARSA com VFA      & $r + \gamma \Qhat(s',a';\wv)$ & on-policy & oscila próximo (linear) \\
+  Q-learning com VFA & $r + \gamma \max_{a'} \Qhat(s',a';\wv)$ & off-policy & sem garantia \\
+  DQN                & $r + \gamma \max_{a'} \Qhat(s',a';\wtar)$ & off-policy & sem garantia \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\begin{defbox}{O que você deve ser capaz de fazer}
+  \begin{itemize}[itemsep=0.1em]
+    \item Implementar avaliação de política por MC e TD(0), tabular e com aproximação de função.
+    \item Implementar controle por MC, SARSA e Q-learning, e explicar exatamente onde os alvos de SARSA e Q-learning divergem.
+    \item Enunciar as condições GLIE e Robbins--Monro e dizer para que serve cada uma.
+    \item Listar os três elementos da tríade mortal e descrever qualitativamente o problema que geram.
+    \item Explicar as duas ideias que tornaram o DQN viável: repetição de experiência e alvos fixos.
+  \end{itemize}
+\end{defbox}
+
+%% ============================================================
+\section{Exercícios}
+
+\begin{exbox}{2 — Exemplo A--B com desconto}
+  Refaça o cálculo de $V(A)$ e $V(B)$ do exemplo A--B com $\gamma = 0{,}9$,
+  para MC em lote e para TD(0) em lote. As duas respostas continuam diferindo?
+  Em quanto? O que acontece com a diferença quando $\gamma \to 0$?
+\end{exbox}
+
+\begin{exbox}{3 — Os pesos da prova}
+  Na demonstração da melhoria monotônica $\epsilon$-gulosa, verifique
+  explicitamente que os pesos
+  $w_a = \bigl(\pol_i(a\mid s) - \epsilon/\abs{\gA}\bigr)/(1-\epsilon)$
+  são não-negativos e somam $1$. Onde exatamente a demonstração usa a hipótese
+  de que $\pol_i$ é $\epsilon$-gulosa, e não uma política estocástica qualquer?
+\end{exbox}
+
+\begin{exbox}{4 — SARSA e Q-learning coincidem?}
+  \textbf{(a)} Mostre que, se $\epsilon = 0$ em todos os instantes, a
+  atualização de SARSA coincide com a de Q-learning, qualquer que seja a
+  inicialização de $Q$. \textbf{(b)} Por que isso não é um bom argumento para
+  usar $\epsilon = 0$? \textbf{(c)} Ambos podem alterar a política após cada
+  passo. Verdadeiro ou falso, e por quê?
+\end{exbox}
+
+\begin{exbox}{5 — Tabular é linear}
+  Escreva explicitamente os atributos \emph{one-hot} $\xv(s,a)$ e mostre, passo
+  a passo, que $\Delta\wv = \alpha(\text{alvo} - \wv^{\top}\xv)\xv$ reproduz a
+  atualização tabular do Q-learning. Em seguida, explique por que a mesma conta
+  \emph{não} vale para atributos com sobreposição entre estados.
+\end{exbox}
+
+\begin{exbox}{6 — Viés de maximização}
+  Considere um estado $s'$ com duas ações cujos valores verdadeiros são ambos
+  $Q(s',a_1) = Q(s',a_2) = 0$, mas cujas estimativas são independentes com
+  distribuição $\mathcal{N}(0,1)$. \textbf{(a)} Calcule
+  $\E[\max\{\Qhat_1,\Qhat_2\}]$. \textbf{(b)} Compare com
+  $\max\{\E[\Qhat_1], \E[\Qhat_2]\}$. \textbf{(c)} Como o Double Q-learning
+  reduz esse viés? \textbf{(d)} O que acontece com o viés quando $\abs{\gA}$
+  cresce?
+\end{exbox}
+
+\begin{exbox}{7 — Replay e off-policy}
+  \textbf{(a)} Explique por que o \emph{replay} é compatível com o Q-learning
+  mas não com o SARSA, sem correção. \textbf{(b)} Que correção seria necessária
+  para usar um \emph{buffer} com SARSA? \textbf{(c)} Um \emph{buffer} muito
+  grande pode prejudicar o aprendizado. Em que situação, e por quê?
+\end{exbox}
+
+\begin{exbox}{8 — \emph{Cliff walking} na prática}
+  Implemente SARSA e Q-learning no ambiente \emph{cliff walking} da
+  Seção~\ref{sec:cliff}, com
+  $\alpha = 0{,}5$, $\gamma = 1$ e $\epsilon = 0{,}1$, por 500 episódios.
+  \textbf{(a)} Registre o retorno médio por episódio de cada um. \textbf{(b)}
+  Desenhe as políticas gulosas finais. \textbf{(c)} Repita com
+  $\epsilon = 0{,}01$ e explique a mudança. \textbf{(d)} Qual dos dois você
+  colocaria num sistema real que aprende em produção, e sob que condição
+  mudaria de ideia?
+\end{exbox}
+
+%% ============================================================
+\section{Leituras}
+
+\begin{itemize}[itemsep=0.15em]
+  \item Sutton \& Barto, \emph{Reinforcement Learning: An Introduction},
+    2\textsuperscript{a} ed., 2018: seções 5.2--5.4 (controle Monte Carlo),
+    6.4--6.5 (SARSA e Q-learning), 6.7 (viés de maximização e Double
+    Q-learning), 9.3--9.4 e 11.3 (aproximação de função e a tríade mortal).
+  \item Watkins \& Dayan, \emph{Q-learning}, \emph{Machine Learning}, 1992 ---
+    a prova de convergência original.
+  \item Mnih et al., \emph{Human-level control through deep reinforcement
+    learning}, \emph{Nature} 518, 2015 --- o artigo do DQN, com o estudo de
+    ablação reproduzido acima.
+  \item van Hasselt, Guez \& Silver, \emph{Deep Reinforcement Learning with
+    Double Q-learning}, AAAI 2016.
+  \item Emma Brunskill, CS234 (Stanford), Lecture 4 --- material de origem
+    desta aula.
+\end{itemize}
+
+\vfill
+\noindent
+{\footnotesize\color{rlCinza}
+Material adaptado de \textbf{CS234: Reinforcement Learning}, Emma Brunskill,
+Stanford University. Verifique os termos de licenciamento do material original
+antes de redistribuir publicamente.}
+
+\end{document}
