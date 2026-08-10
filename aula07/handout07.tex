@@ -1,0 +1,1237 @@
+%% ============================================================
+%%  handout07.tex — Aula 7: Gradientes de política II e imitação
+%%  Aprendizagem por Reforço — Universidade Federal de Uberlândia
+%%  Prof. Marcelo Keese Albertini
+%%  Adaptado e expandido de CS234 (Stanford), Emma Brunskill, Lecture 7
+%%  Compilar com XeLaTeX (2x): latexmk -xelatex handout07.tex
+%% ============================================================
+\documentclass[11pt]{article}
+
+\usepackage{handoutAprendizadoRL}
+\usepackage{babel}
+\babelprovide[import, main]{brazilian}
+\usepackage{cancel}
+\usepackage{array}
+
+\setaula{Aula 7 --- PPO, GAE e imitação}
+\setprof{Prof.\ Marcelo Keese Albertini}
+
+%% ---- notação local (idêntica à dos slides da Aula 7)
+\newcommand{\thv}{\theta}
+\newcommand{\thk}{\thv_k}
+\newcommand{\polth}{\pol_{\thv}}
+\newcommand{\polk}{\pol_{k}}
+\newcommand{\polnovo}{\pol'}
+\newcommand{\gth}{\nabla_{\thv}}
+\newcommand{\traj}{\tau}
+\newcommand{\Vhat}{\hat{V}}
+\newcommand{\Qhat}{\hat{Q}}
+\newcommand{\Ahat}{\hat{A}}
+\newcommand{\Adv}{A}
+\newcommand{\Advpi}{A^{\pol}}
+\newcommand{\Dkl}{D_{\mathrm{KL}}}
+\newcommand{\dpi}{d^{\pol}}
+\newcommand{\Lsub}[1]{\mathcal{L}_{#1}}
+\DeclareMathOperator{\clip}{clip}
+\DeclareMathOperator{\ent}{H}
+\newcommand{\razao}{r_t(\thv)}
+\newcommand{\Lclip}{\mathcal{L}^{\mathrm{CLIP}}}
+\newcommand{\feat}{x}
+\newcommand{\mufeat}{\mu}
+\newcommand{\polE}{\pol^{*}}
+\newcommand{\Dtot}{\mathcal{D}}
+\newcommand{\wv}{w}
+
+%% ---- respiro tipográfico para prosa em pt-BR com muitos termos técnicos
+\setlength{\emergencystretch}{2.4em}
+\hyphenation{es-pe-cia-lis-ta de-mons-tra-ções tra-je-tó-rias ex-po-nen-cial-men-te
+  pro-ba-bi-li-da-des im-ple-men-ta-ção pa-ra-me-tri-za-da re-com-pen-sa
+  Op-ti-mi-za-tion Re-in-force-ment}
+
+%% ---- pseudocódigo numerado (mesmo estilo dos handouts anteriores)
+\newcounter{plin}
+\newcommand{\pl}[2][0em]{%
+  \stepcounter{plin}%
+  \par\noindent
+  \hangindent=2.3em \hangafter=1
+  \makebox[1.6em][r]{\color{rlCinza}\scriptsize\theplin:}\hspace{0.5em}\hspace*{#1}\ignorespaces#2\par}
+\newenvironment{pseudo}%
+  {\par\setcounter{plin}{0}\small\setlength{\parskip}{0.3ex}}%
+  {\par}
+
+\begin{document}
+
+\capa{Aula 7 --- Gradientes de política II e Aprendizagem por imitação}
+     {Amostragem por importância \textbullet\ Objetivo substituto e PPO \textbullet\ GAE \textbullet\
+      Melhoria monotônica \textbullet\ Clonagem de comportamento, DAgger e RL inverso}
+     {Prof.\ Marcelo Keese Albertini \textbullet\ Universidade Federal de Uberlândia}
+     {Material adaptado e expandido de \textit{CS234: Reinforcement Learning}, Emma Brunskill
+      (Stanford), Lecture 7. Leitura complementar: Schulman et al.\ (2016, 2017);
+      Ross, Gordon e Bagnell (2011); Ziebart et al.\ (2008).}
+
+\noindent
+A Aula 5 nos deu um \emph{estimador} do gradiente da política. A Aula 6 mostrou que
+saber a direção não basta: falta o \emph{tamanho do passo}, e medi-lo no espaço de
+parâmetros é a coisa errada a fazer. Esta aula fecha o assunto de duas maneiras --- uma
+prática (PPO e GAE, que é o que se implementa) e uma teórica (por que o esquema funciona)
+--- e depois muda de assunto: e quando não há recompensa nenhuma, apenas alguém que já
+sabe fazer a tarefa?
+
+\begin{ideiabox}
+  \textbf{Fio condutor da primeira metade.} Todo método desta aula responde à mesma
+  pergunta: \emph{quanto posso mexer na política antes que os dados que tenho deixem de
+  descrevê-la?} A resposta honesta é um limite teórico; a resposta que se usa na prática
+  é o recorte do PPO. Vale conhecer as duas e saber onde uma vira a outra.
+
+  \smallskip
+  \textbf{Fio condutor da segunda metade.} Sem recompensa, sobra a demonstração. Ou se
+  copia o \emph{comportamento} (clonagem, DAgger) ou se infere a \emph{intenção}
+  (RL inverso). A primeira é barata e tem o especialista como teto; a segunda é cara e,
+  em princípio, não tem.
+\end{ideiabox}
+
+\section*{Como usar este handout}
+\addcontentsline{toc}{section}{Como usar este handout}
+
+Este texto acompanha os slides da Aula 7 e é mais completo que eles em três pontos: as
+passagens algébricas estão escritas por inteiro (em especial a soma geométrica do GAE e
+a demonstração de melhoria monotônica), há pseudocódigo pronto para implementar, e há
+exercícios ao final. As caixas \textcolor{rlAmbar}{âmbar} marcam perguntas para discussão
+em aula --- não têm resposta escrita aqui de propósito.
+
+\section{O problema do passo, e por que reponderar não resolve}
+
+\subsection{De onde viemos}
+
+O gradiente da política, na forma que já derivamos,
+\[
+  g \;=\; \gth J(\polth) \;=\;
+  \E_{\traj\sim\polth}\Bigl[\sum_{t\ge0}\gamma^t\,\gth\log\polth(a_t\mid s_t)\,
+  \Adv^{\polth}(s_t,a_t)\Bigr],
+\]
+é um estimador não-viesado, e sabemos reduzir sua variância (linha de base, vantagem,
+estimadores de $n$ passos). Restam duas limitações, ambas sobre o \emph{uso} desse
+gradiente:
+
+\begin{enumerate}
+  \item \textbf{Eficiência amostral ruim.} Cada lote de trajetórias é gasto em
+    \emph{um} passo de gradiente e descartado, porque depois do passo a política mudou e
+    os dados viraram off-policy.
+  \item \textbf{Distância no espaço de parâmetros não é distância no espaço de
+    políticas.} Este é o ponto conceitual. O espaço de políticas tabulares é o simplexo
+    \[
+      \Pi = \Bigl\{\, \pol \in \R^{\abs{\gS}\times\abs{\gA}} \;:\;
+        \textstyle\sum_a \pol_{sa} = 1,\ \pol_{sa}\ge 0 \,\Bigr\},
+    \]
+    mas o gradiente anda em $\thv$. O mesmo $\norm{\Delta\thv}$ pode produzir uma
+    mudança imperceptível de comportamento em uma região e uma política completamente
+    diferente em outra. É por isso que ajustar o passo $\alpha$ é tão desagradável em
+    gradiente de política e tão fácil em regressão logística.
+\end{enumerate}
+
+\begin{alertabox}
+  A consequência prática do item 2 é assimétrica e vale enunciá-la: em aprendizado
+  supervisionado, um passo grande demais produz uma época ruim e a próxima corrige. Em
+  RL, um passo grande demais produz uma política ruim, que coleta \emph{dados ruins},
+  com os quais se estima um gradiente ruim. O erro se realimenta.
+\end{alertabox}
+
+\subsection{Amostragem por importância: a tentativa óbvia}
+
+Se o problema é que os dados vieram da política antiga, a ferramenta clássica para
+corrigir é a amostragem por importância.
+
+\begin{defbox}{Amostragem por importância}
+  Para estimar $\E_{x\sim P}[f(x)]$ com amostras de $Q$ (com $Q(x)>0$ sempre que
+  $P(x)>0$):
+  \[
+    \E_{x\sim P}[f(x)] \;=\; \E_{x\sim Q}\left[\frac{P(x)}{Q(x)}f(x)\right]
+      \;\approx\; \frac{1}{\abs{\Dtot}}\sum_{x\in\Dtot}\frac{P(x)}{Q(x)}f(x),
+      \qquad \Dtot\sim Q .
+  \]
+  A razão $P(x)/Q(x)$ é o \emph{peso de importância} de $x$.
+\end{defbox}
+
+O estimador é não-viesado para qualquer $Q$ admissível. O preço está na variância:
+\begin{align*}
+  \Var(\hat\mu_Q)
+    &= \frac{1}{N}\Var_{x\sim Q}\!\left[\frac{P(x)}{Q(x)}f(x)\right] \\
+    &= \frac{1}{N}\left(\E_{x\sim Q}\!\left[\frac{P(x)^2}{Q(x)^2}f(x)^2\right]
+       - \E_{x\sim Q}\!\left[\frac{P(x)}{Q(x)}f(x)\right]^2\right)\\
+    &= \frac{1}{N}\left(\mdestaque{rlLaranja}{\E_{x\sim P}\!\left[\frac{P(x)}{Q(x)}f(x)^2\right]}
+       - \E_{x\sim P}[f(x)]^2\right).
+\end{align*}
+O termo destacado é o problema: se $P/Q$ for grande justamente onde $f^2$ é grande, a
+variância explode. O viés continua zero --- e isso é uma armadilha, porque um estimador
+não-viesado com variância enorme produz, em um único lote, números arbitrariamente
+errados.
+
+\subsection{Por que os pesos explodem em trajetórias}
+
+Aplicando a ideia ao gradiente, com $\thv'$ a política que gerou os dados:
+\begin{align*}
+  g = \gth J(\thv)
+   &= \E_{\traj\sim\thv}\Bigl[\sum_{t\ge0}\gamma^t \gth\log\polth(a_t\mid s_t)\Adv^{\thv}(s_t,a_t)\Bigr]\\
+   &= \sum_{\traj}\sum_{t\ge0}\gamma^t P(\traj_t\mid\thv)\,\gth\log\polth(a_t\mid s_t)\Adv^{\thv}(s_t,a_t)\\
+   &= \E_{\traj\sim\thv'}\Bigl[\sum_{t\ge0}
+      \frac{P(\traj_t\mid\thv)}{P(\traj_t\mid\thv')}\,
+      \gamma^t\gth\log\polth(a_t\mid s_t)\Adv^{\thv}(s_t,a_t)\Bigr].
+\end{align*}
+
+A razão de trajetórias colapsa exatamente como na Aula 5 --- a dinâmica desconhecida
+e a distribuição inicial aparecem nos dois lados e se cancelam:
+\[
+  \frac{P(\traj_t\mid\thv)}{P(\traj_t\mid\thv')}
+   = \frac{\cancel{\mu(s_0)}\prod_{t'=0}^{t}\cancel{P(s_{t'+1}\mid s_{t'},a_{t'})}\;\polth(a_{t'}\mid s_{t'})}
+          {\cancel{\mu(s_0)}\prod_{t'=0}^{t}\cancel{P(s_{t'+1}\mid s_{t'},a_{t'})}\;\pol_{\thv'}(a_{t'}\mid s_{t'})}
+   = \prod_{t'=0}^{t}\frac{\polth(a_{t'}\mid s_{t'})}{\pol_{\thv'}(a_{t'}\mid s_{t'})} .
+\]
+
+\begin{alertabox}
+  O peso é um \textbf{produto de $t+1$ razões}. Ainda que cada fator esteja em
+  $[0{,}95;\,1{,}05]$, com $t = 200$ o produto vive no intervalo
+  $[0{,}95^{201};\,1{,}05^{201}] \approx [3\cdot10^{-5};\,2\cdot10^{4}]$. Diferenças
+  minúsculas, multiplicadas duzentas vezes, viram uma diferença enorme. Na prática, um
+  punhado de trajetórias domina o lote inteiro e as demais são numericamente ignoradas.
+\end{alertabox}
+
+A pergunta que organiza o resto da seção é a de Schulman e coautores: \emph{como
+reaproveitar os dados da política antiga sem pagar o produto?}
+
+\begin{discbox}
+  O peso de importância explode com o horizonte. Isso sugere um remédio óbvio --- cortar
+  o horizonte, ou descontar mais forte. Que preço se paga? Em que tipo de tarefa esse
+  preço é aceitável e em que tipo é fatal?
+\end{discbox}
+
+\section{Objetivo substituto: uma razão em vez de um produto}
+
+\subsection{A identidade exata de Kakade e Langford}
+
+Existe uma expressão \emph{exata} para a diferença de desempenho entre duas políticas:
+
+\begin{teobox}{Identidade de desempenho relativo (Kakade e Langford, 2002)}
+  \[
+    J(\polnovo) - J(\pol) \;=\; \frac{1}{1-\gamma}\,
+      \E_{\substack{s\sim d^{\polnovo}\\ a\sim\polnovo}}\bigl[\Advpi(s,a)\bigr],
+    \qquad
+    \dpi(s) = (1-\gamma)\sum_{t\ge0}\gamma^t\,\Prob(s_t=s\mid\pol),
+  \]
+  onde $\dpi$ é a \emph{distribuição de ocupação descontada} de $\pol$.
+\end{teobox}
+
+A identidade tem uma leitura bonita: \emph{a nova política é melhor exatamente na medida
+em que, nos estados que ela visita, ela escolhe ações com vantagem positiva segundo a
+política antiga}. O incômodo é igualmente claro: os estados vêm de $d^{\polnovo}$, e
+$\polnovo$ é justamente a política que ainda não executamos.
+
+\subsection{A troca, e o que ela custa}
+
+Trocamos $d^{\polnovo}$ por $\dpi$ --- que temos --- e reponderamos apenas a ação:
+
+\begin{defbox}{Objetivo substituto $\Lsub{\pol}(\polnovo)$}
+  \[
+    \Lsub{\pol}(\polnovo) \defeq \frac{1}{1-\gamma}
+      \E_{\substack{s\sim \dpi\\ a\sim\pol}}
+      \left[\frac{\polnovo(a\mid s)}{\pol(a\mid s)}\;\Advpi(s,a)\right].
+  \]
+  Note a diferença essencial em relação à seção anterior: aqui há \textbf{uma razão por
+  passo}, não um produto sobre a trajetória. É isso que torna o estimador utilizável.
+\end{defbox}
+
+A troca não é gratuita, e a teoria diz exatamente quanto custa:
+
+\begin{teobox}{Limite de desempenho relativo (Achiam, Held, Tamar e Abbeel, 2017)}
+  \[
+    \Bigl| \bigl(J(\polnovo) - J(\pol)\bigr) - \Lsub{\pol}(\polnovo) \Bigr|
+      \;\le\; C\,\sqrt{\E_{s\sim\dpi}\bigl[\Dkl(\polnovo\,\|\,\pol)[s]\bigr]},
+    \qquad
+    C = \frac{\gamma\,\max_{s}\abs*{\E_{a\sim\polnovo}[\Advpi(s,a)]}}{(1-\gamma)^2}.
+  \]
+\end{teobox}
+
+Em palavras: o substituto é confiável na exata medida em que as duas políticas estão
+próximas em divergência KL. A aproximação não é ruim --- ela é ruim \emph{longe}, com
+erro controlado.
+
+\begin{ideiabox}
+  Repare no fator $(1-\gamma)^{-2}$ em $C$. Com $\gamma = 0{,}99$ ele vale $10^4$: a
+  constante teórica é astronômica. Guarde isso; será o motivo pelo qual ninguém
+  implementa o algoritmo teórico literalmente (Seção~4).
+\end{ideiabox}
+
+\section{PPO: duas maneiras de ficar perto}
+
+O \emph{Proximal Policy Optimization} (PPO) é uma família de métodos que impõe a
+restrição de KL \emph{de modo aproximado}, sem calcular gradientes naturais e sem
+resolver o sistema linear do TRPO.
+
+\subsection{Variante 1 --- penalidade KL adaptativa}
+
+Resolve-se um problema irrestrito,
+\[
+  \thv_{k+1} = \argmax_{\thv}\;\Lsub{\thk}(\thv)
+    - \beta_k\,\bar D_{\mathrm{KL}}(\thv\,\|\,\thk),
+\]
+e o coeficiente $\beta_k$ é reajustado entre iterações: se a KL medida no lote ficou
+acima do alvo, aumenta-se $\beta$; se ficou muito abaixo, diminui-se. É um controlador
+proporcional grosseiro sobre a restrição.
+
+\subsection{Variante 2 --- objetivo recortado (a que se usa)}
+
+\begin{defbox}{Objetivo recortado}
+  Seja $\razao = \dfrac{\polth(a_t\mid s_t)}{\pol_{\thk}(a_t\mid s_t)}$ a razão de
+  probabilidades \emph{de um passo}. Então
+  \[
+    \Lclip_{\thk}(\thv) = \E_{\traj\sim\polk}\Bigl[\sum_{t=0}^{T}
+      \min\bigl(\razao\,\Ahat_t,\;\clip(\razao,\,1-\epsilon,\,1+\epsilon)\,\Ahat_t\bigr)\Bigr],
+  \]
+  com $\epsilon$ hiperparâmetro (tipicamente $0{,}2$), e
+  $\thv_{k+1} = \argmax_{\thv}\Lclip_{\thk}(\thv)$.
+\end{defbox}
+
+A expressão parece opaca até que se separe em dois casos. Como $\Ahat_t$ é um número
+fixo dentro do lote, o $\min$ escolhe entre duas retas em $r$:
+
+\begin{center}
+\begin{tikzpicture}[font=\small]
+  % ---------- A > 0 ----------
+  \begin{scope}
+    \draw[->, rlCinza] (0,0) -- (5.0,0) node[below right, font=\scriptsize] {$r$};
+    \draw[->, rlCinza] (0,-0.35) -- (0,2.15) node[left, font=\scriptsize] {$\Lclip$};
+    \draw[rlAzul, very thick] (0,0) -- (3.3,1.55) -- (4.8,1.55);
+    \draw[dashed, rlCinza!70] (2.2,-0.3) -- (2.2,1.03);
+    \draw[dashed, rlCinza!70] (3.3,-0.3) -- (3.3,1.55);
+    \node[below, font=\scriptsize, text=rlCinza] at (2.2,-0.3) {$1-\epsilon$};
+    \node[below, font=\scriptsize, text=rlCinza] at (3.3,-0.3) {$1+\epsilon$};
+    \fill[rlLaranja] (2.75,1.29) circle (2pt);
+    \node[above left, font=\scriptsize, text=rlLaranja] at (2.75,1.29) {$r=1$};
+    \node[font=\bfseries\small, text=rlAzul] at (2.4,2.45) {$\Adv > 0$ (ação boa)};
+    \node[font=\scriptsize, text=rlCinza, align=center] at (2.4,-1.0)
+      {sobe até $1+\epsilon$ e \emph{satura}:\\ sem incentivo a ir além};
+  \end{scope}
+  % ---------- A < 0 ----------
+  \begin{scope}[xshift=7.6cm, yshift=1.4cm]
+    \draw[->, rlCinza] (0,0) -- (5.0,0) node[above right, font=\scriptsize] {$r$};
+    \draw[->, rlCinza] (0,-1.75) -- (0,0.45) node[left, font=\scriptsize] {$\Lclip$};
+    \draw[rlAzul, very thick] (0,-1.03) -- (2.2,-1.03) -- (4.8,-2.25*0.78);
+    \draw[dashed, rlCinza!70] (2.2,-1.75) -- (2.2,0);
+    \draw[dashed, rlCinza!70] (3.3,-1.75) -- (3.3,0);
+    \node[above, font=\scriptsize, text=rlCinza] at (2.2,0.02) {$1-\epsilon$};
+    \node[above, font=\scriptsize, text=rlCinza] at (3.3,0.02) {$1+\epsilon$};
+    \fill[rlLaranja] (2.75,-1.29) circle (2pt);
+    \node[below right, font=\scriptsize, text=rlLaranja] at (2.75,-1.29) {$r=1$};
+    \node[font=\bfseries\small, text=rlAzul] at (2.4,1.05) {$\Adv < 0$ (ação ruim)};
+    \node[font=\scriptsize, text=rlCinza, align=center] at (2.4,-2.4)
+      {constante abaixo de $1-\epsilon$;\\ \emph{decresce sem limite} acima};
+  \end{scope}
+\end{tikzpicture}
+\end{center}
+
+\medskip
+
+\begin{itemize}
+  \item \textbf{Se $\Adv_t > 0$} (a ação foi melhor que a média), queremos aumentar
+    $r$. O objetivo cresce linearmente até $r = 1+\epsilon$ e então satura: o gradiente
+    zera, e não há mais incentivo em empurrar a probabilidade da ação para cima.
+  \item \textbf{Se $\Adv_t < 0$}, queremos diminuir $r$. O objetivo é \emph{constante}
+    para $r < 1-\epsilon$ --- já reduzimos o suficiente, pare --- mas decresce sem
+    limite do outro lado.
+\end{itemize}
+
+\begin{alertabox}
+  Duas leituras que costumam escapar:
+  \begin{itemize}
+    \item O recorte remove o \emph{incentivo} de ir mais longe; ele \textbf{não impede}
+      que $r$ fique grande. Se a primeira época de otimização já levou $r$ a $3$, o
+      recorte não a traz de volta --- por isso PPO limita o número de épocas por lote e,
+      em implementações sérias, monitora a KL e interrompe cedo.
+    \item Para $\Adv<0$ o objetivo é ilimitado inferiormente: uma ação ruim pode ser
+      punida arbitrariamente. É uma assimetria real do método, não um detalhe.
+  \end{itemize}
+\end{alertabox}
+
+\begin{ideiabox}
+  O $\min$ faz de $\Lclip$ um limitante \emph{pessimista} (inferior) do substituto não
+  recortado: nunca somos otimistas a respeito do ganho de nos afastarmos da política que
+  gerou os dados. É a mesma filosofia dos limites inferiores em RL conservador.
+\end{ideiabox}
+
+\subsection{O algoritmo, como se implementa}
+
+\begin{algbox}{PPO com objetivo recortado}
+\begin{pseudo}
+\pl{Inicialize os parâmetros da política $\thv_0$ e do crítico $\wv_0$.}
+\pl{\textbf{para} $k = 0, 1, 2, \dots$ \textbf{faça}}
+\pl[1.2em]{Colete um lote $\Dtot_k$ de trajetórias executando $\pol_{\thk}$ por $T$ passos;
+  guarde $\log\pol_{\thk}(a_t\mid s_t)$ para cada passo.}
+\pl[1.2em]{Calcule os retornos e as vantagens $\Ahat_t$ por GAE truncado (Seção~\ref{sec:gae});
+  normalize $\Ahat$ no lote.}
+\pl[1.2em]{\textbf{para} época $= 1,\dots,K$ (tipicamente $K \in [3,10]$) \textbf{faça}}
+\pl[2.4em]{\textbf{para} cada minilote de $\Dtot_k$ \textbf{faça}}
+\pl[3.6em]{$\razao \leftarrow \exp\bigl(\log\polth(a_t\mid s_t) - \log\pol_{\thk}(a_t\mid s_t)\bigr)$}
+\pl[3.6em]{Suba o gradiente de
+  $\Lclip - c_1\,(\Vhat_{\wv}(s_t) - \hat R_t)^2 + c_2\,\ent[\polth(\cdot\mid s_t)]$.}
+\pl[1.2em]{Interrompa as épocas cedo se $\hat D_{\mathrm{KL}}(\thv\|\thk)$ ultrapassar o alvo.}
+\end{pseudo}
+\end{algbox}
+
+Três detalhes de implementação que separam um PPO que funciona de um que não funciona:
+
+\begin{enumerate}
+  \item \textbf{A razão é calculada por diferença de log-probabilidades}, nunca por
+    divisão de probabilidades --- estabilidade numérica.
+  \item \textbf{Normalizar $\Ahat$ por lote} (subtrair a média, dividir pelo desvio) é
+    quase obrigatório; sem isso a escala do gradiente varia entre lotes e o
+    $\epsilon$ fixo perde sentido.
+  \item \textbf{O bônus de entropia} $c_2\,\ent[\polth]$ evita o colapso prematuro para
+    uma política quase determinística, que mataria a exploração.
+\end{enumerate}
+
+\begin{alertabox}
+  O ganho real de eficiência amostral está no laço interno (linha 5): várias atualizações
+  de gradiente com o \emph{mesmo} lote. E é exatamente daí que vem a necessidade do
+  recorte --- a partir da segunda época, os dados já são off-policy em relação à política
+  que está sendo otimizada.
+\end{alertabox}
+
+\begin{discbox}
+  O PPO tem quatro hiperparâmetros interagindo: $\epsilon$, o número de épocas $K$, o
+  tamanho do lote e a taxa de aprendizado. Aumentar $K$ e diminuir $\epsilon$ tem efeito
+  parecido sobre a KL final. São intercambiáveis? O que distingue um do outro?
+\end{discbox}
+
+\section{GAE: um botão único para o compromisso viés--variância}
+\label{sec:gae}
+
+Falta responder de onde vem o $\Ahat_t$ que aparece dentro do objetivo do PPO.
+
+\subsection{Estimadores de $n$ passos e o erro TD}
+
+Da Aula 5, os estimadores de vantagem com horizonte crescente:
+\[
+  \Ahat^{(1)}_t = r_t + \gamma V(s_{t+1}) - V(s_t), \qquad
+  \Ahat^{(2)}_t = r_t + \gamma r_{t+1} + \gamma^2 V(s_{t+2}) - V(s_t), \quad\dots
+\]
+\[
+  \Ahat^{(\infty)}_t = r_t + \gamma r_{t+1} + \gamma^2 r_{t+2} + \cdots - V(s_t)
+    \;=\; G_t - V(s_t).
+\]
+Definindo o \textbf{erro TD}
+\[
+  \delta^V_t \defeq r_t + \gamma V(s_{t+1}) - V(s_t),
+\]
+todos eles se escrevem como somas telescópicas de erros TD:
+
+\begin{align*}
+  \Ahat^{(1)}_t &= \delta^V_t \\
+  \Ahat^{(2)}_t &= \delta^V_t + \gamma\,\delta^V_{t+1} \\
+  \Ahat^{(k)}_t &= \sum_{l=0}^{k-1}\gamma^l\,\delta^V_{t+l}
+    \;=\; \sum_{l=0}^{k-1}\gamma^l r_{t+l} + \gamma^k V(s_{t+k}) - V(s_t).
+\end{align*}
+
+\begin{provabox}
+Verificação do caso $k=2$, que já contém a ideia:
+\begin{align*}
+  \delta^V_t + \gamma\delta^V_{t+1}
+  &= \bigl[r_t + \gamma V(s_{t+1}) - V(s_t)\bigr]
+     + \gamma\bigl[r_{t+1} + \gamma V(s_{t+2}) - V(s_{t+1})\bigr]\\
+  &= r_t + \gamma r_{t+1} + \gamma^2 V(s_{t+2}) - V(s_t)
+     + \underbrace{\gamma V(s_{t+1}) - \gamma V(s_{t+1})}_{=0}.
+\end{align*}
+Os termos $\gamma^{l}V(s_{t+l})$ internos cancelam aos pares; sobram o
+\emph{bootstrapping} na ponta ($+\gamma^k V(s_{t+k})$) e a linha de base no início
+($-V(s_t)$). O caso geral segue por indução.
+\end{provabox}
+
+\subsection{A derivação do GAE}
+
+\begin{defbox}{Estimador generalizado de vantagem (Schulman et al., 2016)}
+  Média exponencialmente ponderada dos estimadores de $k$ passos, com peso
+  $(1-\lambda)\lambda^{k-1}$ para $\Ahat^{(k)}$:
+  \[
+    \Ahat^{\mathrm{GAE}(\gamma,\lambda)}_t
+      = (1-\lambda)\bigl(\Ahat^{(1)}_t + \lambda\Ahat^{(2)}_t + \lambda^2\Ahat^{(3)}_t + \cdots\bigr).
+  \]
+\end{defbox}
+
+A forma acima é inútil para implementar --- exige todos os $\Ahat^{(k)}$. A mágica é que
+ela colapsa. Escrevendo cada $\Ahat^{(k)}$ como soma de erros TD e reagrupando por
+$\delta$:
+
+\begin{align*}
+  \Ahat^{\mathrm{GAE}}_t
+  &= (1-\lambda)\Bigl(\delta^V_t
+     + \lambda\bigl(\delta^V_t + \gamma\delta^V_{t+1}\bigr)
+     + \lambda^2\bigl(\delta^V_t + \gamma\delta^V_{t+1} + \gamma^2\delta^V_{t+2}\bigr)
+     + \cdots\Bigr)\\[0.2em]
+  &= (1-\lambda)\Bigl(\delta^V_t\,(1+\lambda+\lambda^2+\cdots)
+     + \gamma\delta^V_{t+1}\,(\lambda+\lambda^2+\cdots)
+     + \gamma^2\delta^V_{t+2}\,(\lambda^2+\lambda^3+\cdots) + \cdots\Bigr)\\[0.2em]
+  &= (1-\lambda)\left(\delta^V_t\,\frac{1}{1-\lambda}
+     + \gamma\lambda\,\delta^V_{t+1}\,\frac{1}{1-\lambda}
+     + \gamma^2\lambda^2\,\delta^V_{t+2}\,\frac{1}{1-\lambda} + \cdots\right)\\[0.2em]
+  &= \mdestaque{rlLaranja}{\sum_{l=0}^{\infty}(\gamma\lambda)^{l}\,\delta^V_{t+l}} .
+\end{align*}
+
+\begin{ideiabox}
+  O passo crítico é a segunda linha: trocar a ordem dos somatórios. O coeficiente que
+  multiplica $\gamma^{l}\delta^V_{t+l}$ é $\lambda^{l}+\lambda^{l+1}+\cdots =
+  \lambda^{l}/(1-\lambda)$, e o fator $(1-\lambda)$ da frente cancela exatamente esse
+  denominador. Vale conferir o expoente com atenção: é $(\gamma\lambda)^l$, com
+  \emph{ambos} os fatores.
+\end{ideiabox}
+
+O resultado é notável: uma média infinita de estimadores de todos os horizontes tem a
+mesma forma --- e o mesmo custo --- de um único estimador de um passo, apenas com
+$\gamma$ substituído por $\gamma\lambda$.
+
+\subsection{Os dois extremos}
+
+\begin{center}\small
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.16\linewidth}
+                 >{\raggedright\arraybackslash}p{0.36\linewidth}
+                 >{\raggedright\arraybackslash}p{0.40\linewidth}@{}}
+\toprule
+ & $\lambda = 0$ & $\lambda = 1$ \\
+\midrule
+Estimador & $\Ahat_t = \delta^V_t$ & $\Ahat_t = \sum_{l\ge0}\gamma^l\delta^V_{t+l} = G_t - V(s_t)$\\
+Equivale a & vantagem de TD(0) & vantagem de Monte Carlo \\
+Variância & mínima (uma recompensa aleatória) & máxima (todas as recompensas) \\
+Viés & alto sempre que $V\ne\Vpi$ & nenhum no gradiente resultante \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{alertabox}
+  Cuidado com a formulação de ``$\lambda=1$ é não-viesado''. Como \emph{estimador
+  pontual} da vantagem, $\E[\Ahat_t] = \Qpi(s_t,a_t) - V(s_t)$, que só é igual a
+  $\Advpi(s_t,a_t)$ se $V = \Vpi$. O que é não-viesado, para \emph{qualquer} $V$, é o
+  \textbf{gradiente} resultante --- porque a diferença $\Vpi(s_t) - V(s_t)$ é uma função
+  só do estado, e funções só do estado são linhas de base, cuja contribuição ao gradiente
+  tem esperança zero (Aula 5).
+\end{alertabox}
+
+Na prática, escolhe-se $\lambda\in(0,1)$; valores entre $0{,}9$ e $0{,}97$ são o padrão
+na literatura. O botão $\lambda$ é conceitualmente o mesmo dos traços de elegibilidade de
+TD($\lambda$), aplicado à vantagem em vez do retorno.
+
+\subsection{GAE truncado e a varredura reversa}
+
+A soma infinita é impraticável; corta-se no fim do lote de $T$ passos:
+\[
+  \Ahat_t = \sum_{l=0}^{T-t-1}(\gamma\lambda)^l\,\delta^V_{t+l}.
+\]
+
+\begin{algbox}{Cálculo em uma varredura reversa, custo $\mathcal{O}(T)$}
+\begin{pseudo}
+\pl{$\Ahat_T \leftarrow 0$}
+\pl{\textbf{para} $t = T-1$ \textbf{até} $0$ \textbf{faça}}
+\pl[1.2em]{$\delta_t \leftarrow r_t + \gamma\,\Vhat(s_{t+1})\,(1-\mathrm{fim}_t) - \Vhat(s_t)$}
+\pl[1.2em]{$\Ahat_t \leftarrow \delta_t + \gamma\lambda\,(1-\mathrm{fim}_t)\,\Ahat_{t+1}$}
+\pl{Alvo do crítico: $\hat R_t \leftarrow \Ahat_t + \Vhat(s_t)$}
+\end{pseudo}
+\end{algbox}
+
+O benefício é operacional: basta rodar a política por $T$ passos antes de atualizar, sem
+esperar o episódio terminar. O truncamento introduz um viés adicional (a cauda além de
+$T$ é ignorada), pequeno quando $(\gamma\lambda)^T \ll 1$. O indicador $\mathrm{fim}_t$
+zera o \emph{bootstrapping} em estados terminais --- omiti-lo é o erro de implementação
+mais comum nesta rotina, e produz um agente que ``espera recompensa depois da morte''.
+
+\begin{discbox}
+  Com $\gamma = 0{,}99$ e $\lambda = 0{,}95$, temos $\gamma\lambda \approx 0{,}94$ e a
+  meia-vida do peso é de cerca de $11$ passos. Como escolher $T$ à luz disso? E o que
+  acontece com o viés se o episódio típico durar $1000$ passos e $T = 128$?
+\end{discbox}
+
+\section{Por que isso funciona: melhoria monotônica}
+
+\subsection{Do limite ao algoritmo}
+
+Retirando o módulo do limite da Seção~2, fica a desigualdade que interessa:
+\[
+  J(\polnovo) - J(\pol) \;\ge\; \Lsub{\pol}(\polnovo)
+     - C\sqrt{\E_{s\sim\dpi}\bigl[\Dkl(\polnovo\|\pol)[s]\bigr]}.
+\]
+O lado direito é um \textbf{minorante} do ganho verdadeiro --- e, ao contrário do lado
+esquerdo, é estimável com amostras de $\pol$ apenas. Isso sugere um algoritmo: em vez de
+maximizar o que não se pode medir, maximize o minorante.
+
+\begin{teobox}{Proposição --- garantia de melhoria}
+  Se $\polk$ e $\pol_{k+1}$ estão relacionadas por
+  \[
+    \pol_{k+1} = \argmax_{\polnovo}\;
+      \Lsub{\polk}(\polnovo) - C\sqrt{\E_{s\sim d^{\polk}}\bigl[\Dkl(\polnovo\|\polk)[s]\bigr]},
+  \]
+  então $J(\pol_{k+1}) \ge J(\polk)$.
+\end{teobox}
+
+\begin{provabox}
+A demonstração é curta e vale sabê-la de cor, porque o truque reaparece em vários lugares
+do RL moderno. Basta exibir um ponto viável cujo valor do objetivo seja zero.
+
+\begin{enumerate}
+  \item $\polk$ pertence ao domínio da otimização, logo é um ponto viável.
+  \item No ponto $\polnovo = \polk$, o substituto se anula:
+    \[
+      \Lsub{\polk}(\polk) = \frac{1}{1-\gamma}
+        \E_{s\sim d^{\polk},\,a\sim\polk}\bigl[A^{\polk}(s,a)\bigr] = 0,
+    \]
+    porque $\E_{a\sim\pol}[\Advpi(s,a)] = 0$ para todo $s$ --- a vantagem tem média zero
+    sob a própria política que a define.
+  \item Também $\Dkl(\polk\|\polk)[s] = 0$ para todo $s$, de modo que o termo de
+    penalidade se anula.
+  \item Logo o objetivo avaliado em $\polk$ vale exatamente $0$; como $\pol_{k+1}$ é o
+    \emph{máximo}, o valor ótimo é $\ge 0$.
+  \item Pelo limite de desempenho relativo, $J(\pol_{k+1}) - J(\polk) \ge 0$.
+    \hfill$\blacksquare$
+\end{enumerate}
+
+Duas observações sobre o alcance da demonstração. Primeira: ela não usa nada sobre a
+forma de $\pol$, então continua valendo se restringirmos a otimização a uma classe
+parametrizada $\Pi_\thv$ --- basta que $\polk\in\Pi_\thv$. É por isso que o argumento
+sobrevive a redes neurais. Segunda: a melhoria garantida pode ser \emph{zero}; o teorema
+diz que não pioramos, não que avançamos.
+\end{provabox}
+
+\begin{ideiabox}
+  O esquema tem nome: \textbf{maximização de minorante} (\emph{majorize--minimize}).
+  Constrói-se uma função que toca a verdadeira no ponto atual e fica sempre abaixo dela;
+  maximiza-se essa função; repete-se. É o mesmo esqueleto do algoritmo EM e dos métodos
+  de ponto proximal. Reconhecer o padrão é mais útil do que memorizar a fórmula.
+\end{ideiabox}
+
+\subsection{Por que ninguém usa isso literalmente}
+
+A constante $C$ contém $(1-\gamma)^{-2}$. Com $\gamma = 0{,}99$, $C$ é da ordem de
+$10^4\cdot\max_s\abs{\E_a[\Advpi]}$: a penalidade domina o substituto e o passo ótimo é
+minúsculo. O algoritmo teoricamente correto é praticamente inútil.
+
+\begin{center}\small
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.24\linewidth}
+                 >{\raggedright\arraybackslash}p{0.34\linewidth}
+                 >{\raggedright\arraybackslash}p{0.34\linewidth}@{}}
+\toprule
+\textbf{Abordagem} & \textbf{O que faz com a KL} & \textbf{O que se perde} \\
+\midrule
+Teoria (acima) & penalidade com $C$ teórico & passos inúteis de tão pequenos \\
+TRPO & \emph{restrição} $\bar D_{\mathrm{KL}} \le \delta$ resolvida por gradiente natural &
+  custo por iteração (produto Hessiana--vetor, gradiente conjugado) \\
+PPO & penalidade com $\beta$ ajustado, ou recorte da razão &
+  a garantia formal; sobra uma heurística que funciona \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{alertabox}
+  Esta é uma lição metodológica que transcende o PPO: o valor do teorema não está na
+  constante, está na \emph{forma} do limite. Ele diz que a penalidade certa é uma função
+  crescente da KL --- e é essa forma que os métodos práticos preservam, trocando a
+  constante por um hiperparâmetro calibrado empiricamente.
+\end{alertabox}
+
+\subsection{Balanço da primeira metade}
+
+\begin{defbox}{O que fica de PPO e GAE}
+\begin{itemize}
+  \item \textbf{Eficiência amostral:} vários passos de gradiente por lote, em vez de um.
+  \item \textbf{Estabilidade:} o recorte (ou a restrição de KL) aumenta a chance de
+    melhoria monotônica, sem garanti-la.
+  \item \textbf{Escopo:} converge para ótimos \emph{locais}. Como todo gradiente de
+    política.
+  \item \textbf{Relevância:} é o método padrão em controle contínuo e a base do
+    ajuste por RLHF de modelos de linguagem.
+\end{itemize}
+\end{defbox}
+
+\section{Aprendizagem por imitação: quando não há recompensa}
+
+\subsection{O problema}
+
+Em muitos domínios já \emph{existem} políticas de decisão muito boas --- executadas por
+pessoas --- e o que se quer é automatizá-las. Há duas maneiras de aproveitar a pessoa:
+
+\begin{center}\small
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.30\linewidth}
+                 >{\raggedright\arraybackslash}p{0.32\linewidth}
+                 >{\raggedright\arraybackslash}p{0.32\linewidth}@{}}
+\toprule
+ & \textbf{Humano fornece recompensa} & \textbf{Humano demonstra} \\
+\midrule
+Canal & avalia decisões do agente & executa a tarefa \\
+Vantagem & supervisão simples e barata por episódio & uma demonstração carrega muito mais informação que um número \\
+Problema & complexidade amostral altíssima: milhões de episódios, cada um a ser avaliado &
+  como generalizar para situações que o especialista nunca enfrentou? \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Há ainda um terceiro caminho, que é o das recompensas projetadas à mão
+(\emph{reward shaping}). Recompensas densas no tempo guiam o agente de perto e aceleram
+muito o aprendizado, mas escrevê-las é notoriamente frágil: o agente otimiza o que foi
+escrito, não o que se queria. Uma penalidade por tempo mal calibrada produz um robô que
+trava; um bônus por velocidade produz um robô que capota. Demonstrações são uma forma de
+especificar a recompensa \emph{implicitamente}.
+
+\begin{defbox}{Formulação do problema}
+  \textbf{Dados:} espaços $\gS$ e $\gA$; modelo de transição $\tran{s'}{s,a}$;
+  \textbf{nenhuma} função de recompensa; e um conjunto de demonstrações
+  $(s_0,a_0,s_1,a_1,\dots)$ com ações extraídas da política do especialista $\polE$.
+
+  \smallskip
+  Três perguntas distintas, que dão origem a três famílias de métodos:
+  \begin{enumerate}
+    \item \textbf{Clonagem de comportamento:} dá para aprender $\polE$ diretamente por
+      aprendizado supervisionado?
+    \item \textbf{RL inverso:} dá para recuperar $\rec$?
+    \item \textbf{Aprendizado por aprendizagem} (\emph{apprenticeship learning}): dá para
+      usar o $\rec$ recuperado para obter uma boa política?
+  \end{enumerate}
+\end{defbox}
+
+\begin{ideiabox}
+  A escolha entre recompensa e demonstração é, no fundo, sobre \emph{qual canal de
+  comunicação é mais fácil para o humano}. Especificar uma recompensa que produza direção
+  defensiva é difícil; dirigir defensivamente por vinte minutos é fácil.
+\end{ideiabox}
+
+\subsection{Clonagem de comportamento}
+
+A redução é direta: trate o problema como aprendizado supervisionado. Fixe uma classe de
+políticas (rede neural, árvore de decisão) e ajuste $\polth$ aos pares
+$(s_0,a_0), (s_1,a_1), \dots$ minimizando uma perda de classificação (ações discretas) ou
+de regressão (ações contínuas).
+
+Dois sucessos históricos merecem menção: ALVINN (Pomerleau, 1989), que dirigia um veículo
+a partir de imagens de uma câmera com uma rede rasa, e o piloto de simulador de voo de
+Sammut et al.\ (1992). Em versões modernas --- redes recorrentes ou \emph{transformers}
+sobre janelas de observação, como no BC-RNN de Mandlekar et al.\ (2021) --- a clonagem é
+extensivamente usada em manipulação robótica e funciona muito bem quando os dados cobrem
+bem o espaço de estados visitado.
+
+\begin{alertabox}
+  Note o que a clonagem \textbf{não} exige: nenhum modelo de transição, nenhuma
+  interação com o ambiente, nenhuma recompensa. É o método mais barato do curso inteiro.
+  Todo o resto desta seção existe porque esse barateamento tem um preço.
+\end{alertabox}
+
+\subsection{O preço: erros compostos}
+
+O aprendizado supervisionado supõe pares $(s,a)$ i.i.d.\ e ignora a estrutura temporal.
+Se os erros fossem independentes no tempo, com probabilidade de erro $\le \varepsilon$
+por passo, teríamos
+\[
+  \E[\text{número de erros}] \;\le\; \varepsilon T .
+\]
+Mas erros em um MDP não são independentes: um erro leva o agente a um estado que o
+especialista nunca visitou, sobre o qual a política não tem informação, o que torna o
+próximo erro mais provável, e assim por diante.
+
+\begin{teobox}{Intuição do resultado de Ross e Bagnell}
+  Se o agente erra pela primeira vez em $t$, todos os $T-t$ passos seguintes podem estar
+  fora da distribuição de treino. Somando sobre o instante do primeiro erro:
+  \[
+    \E[\text{número de erros}] \;\lesssim\;
+      \varepsilon\bigl(T + (T-1) + \cdots + 1\bigr) \;\propto\; \varepsilon T^2 .
+  \]
+  O enunciado formal é o Teorema 2.1 de Ross e Bagnell (AISTATS 2010); o argumento acima
+  é uma aproximação da ideia, não a demonstração.
+\end{teobox}
+
+A diferença entre $\varepsilon T$ e $\varepsilon T^2$ é o que se chama de
+\textbf{descasamento de distribuições}:
+
+\begin{defbox}{A hipótese que quebra}
+  No aprendizado supervisionado, $(x,y)\sim\Dtot$ tanto no treino quanto no teste. Em um
+  MDP,
+  \[
+    \text{treino: } s_t \sim \Dtot_{\polE},
+    \qquad
+    \text{teste: } s_t \sim \Dtot_{\polth},
+  \]
+  e $\Dtot_{\polth}$ \emph{depende da política que estamos aprendendo}: a distribuição de
+  teste é um resultado do treinamento, não um dado do problema.
+\end{defbox}
+
+\begin{ideiabox}
+  É a patologia do RL \emph{off-policy} vista de outro ângulo: os dados vêm de uma
+  política e a avaliação acontece sob outra. Lá a resposta foi reponderar (amostragem por
+  importância); aqui a resposta será \emph{consertar os dados}.
+\end{ideiabox}
+
+\subsection{DAgger: agregação de conjuntos de dados}
+
+\begin{algbox}{DAgger (Ross, Gordon e Bagnell, 2011)}
+\begin{pseudo}
+\pl{$\Dtot \leftarrow$ demonstrações iniciais do especialista; treine $\pol_1$ em $\Dtot$.}
+\pl{\textbf{para} $i = 1,\dots,N$ \textbf{faça}}
+\pl[1.2em]{Execute $\pol_i$ no ambiente e colete os estados visitados $\{s_1,\dots,s_m\}$.}
+\pl[1.2em]{\textbf{Consulte o especialista} sobre cada um desses estados, obtendo
+  $\{(s_j, \polE(s_j))\}$.}
+\pl[1.2em]{$\Dtot \leftarrow \Dtot \cup \{(s_j, \polE(s_j))\}$ \quad (agregação, nunca descarte)}
+\pl[1.2em]{Treine $\pol_{i+1}$ no $\Dtot$ acumulado.}
+\end{pseudo}
+\end{algbox}
+
+A ideia em uma frase: \emph{obter rótulos do especialista ao longo do caminho que a
+política aprendida realmente percorre}. O conjunto de treino passa a cobrir a
+distribuição de estados induzida pela própria política, que é a distribuição de teste ---
+e o descasamento desaparece. Sob as hipóteses do artigo, DAgger produz uma política
+determinística estacionária com bom desempenho \emph{sob a distribuição que ela mesma
+induz}, com erro voltando a escalar como $\varepsilon T$.
+
+\begin{alertabox}
+  \textbf{A limitação, que é séria.} O especialista precisa estar disponível
+  \emph{durante} o treinamento, para rotular estados que ele não escolheu visitar --- e
+  frequentemente estados ruins, em que ele nunca estaria. Duas dificuldades:
+  \begin{itemize}
+    \item O custo humano é recorrente, não um lote único de demonstrações.
+    \item Rotular fora de contexto é difícil e ruidoso: ``o que você faria neste estado?''
+      é uma pergunta muito mais difícil do que ``dirija bem por vinte minutos''. Em
+      domínios com dinâmica rápida, a resposta pode nem ser bem definida.
+  \end{itemize}
+\end{alertabox}
+
+\begin{discbox}
+  Por que não basta simplesmente coletar mais demonstrações do especialista? Em que
+  situação isso realmente resolveria o problema de erros compostos, e por que essa
+  situação raramente ocorre na prática?
+\end{discbox}
+
+\section{RL inverso: inferir a intenção}
+
+\subsection{Recompensa linear em atributos}
+
+Suponha que a recompensa seja linear sobre um vetor de atributos do estado:
+\[
+  \rec(s) = \wv^{\!\top}\feat(s), \qquad \wv\in\R^n,\quad \feat:\gS\to\R^n .
+\]
+O valor de uma política herda a linearidade:
+\begin{align*}
+  V^{\pol}(s_0) &= \E_{\pol}\Bigl[\sum_{t\ge0}\gamma^t \rec(s_t)\,\Bigm|\, s_0\Bigr]
+   = \E_{\pol}\Bigl[\sum_{t\ge0}\gamma^t\,\wv^{\!\top}\feat(s_t)\,\Bigm|\, s_0\Bigr]\\
+   &= \wv^{\!\top}\,\underbrace{\E_{\pol}\Bigl[\sum_{t\ge0}\gamma^t \feat(s_t)\,\Bigm|\, s_0\Bigr]}_{\textstyle \mufeat(\pol)}
+   \;=\; \wv^{\!\top}\mufeat(\pol).
+\end{align*}
+
+\begin{defbox}{Expectativas de atributos $\mufeat(\pol)$}
+  $\mufeat(\pol)$ é a frequência descontada esperada com que cada atributo é encontrado
+  ao seguir $\pol$ a partir de $s_0$. É o objeto que substitui a trajetória: duas
+  políticas com o mesmo $\mufeat$ têm o mesmo valor sob \emph{qualquer} recompensa linear
+  nesses atributos.
+\end{defbox}
+
+Se as demonstrações vêm de uma política ótima $\polE$ para a recompensa verdadeira
+$\rec^* = \wv^{*\top}\feat$, então por definição de otimalidade
+$V^{*} \ge V^{\pol}$ para toda $\pol$, ou seja
+\[
+  \wv^{*\top}\mufeat(\polE) \;\ge\; \wv^{*\top}\mufeat(\pol)
+  \qquad \forall\,\pol .
+\]
+Identificar $\wv^*$ é, portanto, encontrar um vetor de pesos sob o qual o especialista
+bata todo mundo.
+
+\subsection{Ambiguidade: o problema estrutural do RL inverso}
+
+\begin{alertabox}
+  Não existe um $\rec$ único. Existe uma \textbf{infinidade} deles.
+  \begin{itemize}
+    \item $\wv = 0$ satisfaz a desigualdade acima com igualdade para toda política: se
+      nada importa, o especialista é (vacuamente) ótimo.
+    \item Escalar $\wv$ por qualquer constante positiva preserva a ordenação das
+      políticas.
+    \item Somar a $\rec$ um \emph{potencial} $\gamma\Phi(s') - \Phi(s)$ não altera a
+      política ótima (\emph{reward shaping} de Ng, Harada e Russell, 1999).
+    \item E, mais geralmente, há uma vizinhança inteira de recompensas para as quais a
+      mesma política continua ótima.
+  \end{itemize}
+  Além disso, existem infinitas políticas \emph{estocásticas} que reproduzem as mesmas
+  expectativas de atributos. O problema é duplamente subdeterminado, e todo método de RL
+  inverso é, essencialmente, uma escolha de critério de desempate.
+\end{alertabox}
+
+\subsection{Casamento de expectativas de atributos}
+
+Uma saída elegante: em vez de recuperar $\wv$, buscar diretamente uma política que
+\emph{se comporte} como o especialista.
+
+\begin{teobox}{Casamento de atributos (Abbeel e Ng, 2004)}
+  Se $\norm{\mufeat(\pol) - \mufeat(\polE)}_1 \le \epsilon$, então para todo $\wv$ com
+  $\norm{\wv}_\infty \le 1$ vale, pela desigualdade de Hölder,
+  \[
+    \abs{\wv^{\!\top}\mufeat(\pol) - \wv^{\!\top}\mufeat(\polE)} \le \epsilon .
+  \]
+\end{teobox}
+
+\begin{provabox}
+Hölder com o par conjugado $(1,\infty)$: para vetores $u,v$,
+$\abs{u^{\!\top}v} \le \norm{u}_1\norm{v}_\infty$. Aplicando a
+$u = \mufeat(\pol)-\mufeat(\polE)$ e $v = \wv$,
+\[
+  \abs{\wv^{\!\top}\bigl(\mufeat(\pol)-\mufeat(\polE)\bigr)}
+    \le \norm{\mufeat(\pol)-\mufeat(\polE)}_1\,\norm{\wv}_\infty \le \epsilon\cdot 1 .
+\]
+Como $V^{\pol} = \wv^{\!\top}\mufeat(\pol)$, a desigualdade é exatamente uma cota sobre a
+diferença de valores.
+\end{provabox}
+
+\begin{ideiabox}
+  A garantia é forte de um jeito incomum: se as expectativas de atributos casam, a
+  política é quase tão boa quanto a do especialista \textbf{para qualquer recompensa
+  linear nesses atributos} --- inclusive a verdadeira, que continuamos sem conhecer.
+  Contornamos a ambiguidade em vez de resolvê-la.
+\end{ideiabox}
+
+\begin{alertabox}
+  O peso da hipótese migrou de $\rec$ para $\feat$. Se um atributo que importa ao
+  especialista não estiver em $\feat$, nenhuma garantia o alcança --- a política pode
+  casar todos os atributos observados e ainda assim se comportar de modo inaceitável na
+  dimensão esquecida. Escolher $\feat$ é o trabalho difícil e raramente é discutido.
+\end{alertabox}
+
+\section{RL inverso de máxima entropia}
+
+\subsection{Que distribuição escolher?}
+
+Considere todas as trajetórias de $H$ passos em um MDP determinístico. Para uma recompensa
+linear, uma política fica completamente especificada por sua distribuição sobre
+trajetórias. Muitas distribuições reproduzem as expectativas de atributos observadas ---
+qual escolher?
+
+\begin{defbox}{Princípio da máxima entropia (Jaynes, 1957; Ziebart et al., 2008)}
+  Escolha a distribuição \emph{sem nenhuma preferência adicional} além de casar as
+  expectativas de atributos dos dados:
+  \[
+    \max_{P}\; -\sum_{\traj} P(\traj)\log P(\traj)
+    \quad\text{sujeito a}\quad
+    \sum_{\traj} P(\traj)\,\mufeat_{\traj} = \tilde\mufeat,
+    \quad \sum_{\traj} P(\traj) = 1,
+  \]
+  onde $\mufeat_{\traj} = \sum_{s_i\in\traj}\feat(s_i)$ são as contagens de atributos de
+  uma trajetória e $\tilde\mufeat = \frac{1}{m}\sum_{j=1}^{m}\mufeat_{\traj_j}$ é a média
+  observada nas $m$ demonstrações.
+\end{defbox}
+
+\begin{alertabox}
+  Atenção à mudança de definição: aqui $\mufeat_{\traj}$ é a soma de atributos ao longo de
+  \emph{uma} trajetória, e não a expectativa descontada $\mufeat(\pol)$ da seção anterior.
+  Os dois objetos usam a mesma letra na literatura e são frequentemente confundidos.
+\end{alertabox}
+
+\subsection{A forma exponencial e a verossimilhança}
+
+A solução do problema de máxima entropia com restrições lineares é da família
+exponencial:
+\[
+  P(\traj_j \mid \wv) = \frac{1}{Z(\wv)}\exp\bigl(\wv^{\!\top}\mufeat_{\traj_j}\bigr)
+   = \frac{1}{Z(\wv)}\exp\Bigl(\sum_{s_i\in\traj_j}\wv^{\!\top}\feat(s_i)\Bigr),
+  \qquad
+  Z(\wv) = \sum_{\traj}\exp\bigl(\wv^{\!\top}\mufeat_{\traj}\bigr).
+\]
+
+A leitura é imediata, e é dela que vem o apelo do método: \textbf{caminhos de alto
+retorno são exponencialmente mais prováveis, e caminhos de retorno igual são igualmente
+prováveis}. O modelo não supõe alguém perfeito --- supõe alguém que erra, e que erra
+menos quando o erro custa mais.
+
+Em MDPs estocásticos a distribuição sobre caminhos depende também da dinâmica:
+\[
+  P(\traj_j \mid \wv, P) \;\approx\;
+    \frac{\exp\bigl(\wv^{\!\top}\mufeat_{\traj_j}\bigr)}{Z(\wv,P)}
+    \prod_{s_i,a_i\in\traj_j} P(s_{i+1}\mid s_i,a_i).
+\]
+
+\subsection{Ajustar \texorpdfstring{$\wv$}{w}: o gradiente é uma diferença de frequências}
+
+Escolhe-se $\wv$ por máxima verossimilhança das demonstrações:
+\[
+  \wv^{*} = \argmax_{\wv} L(\wv) = \argmax_{\wv} \sum_{\text{exemplos}} \log P(\traj\mid\wv).
+\]
+
+\begin{teobox}{Gradiente da log-verossimilhança}
+  \[
+    \nabla L(\wv) \;=\; \tilde\mufeat \;-\; \sum_{\traj} P(\traj\mid\wv)\,\mufeat_{\traj}
+      \;=\; \tilde\mufeat \;-\; \sum_{s_i} D(s_i)\,\feat(s_i),
+  \]
+  onde $D(s_i)$ é a \textbf{frequência esperada de visitação} do estado $s_i$ sob a
+  política induzida pelos pesos atuais.
+\end{teobox}
+
+\begin{ideiabox}
+  O gradiente é a diferença entre \emph{o que o especialista fez} e \emph{o que o modelo
+  atual faria}. Se o modelo visita um estado mais do que o especialista, o peso dos
+  atributos daquele estado desce. É a mesma estrutura do gradiente de modelos de
+  máxima entropia em geral: dado observado menos expectativa do modelo.
+\end{ideiabox}
+
+O laço de otimização fica:
+
+\begin{algbox}{MaxEnt IRL (Ziebart et al., 2008)}
+\begin{pseudo}
+\pl{Calcule $\tilde\mufeat$ a partir das demonstrações.}
+\pl{Inicialize $\wv$.}
+\pl{\textbf{repita}}
+\pl[1.2em]{Resolva o MDP com $\rec_{\wv}(s) = \wv^{\!\top}\feat(s)$ (programação dinâmica
+  \emph{soft}) para obter a política de máxima entropia.}
+\pl[1.2em]{Propague para a frente as frequências de visitação $D(s)$ dessa política.}
+\pl[1.2em]{$\wv \leftarrow \wv + \alpha\bigl(\tilde\mufeat - \sum_s D(s)\feat(s)\bigr)$.}
+\pl{\textbf{até} convergir}
+\end{pseudo}
+\end{algbox}
+
+\begin{alertabox}
+  A linha 4 é o custo do método: \textbf{cada iteração resolve um MDP inteiro}. E a linha
+  5 precisa do modelo de transição --- ou, na falta dele, da capacidade de interagir com
+  o ambiente para amostrá-lo. Compare com a clonagem de comportamento, que não precisa de
+  nenhum dos dois. Essa é a troca central desta segunda metade da aula.
+\end{alertabox}
+
+\subsection{De recompensas aprendidas a políticas}
+
+O RL inverso entrega uma função de recompensa; o que normalmente se quer é uma
+\emph{política} cujo desempenho iguale ou supere o do especialista. Duas rotas:
+
+\begin{enumerate}
+  \item \textbf{Em dois estágios:} aprenda $\rec$ por RL inverso e depois rode RL comum
+    com essa recompensa. Simples, mas paga duas vezes o custo computacional e propaga os
+    erros do primeiro estágio.
+  \item \textbf{Diretamente:} aprenda a política sem materializar a recompensa. É o que
+    faz o GAIL (Ho e Ermon, 2016), com uma formulação adversarial em que um discriminador
+    tenta separar trajetórias do especialista das do agente, e o agente é treinado por
+    gradiente de política para enganá-lo --- fechando o círculo com a primeira metade
+    desta aula.
+\end{enumerate}
+
+\begin{ideiabox}
+  Por que a recompensa é um objeto melhor que a política para transferir conhecimento?
+  Porque ela é frequentemente mais \emph{compacta} e mais \emph{portável}: a intenção
+  ``chegue rápido sem bater'' sobrevive à troca do carro, do mapa e da dinâmica; a
+  política de direção, não. É também a razão pela qual o RL inverso pode, em princípio,
+  superar o especialista --- se o especialista tinha boas intenções e execução ruim,
+  otimizar a intenção supera imitar a execução.
+\end{ideiabox}
+
+\begin{discbox}
+  A clonagem de comportamento, por construção, tem o especialista como teto. O RL
+  inverso, não. O que exatamente permite ultrapassar quem nos ensinou --- e que hipótese
+  precisa ser verdadeira para que isso aconteça de fato?
+\end{discbox}
+
+\section{Síntese e formulário}
+
+\subsection{As cinco linhas que resumem a primeira metade}
+
+\begin{center}\small
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.30\linewidth}
+                 >{\raggedright\arraybackslash}p{0.66\linewidth}@{}}
+\toprule
+Identidade exata &
+  $J(\polnovo)-J(\pol) = \frac{1}{1-\gamma}\E_{s\sim d^{\polnovo}, a\sim\polnovo}[\Advpi(s,a)]$ \\[0.4em]
+Substituto (estimável) &
+  $\Lsub{\pol}(\polnovo) = \frac{1}{1-\gamma}\E_{s\sim\dpi,a\sim\pol}\bigl[\frac{\polnovo(a\mid s)}{\pol(a\mid s)}\Advpi(s,a)\bigr]$ \\[0.4em]
+Preço da troca &
+  $\bigl|(J(\polnovo)-J(\pol)) - \Lsub{\pol}(\polnovo)\bigr| \le C\sqrt{\E_{s\sim\dpi}[\Dkl(\polnovo\|\pol)]}$ \\[0.4em]
+PPO recortado &
+  $\Lclip = \E\bigl[\sum_t \min(\razao\Ahat_t,\ \clip(\razao,1-\epsilon,1+\epsilon)\Ahat_t)\bigr]$ \\[0.4em]
+Vantagem (GAE) &
+  $\Ahat_t = \sum_{l\ge0}(\gamma\lambda)^l\delta^V_{t+l}$, \quad
+  $\delta^V_t = r_t + \gamma V(s_{t+1}) - V(s_t)$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Mapa dos métodos de imitação}
+
+\begin{center}\small
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.185\linewidth}
+                 >{\raggedright\arraybackslash}p{0.195\linewidth}
+                 >{\raggedright\arraybackslash}p{0.115\linewidth}
+                 >{\raggedright\arraybackslash}p{0.155\linewidth}
+                 >{\raggedright\arraybackslash}p{0.225\linewidth}@{}}
+\toprule
+\textbf{Método} & \textbf{O que aprende} & \textbf{Precisa de $P$?} &
+\textbf{Especialista no laço?} & \textbf{Limitação central} \\
+\midrule
+Clonagem & política, por supervisão & não & não & erros compostos ($\varepsilon T^2$) \\
+DAgger & política, iterativamente & não & \textbf{sim} & custo humano recorrente \\
+Casamento de atributos & política que casa $\mufeat$ & sim & não & depende inteiramente de $\feat$ \\
+MaxEnt IRL & recompensa $\wv$ & sim & não & resolve um MDP por iteração \\
+GAIL & política, de modo adversarial & não (usa simulador) & não & instabilidade do treino adversarial \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{O que você deve saber fazer}
+
+\begin{defbox}{Capacidades esperadas}
+\begin{itemize}
+  \item Explicar por que os pesos de importância sobre trajetórias explodem, e por que a
+    razão de \emph{um passo} do substituto não sofre do mesmo mal.
+  \item Enunciar a identidade de Kakade--Langford e dizer qual termo é inestimável e por quê.
+  \item Ler o objetivo recortado nos dois casos ($\Adv>0$ e $\Adv<0$) e explicar por que
+    ele não impede que $r$ fique grande.
+  \item \textbf{Derivar} a forma fechada do GAE a partir da média exponencialmente
+    ponderada, indicando onde a soma geométrica é usada.
+  \item Situar $\lambda = 0$ e $\lambda = 1$ no compromisso viés--variância, com a
+    ressalva correta sobre o que é não-viesado.
+  \item Reproduzir a demonstração de melhoria monotônica e apontar exatamente onde
+    $\E_{a\sim\pol}[\Advpi] = 0$ é usada.
+  \item Definir clonagem de comportamento e explicar em que ela difere de RL.
+  \item Explicar o argumento $\varepsilon T$ contra $\varepsilon T^2$ e o que DAgger muda.
+  \item Argumentar por que o RL inverso é subdeterminado, e como o casamento de atributos
+    e a máxima entropia lidam com isso de maneiras diferentes.
+\end{itemize}
+\end{defbox}
+
+\section{Exercícios}
+
+\begin{exbox}{1 --- O produto que explode}
+  Suponha $\polth(a_t\mid s_t)/\pol_{\thv'}(a_t\mid s_t) \in [1-\eta,\,1+\eta]$ para todo
+  $t$, com $\eta = 0{,}02$.
+  \begin{enumerate}
+    \item Escreva o intervalo em que vive o peso de importância de uma trajetória de
+      $t+1 = 100$ passos.
+    \item Calcule numericamente os extremos. Compare com $\eta = 0{,}05$ e $t+1 = 500$.
+    \item Explique por que o \emph{viés} do estimador continua zero enquanto isso.
+  \end{enumerate}
+  \textbf{Resposta parcial.} O intervalo é $[(1-\eta)^{100},(1+\eta)^{100}]
+  \approx [0{,}133;\ 7{,}24]$: uma variação de $\pm2\%$ por passo vira um fator $54$ entre
+  os extremos. Com $\eta=0{,}05$ e $500$ passos, $[(0{,}95)^{500},(1{,}05)^{500}]
+  \approx [7{,}3\cdot10^{-12};\ 3{,}9\cdot10^{10}]$ --- quase vinte e duas ordens de grandeza.
+\end{exbox}
+
+\begin{exbox}{2 --- Os dois ramos do recorte}
+  Escreva $\Lclip$ como função explícita de $r$ em cada caso, sem o $\min$:
+  \begin{enumerate}
+    \item Mostre que, para $\Adv > 0$, $\Lclip(r) = \Adv\cdot\min(r,\,1+\epsilon)$.
+    \item Mostre que, para $\Adv < 0$, $\Lclip(r) = \Adv\cdot\max(r,\,1-\epsilon)$.
+    \item Conclua que em ambos os casos $\Lclip(r) \le r\Adv$, isto é, o objetivo
+      recortado é um limitante inferior do substituto.
+  \end{enumerate}
+\end{exbox}
+
+\begin{exbox}{3 --- GAE em um episódio curto}
+  Um episódio de três passos, com $\gamma = 0{,}9$:
+  \[
+    \begin{array}{c|ccc}
+      t & 0 & 1 & 2\\\hline
+      r_t & 0 & 0 & 10\\
+      \Vhat(s_t) & 4 & 6 & 8
+    \end{array}
+    \qquad \Vhat(s_3) = 0 \ \ (\text{estado terminal}).
+  \]
+  \begin{enumerate}
+    \item Calcule $\delta^V_0,\delta^V_1,\delta^V_2$.
+    \item Calcule $\Ahat_0$ para $\lambda = 0$, $\lambda = 0{,}5$ e $\lambda = 1$.
+    \item Verifique que, com $\lambda=1$, $\Ahat_0 = G_0 - \Vhat(s_0)$.
+  \end{enumerate}
+  \textbf{Resposta.} $\delta^V_2 = 10 + 0{,}9\cdot0 - 8 = 2$;
+  $\delta^V_1 = 0 + 0{,}9\cdot8 - 6 = 1{,}2$;
+  $\delta^V_0 = 0 + 0{,}9\cdot6 - 4 = 1{,}4$.
+  Para $\lambda=0$: $\Ahat_0 = 1{,}4$.
+  Para $\lambda=0{,}5$: $\Ahat_0 = 1{,}4 + 0{,}45\cdot1{,}2 + 0{,}45^2\cdot2 = 2{,}345$.
+  Para $\lambda=1$: $\Ahat_0 = 1{,}4 + 0{,}9\cdot1{,}2 + 0{,}81\cdot2 = 4{,}1$, e de fato
+  $G_0 = 0{,}9^2\cdot10 = 8{,}1$, com $8{,}1 - 4 = 4{,}1$.
+\end{exbox}
+
+\begin{exbox}{4 --- Onde a demonstração usa a hipótese}
+  Na demonstração de melhoria monotônica, o passo 2 afirma
+  $\E_{a\sim\pol}[\Advpi(s,a)] = 0$.
+  \begin{enumerate}
+    \item Demonstre essa identidade a partir de $\Advpi(s,a) = \Qpi(s,a) - \Vpi(s)$.
+    \item Onde exatamente a demonstração quebraria se a vantagem fosse medida sob uma
+      política diferente daquela que gera as ações?
+    \item A garantia sobrevive se restringirmos $\polnovo$ a uma classe parametrizada
+      $\Pi_\thv$? Justifique.
+  \end{enumerate}
+\end{exbox}
+
+\begin{exbox}{5 --- $\varepsilon T$ contra $\varepsilon T^2$}
+  Considere um agente clonado com erro por passo $\varepsilon = 0{,}01$ e horizonte
+  $T = 200$.
+  \begin{enumerate}
+    \item Sob a hipótese i.i.d.\ ingênua, qual o número esperado de erros?
+    \item Sob a estimativa $\varepsilon T^2$, qual é?
+    \item Interprete: o que significa um número esperado de erros maior que $T$?
+  \end{enumerate}
+  \textbf{Comentário.} A resposta do item 3 é a chave: o limite $\varepsilon T^2$ passa a
+  ser vacuamente satisfeito quando ultrapassa $T$, o que revela o regime em que a clonagem
+  simplesmente não oferece garantia alguma.
+\end{exbox}
+
+\begin{exbox}{6 --- A ambiguidade, concretamente}
+  Considere um MDP com dois estados $\{s_1,s_2\}$, duas ações e recompensa linear
+  $\rec(s) = \wv^{\!\top}\feat(s)$ com $\feat(s_1) = (1,0)^{\!\top}$ e
+  $\feat(s_2) = (0,1)^{\!\top}$.
+  \begin{enumerate}
+    \item Exiba dois vetores $\wv$ distintos e não proporcionais para os quais a mesma
+      política determinística é ótima.
+    \item Mostre que $\wv = 0$ torna \emph{qualquer} política ótima.
+    \item Que restrição adicional o casamento de atributos impõe para eliminar a
+      degenerescência do item 2?
+  \end{enumerate}
+\end{exbox}
+
+\begin{exbox}{7 --- Implementação}
+  Implemente PPO com GAE em um ambiente clássico de controle contínuo.
+  \begin{enumerate}
+    \item Registre, ao longo do treino, a KL empírica entre $\polth$ e $\pol_{\thk}$ ao
+      fim de cada época interna. Ela cresce com $K$? Como?
+    \item Varie $\epsilon \in \{0{,}05;\ 0{,}2;\ 0{,}5\}$ mantendo o resto fixo e
+      compare as curvas de aprendizado e a fração de amostras recortadas.
+    \item Varie $\lambda \in \{0;\ 0{,}95;\ 1\}$ e meça a variância empírica de $\Ahat$
+      por lote. O comportamento bate com a tabela da Seção~\ref{sec:gae}?
+    \item Remova o fator $(1-\mathrm{fim}_t)$ da varredura reversa e descreva o que
+      acontece.
+  \end{enumerate}
+\end{exbox}
+
+\begin{exbox}{8 --- Clonagem e DAgger no mesmo ambiente}
+  Treine um especialista por RL até um bom desempenho e use-o como oráculo.
+  \begin{enumerate}
+    \item Faça clonagem de comportamento com $N$ demonstrações, para vários $N$, e trace
+      o desempenho contra $N$.
+    \item Implemente DAgger com o mesmo orçamento \emph{total} de rótulos e compare.
+    \item Meça, em cada caso, a distância entre a distribuição de estados de treino e a
+      de teste (por exemplo, com um classificador que tente distingui-las). A distância
+      cai com DAgger?
+  \end{enumerate}
+\end{exbox}
+
+\section*{Leituras}
+\addcontentsline{toc}{section}{Leituras}
+
+\begin{itemize}
+  \item \textbf{Sutton e Barto (2018)}, cap.\ 13 --- gradientes de política; seção 12.1
+    para a intuição de $\lambda$ nos traços de elegibilidade.
+  \item \textbf{Schulman, Moritz, Levine, Jordan e Abbeel (2016)},
+    \emph{High-Dimensional Continuous Control Using Generalized Advantage Estimation},
+    ICLR --- o artigo do GAE; curto e vale cada página.
+  \item \textbf{Schulman, Wolski, Dhariwal, Radford e Klimov (2017)},
+    \emph{Proximal Policy Optimization Algorithms} --- o artigo do PPO.
+  \item \textbf{Achiam, Held, Tamar e Abbeel (2017)},
+    \emph{Constrained Policy Optimization}, ICML --- os limites de desempenho relativo
+    usados aqui.
+  \item \textbf{Ross, Gordon e Bagnell (2011)}, \emph{A Reduction of Imitation Learning
+    and Structured Prediction to No-Regret Online Learning}, AISTATS --- DAgger e a
+    análise de erros compostos.
+  \item \textbf{Abbeel e Ng (2004)}, \emph{Apprenticeship Learning via Inverse
+    Reinforcement Learning}, ICML --- casamento de expectativas de atributos.
+  \item \textbf{Ziebart, Maas, Bagnell e Dey (2008)}, \emph{Maximum Entropy Inverse
+    Reinforcement Learning}, AAAI.
+  \item \textbf{Ho e Ermon (2016)}, \emph{Generative Adversarial Imitation Learning},
+    NeurIPS.
+  \item \textbf{Sun, Venkatraman, Gordon, Boots e Bagnell (2017)}, ICML --- a teoria na
+    fronteira entre imitação e RL.
+\end{itemize}
+
+\vspace{0.6em}
+\begin{ideiabox}
+  \textbf{Próxima aula.} Aprender recompensas quando não há demonstrações completas, mas
+  apenas \emph{preferências} entre pares de resultados ($y_1 \succ y_2$) --- o cenário dos
+  \emph{dueling bandits} e o que sustenta o ajuste por feedback humano. E, na sequência, a
+  exploração como problema de primeira classe.
+\end{ideiabox}
+
+\end{document}
