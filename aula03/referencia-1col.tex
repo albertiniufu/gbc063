@@ -1,0 +1,164 @@
+%% ============================================================
+%%  REFERÊNCIA — pacote handout1colRL (coluna única)
+%%  Copie este arquivo para começar um handout novo.
+%%
+%%  Compilar:  latexmk -xelatex referencia-1col.tex
+%%             (ou xelatex duas vezes — o rodapé "n/total" precisa disso)
+%%
+%%  Troque a linha do \usepackage por
+%%      \usepackage[notas]{handout1colRL}
+%%  para abrir a margem lateral de anotações. Nada mais muda:
+%%  \aomargem funciona nos dois modos.
+%% ============================================================
+\documentclass[a4paper, 11pt]{extarticle}
+
+\usepackage[notas]{handout1colRL}
+\usepackage{babel}
+\babelprovide[import, main]{brazilian}
+
+\disciplina{Aprendizagem por Reforço}
+\rotulo{Folha de estudo}
+\title{Aula N — Título da folha}
+\subtitulo{Subtítulo curto \textbullet\ tópicos principais}
+\author{Prof.\ Marcelo Keese Albertini \textbullet\ Universidade Federal de Uberlândia}
+\rodape{Aprendizagem por Reforço \textbullet\ Aula N \textbullet\ UFU}
+
+\begin{document}
+\cabecalho
+
+\secao{Caixas temáticas}
+
+As mesmas oito caixas do deck Beamer, com as mesmas assinaturas — o
+conteúdo pode ser copiado de um formato para o outro sem edição.
+\aomargem{Notas laterais entram com \texttt{\textbackslash aomargem}.
+Sem a opção \texttt{notas}, elas viram notas no corpo do texto.}
+
+\begin{defbox}{Horizonte $H$}
+  Número de passos de tempo em cada episódio.
+\end{defbox}
+
+\begin{defbox}{}
+  Com título vazio, a caixa escreve apenas ``Definição''.
+\end{defbox}
+
+\begin{teobox}{Proposição — melhoria monotônica}
+  $V^{\pol_{i+1}} \ge V^{\pol_i}$, com desigualdade estrita se $\pol_i$ é subótima.
+\end{teobox}
+
+\begin{algbox}{Iteração de Valor}
+  \begin{itemize}
+    \item Inicialize $V_0(s) = 0$ para todo $s$.
+    \item Repita até convergir:
+      $V_{k+1}(s) = \max_a\bigl[\rec(s,a) + \gamma\sum_{s'}\tran{s'}{s,a}V_k(s')\bigr]$.
+  \end{itemize}
+\end{algbox}
+
+\begin{ideiabox}
+  O valor de hoje se decompõe em: o que ganho agora mais o valor de onde posso parar.
+\end{ideiabox}
+
+\begin{alertabox}
+  Busca exaustiva é inviável: há $\abs{\gA}^{\abs{\gS}}$ políticas determinísticas.
+\end{alertabox}
+
+\begin{exbox}{— Mars Rover}
+  Calcule $V_{k+1}(s_6)$ com $\gamma = 0{,}9$.
+\end{exbox}
+
+\begin{respbox}
+  Omita esta caixa na versão entregue aos alunos, se quiser que eles tentem antes.
+\end{respbox}
+
+\begin{quizbox}{}
+  Um fator de desconto $\gamma$ grande dá mais peso a recompensas de curto prazo?
+\end{quizbox}
+\paradiscussao
+
+\secao{Títulos e blocos}
+
+\texttt{\textbackslash secao} desenha o filete laranja;
+\texttt{\textbackslash subsecao} é a versão menor, sem filete. Para impedir
+que um título fique órfão no pé da página, envolva título e conteúdo no
+ambiente \texttt{juntos}.
+
+\begin{juntos}
+\subsecao{Bloco indivisível}
+Este subtítulo e este parágrafo migram juntos para a página seguinte se não
+couberem aqui.
+\end{juntos}
+
+\secao{Macros matemáticas}
+
+As mesmas do deck: $\gS$, $\gA$, $\pol$, $\polstar$, $\Vpi$, $\Qpi$, $\Vstar$,
+$\E$, $\Prob$, $\rec$, $\tran{s'}{s,a}$, $\abs{\gS}$, $\norminf{V_k - V_j}$,
+$\defeq$, $\argmax_a Q(s,a)$.
+
+Realce dentro de fórmula e anotação sob um termo:
+\[
+  \mdestaque{rlLaranja}{V = (I - \gamma P)^{-1}\rec}
+  \qquad
+  V(s) = \termo{\rec(s)}{recompensa imediata}
+       + \termo{\gamma\textstyle\sum_{s'}\tran{s'}{s}V(s')}{futuro descontado}
+\]
+
+\secao{Diagramas}
+
+\begin{center}
+  \marsrover{4}
+\end{center}
+\notinha{\texttt{\textbackslash marsrover\{4\}} — destaca $s_4$.}
+
+\begin{center}
+  \marsrover*{}
+\end{center}
+\notinha{\texttt{\textbackslash marsrover*\{\}} — terminais em verde e rótulos
+de recompensa.}
+
+\begin{center}
+  \scalebox{0.9}{\backupdiagrama}
+\end{center}
+\notinha{Para encolher um diagrama use \texttt{\textbackslash scalebox}, nunca
+\texttt{scale=} — este último não reduz os nós.}
+
+\secao{Tabelas}
+
+Prefira \texttt{tabelaflex}, cujas colunas \texttt{Y} se ajustam sozinhas à
+largura da página:
+
+\begin{tabelaflex}{@{}p{0.26\linewidth}YYY@{}}
+  \toprule
+  & \colMC & \colTD & \colEC\\
+  \midrule
+  Precisa do modelo? & não & não & não (estima um)\\
+  Faz bootstrapping? & não & sim & sim (via PD)\\
+  Assume Markov?     & não & sim & sim\\
+  \bottomrule
+\end{tabelaflex}
+
+\notinha{Existe também \texttt{tabelaRL}, com larguras fixas, para quando você
+quiser controle exato. Ambas aceitam o corpo da fonte como argumento opcional:
+\texttt{[\textbackslash scriptsize]}.}
+
+\secao{Ajustes finos}
+
+\begin{itemize}
+  \item Margens: chame \texttt{\textbackslash geometry\{...\}} \emph{depois} de
+        carregar o pacote.
+  \item Cores pelo nome, com a mistura do xcolor (\texttt{rlAzul!15}):
+        \texttt{rlAzul}, \texttt{rlAzulClaro}, \texttt{rlTeal},
+        \texttt{rlLaranja}, \texttt{rlAmbar}, \texttt{rlVermelho},
+        \texttt{rlVerde}, \texttt{rlCinza}, \texttt{rlFundo},
+        \texttt{rlLinha}.
+  \item Toda caixa aceita opções do tcolorbox no argumento opcional, como
+        \texttt{[fontupper=\textbackslash small]}.
+  \item O ambiente \texttt{colunas} existe como \emph{no-op}: um handout escrito
+        para o \texttt{handoutRL} compila aqui em coluna única trocando só o
+        nome do pacote.
+\end{itemize}
+
+\begin{teobox}[fontupper=\small]{Caixa com opção de tcolorbox}
+  Este texto está menor porque a caixa recebeu \texttt{fontupper} no argumento
+  opcional.
+\end{teobox}
+
+\end{document}

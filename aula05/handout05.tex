@@ -1,0 +1,919 @@
+%% ============================================================
+%%  Handout — Aula 5: Gradientes de política I
+%%  Aprendizagem por Reforço — Universidade Federal de Uberlândia
+%%  Prof. Marcelo Keese Albertini
+%%  Adaptado de CS234 (Stanford), Emma Brunskill, Lecture 5
+%%  Compilar com XeLaTeX (2x): latexmk -xelatex handout05.tex
+%% ============================================================
+\documentclass[11pt]{article}
+
+\usepackage{handoutAprendizadoRL}
+\usepackage{babel}
+\babelprovide[import, main]{brazilian}
+
+\setaula{Aula 5 --- Gradientes de política I}
+\setprof{Prof.\ Marcelo Keese Albertini}
+
+%% Macros locais (as mesmas dos slides da Aula 5)
+\newcommand{\thv}{\theta}
+\newcommand{\wv}{w}
+\newcommand{\polth}{\pol_{\thv}}
+\newcommand{\gth}{\nabla_{\thv}}
+\newcommand{\traj}{\tau}
+\newcommand{\Rtraj}{R(\traj)}
+\newcommand{\Ptraj}{P(\traj;\thv)}
+\newcommand{\Vhat}{\hat{V}}
+\newcommand{\Qhat}{\hat{Q}}
+\newcommand{\Ahat}{\hat{A}}
+\newcommand{\Advpi}{A^{\pol}}
+\newcommand{\feat}{\phi}
+\newcommand{\gscore}{\gth \log \polth(a \mid s)}
+
+\begin{document}
+
+\capa{Aula 5 --- Gradientes de política I}
+     {Políticas parametrizadas \textbullet\ Razão de verossimilhança \textbullet\
+      REINFORCE \textbullet\ Linha de base e vantagem}
+     {Prof.\ Marcelo Keese Albertini \textbullet\ Universidade Federal de Uberlândia}
+     {Material adaptado e expandido de \textit{CS234: Reinforcement Learning},
+      Emma Brunskill (Stanford). Leitura complementar: Sutton \& Barto (2018), cap.\ 13.}
+
+\section*{Como usar este handout}
+\addcontentsline{toc}{section}{Como usar este handout}
+
+Este texto acompanha os slides da Aula 5 e é mais completo que eles em dois pontos:
+todas as passagens algébricas estão escritas por extenso, e há exercícios ao final
+com respostas comentadas. As caixas em âmbar (\textsc{para discutir em aula}) não
+têm resposta escrita de propósito --- são os pontos que serão conduzidos
+presencialmente.
+
+\medskip
+\noindent
+\begin{minipage}[t]{0.5\linewidth}
+\textbf{Roteiro}
+\begin{enumerate}[itemsep=0.05em]
+  \item Por que parametrizar a política
+  \item O objetivo e a razão de verossimilhança
+  \item A função escore em duas famílias de políticas
+  \item Redução de variância: estrutura temporal e linha de base
+  \item Ator--crítico, vantagem e estimadores de $n$ passos
+  \item Prática, formulário e exercícios
+\end{enumerate}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.46\linewidth}
+\textbf{Pré-requisitos das aulas anteriores}
+\begin{itemize}[itemsep=0.05em]
+  \item MDP, política, $\Vpi$ e $\Qpi$ (Aula 2)
+  \item Avaliação por Monte Carlo e por TD (Aula 3)
+  \item Aproximação de função valor; MC \emph{versus} TD como compromisso
+        viés--variância (Aula 4)
+  \item Gradiente, regra da cadeia, esperança condicional
+\end{itemize}
+\end{minipage}
+
+\begin{ideiabox}
+Em uma frase: até aqui a política era um subproduto do valor,
+$\pol(s)=\argmax_a \Qhat(s,a)$. A partir de agora a política é o objeto que
+aprendemos, e o valor --- quando aparecer --- serve apenas para reduzir a
+variância do estimador do gradiente.
+\end{ideiabox}
+
+\section{Por que parametrizar a política}
+
+\subsection{As três famílias}
+
+\begin{center}
+\begin{tikzpicture}[font=\small]
+  \node[caixa, draw=rlAzul, fill=rlAzul!8, text width=36mm, minimum height=15mm] (v)
+    {\textbf{Baseado em valor}\\[0.25em] aprende $\Qhat$;\\ política implícita ($\epsilon$-guloso)};
+  \node[caixa, draw=rlLaranja, fill=rlLaranja!10, text width=36mm, minimum height=15mm,
+        right=22mm of v] (p)
+    {\textbf{Baseado em política}\\[0.25em] aprende $\polth$;\\ sem função valor};
+  \node[caixa, draw=rlTeal, fill=rlTeal!10, text width=36mm, minimum height=10mm,
+        below=8mm of $(v)!0.5!(p)$] (ac)
+    {\textbf{Ator--crítico}\\[0.15em] aprende os dois};
+  \draw[trans] (v.south) -- (ac.west);
+  \draw[trans] (p.south) -- (ac.east);
+\end{tikzpicture}
+\end{center}
+
+Convenção de notação que usaremos o curso inteiro: $\wv$ são pesos de uma
+\emph{função valor}; $\thv$ são pesos de uma \emph{política}.
+
+\begin{defbox}{Política estocástica parametrizada}
+\[
+  \polth(a \mid s) = \Prob[a_t = a \mid s_t = s;\, \thv],
+  \qquad \thv \in \R^{n},
+\]
+diferenciável em $\thv$ sempre que é não nula. Em ações discretas, tipicamente
+uma \emph{softmax} sobre \emph{logits} produzidos por um modelo; em ações
+contínuas, tipicamente uma gaussiana cuja média (e possivelmente o desvio) sai
+do modelo.
+\end{defbox}
+
+\subsection{Três razões para abandonar o \texorpdfstring{$\argmax$}{argmax}}
+
+\begin{enumerate}
+  \item \textbf{Ações contínuas.} Extrair a política de $\Qhat$ exige resolver
+    $\argmax_{a}\Qhat(s,a)$ \emph{a cada passo de tempo} --- um problema de
+    otimização aninhado. Com $\polth$, obter a ação custa uma passagem para
+    frente no modelo.
+  \item \textbf{Observação ambígua.} Se dois estados diferentes produzem a mesma
+    observação, a melhor política representável pode exigir aleatoriedade. É o
+    exemplo da subseção seguinte.
+  \item \textbf{Suavidade.} O $\epsilon$-guloso muda de ação \emph{de forma
+    descontínua} quando dois valores $\Qhat$ se cruzam; $\polth$ varia
+    continuamente com $\thv$. Isso costuma produzir trajetórias de aprendizado
+    mais estáveis.
+\end{enumerate}
+
+Há ainda uma quarta razão, contemporânea: quando a política \emph{já é} uma
+distribuição --- um modelo de linguagem sobre tokens, por exemplo --- ajustá-la
+por gradiente de política é a operação natural. É o que fazem RLHF, PPO e GRPO.
+
+\subsection{O corredor com estados sinônimos}
+
+Cinco casas em linha; o objetivo é a casa 3; as casas 1 e 5 são becos sem saída.
+O agente não observa o índice da casa: observa apenas atributos locais de
+parede, do tipo
+\[
+  \feat(s,a) = \mathbf{1}\{\text{há parede ao N},\ a = \text{mover para L}\}
+  \qquad\text{(e análogos para N, S, L, O).}
+\]
+
+\begin{center}
+\begin{tikzpicture}[font=\small]
+  \foreach \i/\fill in {1/white, 2/rlCinza!35, 3/white, 4/rlCinza!35, 5/white}{
+    \node[draw=rlAzul, thick, fill=\fill, minimum size=12mm] (c\i) at (\i*14mm, 0) {};}
+  \node at (c3) {\textcolor{rlVerde!70!black}{\large\textbf{\$}}};
+  \node at (c1) {\textcolor{rlVermelho}{\large$\times$}};
+  \node at (c5) {\textcolor{rlVermelho}{\large$\times$}};
+  \foreach \i in {1,...,5}{\node[font=\scriptsize, text=rlCinza, below=1mm of c\i] {\i};}
+  \node[font=\scriptsize, text=rlCinza, above=1mm of c2] {mesma observação};
+  \node[font=\scriptsize, text=rlCinza, above=1mm of c4] {mesma observação};
+  \draw[rlAzul, very thick] ($(c1.north west)+(0,0.6mm)$) -- ($(c5.north east)+(0,0.6mm)$);
+  \draw[rlAzul, very thick] ($(c1.south west)-(0,0.6mm)$) -- ($(c5.south east)-(0,0.6mm)$);
+\end{tikzpicture}
+\end{center}
+
+As casas 2 e 4 têm paredes ao Norte e ao Sul e nada mais: produzem
+\emph{exatamente} o mesmo vetor de atributos. As casas 1 e 5, ao contrário, são
+distinguíveis (uma tem parede a Oeste, a outra a Leste).
+
+\begin{alertabox}
+Como 2 e 4 são indistinguíveis, toda política determinística é obrigada a
+escolher a \emph{mesma} ação nas duas. Se escolher ``Leste'', chega ao objetivo
+partindo da casa 2 mas fica presa partindo da casa 4; se escolher ``Oeste'',
+o oposto. Em qualquer dos casos, metade dos inícios nunca alcança o objetivo,
+e o método baseado em valor --- que aprende uma política quase determinística
+--- depende do $\epsilon$ para escapar, com tempo de fuga da ordem de
+$1/\epsilon$ por casa.
+\end{alertabox}
+
+\begin{teobox}{A política ótima representável é estocástica}
+Dentro da classe de políticas que enxergam apenas $\feat$, o ótimo é
+\[
+  \polth(\text{Leste}\mid\text{parede N e S}) =
+  \polth(\text{Oeste}\mid\text{parede N e S}) = 0{,}5 .
+\]
+O comportamento resultante é um passeio aleatório local, que alcança o objetivo
+em poucos passos com alta probabilidade a partir de qualquer início. Com custo
+de $-1$ por passo e início uniforme nas casas $\{1,2,4,5\}$, o número esperado de
+passos é $3{,}5$.
+\end{teobox}
+
+\begin{discbox}
+O exemplo mostra uma política estocástica estritamente melhor que qualquer
+determinística. Isso contradiz o teorema da Aula 2, segundo o qual todo MDP
+finito admite política determinística ótima?
+\end{discbox}
+
+\section{O objetivo e a razão de verossimilhança}
+
+\subsection{O que estamos maximizando}
+
+\begin{defbox}{Valor de uma política parametrizada}
+Para MDPs episódicos com estado inicial $s_0$ e horizonte $T$,
+\[
+  V(\thv) \defeq V(s_0,\thv)
+  = \E_{\polth}\Bigl[\ \sum_{t=0}^{T} \rec(s_t,a_t)\ \Bigm|\ \polth,\, s_0\Bigr],
+\]
+onde a esperança é tomada sobre os estados \emph{e} as ações visitados por
+$\polth$.
+\end{defbox}
+
+Há duas maneiras equivalentes de reescrever esse valor, e a escolha define o
+caminho da derivação:
+\begin{itemize}
+  \item \textbf{Por ação:} $V(s_0,\thv)=\sum_a \polth(a\mid s_0)\,Q(s_0,a,\thv)$.
+        É o caminho de Sutton \& Barto (cap.\ 13.2), que leva ao teorema do
+        gradiente de política em sua forma geral.
+  \item \textbf{Por trajetória:} $V(\thv)=\sum_{\traj}\Ptraj\,\Rtraj$. É o
+        caminho que seguiremos: mais curto, e revela que o método vale bem além
+        de MDPs.
+\end{itemize}
+
+\begin{defbox}{Trajetória, retorno e verossimilhança}
+\[
+  \traj = (s_0,a_0,r_0,\ s_1,a_1,r_1,\ \dots,\ s_{T-1},a_{T-1},r_{T-1},s_T),
+  \qquad
+  \Rtraj = \sum_{t=0}^{T}\rec(s_t,a_t),
+\]
+\[
+  \Ptraj = \mu(s_0)\prod_{t=0}^{T-1}
+    \termo{\polth(a_t\mid s_t)}{política}\;
+    \termo{\tran{s_{t+1}}{s_t,a_t}}{dinâmica}
+\]
+com $\mu$ a distribuição de estados iniciais. O problema é
+$\argmax_{\thv}\sum_{\traj}\Ptraj\,\Rtraj$.
+\end{defbox}
+
+\begin{alertabox}
+Observe quem depende de $\thv$ nessa fatoração: \textbf{somente} os fatores
+$\polth(a_t\mid s_t)$. Nem $\mu$, nem a dinâmica, nem a recompensa. Esse é o
+único fato de que a derivação inteira precisa.
+\end{alertabox}
+
+\subsection{Por que gradiente, e não busca direta}
+
+Maximizar $V(\thv)$ é, formalmente, otimização de caixa-preta, e existem métodos
+sem gradiente: busca aleatória, diferenças finitas, estratégias evolutivas,
+\emph{cross-entropy method}. Diferenças finitas, por exemplo, estimam
+\[
+  \frac{\partial V}{\partial \thv_k} \approx
+  \frac{V(\thv + \varepsilon e_k) - V(\thv)}{\varepsilon},
+\]
+o que exige $\mathcal{O}(n)$ avaliações \emph{ruidosas} de política por passo ---
+inviável quando $n$ está na casa dos milhões. O gradiente analítico custa uma
+única passagem para trás, independentemente de $n$, e ainda aproveita a estrutura
+temporal do problema. Métodos sem gradiente, porém, continuam competitivos com
+$n$ pequeno ou com simuladores baratos e massivamente paralelos
+(Salimans et al., 2017).
+
+\subsection{O truque da razão de verossimilhança}
+
+Queremos $\gth V(\thv)$ com $V(\thv)=\sum_{\traj}\Ptraj\Rtraj$. A dificuldade é
+dupla: a soma percorre um número astronômico de trajetórias, e não conhecemos
+$\Ptraj$. O truque a seguir resolve as duas de uma vez.
+
+\begin{teobox}{Derivação}
+{\small
+\begin{align*}
+  \gth V(\thv)
+    &= \gth \sum_{\traj}\Ptraj\,\Rtraj
+     = \sum_{\traj}\gth \Ptraj\; \Rtraj
+      && \text{\footnotesize $\Rtraj$ não depende de $\thv$}\\[0.2em]
+    &= \sum_{\traj}\frac{\Ptraj}{\Ptraj}\,\gth \Ptraj\;\Rtraj
+      && \text{\footnotesize multiplicar e dividir por $\Ptraj$}\\[0.2em]
+    &= \sum_{\traj}\Ptraj\,\Rtraj\,
+       \underbrace{\frac{\gth \Ptraj}{\Ptraj}}_{\text{razão de verossimilhança}}
+      && \text{\footnotesize agrupar}\\[0.2em]
+    &= \sum_{\traj}\Ptraj\,\Rtraj\,\gth\log\Ptraj
+      && \text{\footnotesize pois } \nabla\log f = \nabla f / f
+\end{align*}}
+Ou seja,
+\[
+  \boxed{\ \gth V(\thv) = \E_{\traj\sim\polth}\bigl[\,\Rtraj\ \gth\log\Ptraj\,\bigr]\ }
+\]
+\end{teobox}
+
+O gradiente virou uma \emph{esperança}, e esperanças se estimam por amostragem.
+Com $m$ trajetórias coletadas rodando a política atual,
+\[
+  \gth V(\thv)\ \approx\ \hat g
+   = \frac{1}{m}\sum_{i=1}^{m} R(\traj^{(i)})\,\gth\log P(\traj^{(i)};\thv),
+\]
+estimador \textbf{não enviesado} para qualquer $m$. Falta, ainda, eliminar a
+dinâmica que está escondida dentro de $\log P$.
+
+\subsection{Decompondo a trajetória: a dinâmica desaparece}
+
+\begin{teobox}{Decomposição}
+\begin{align*}
+  \gth\log P(\traj;\thv)
+   &= \gth\log\Bigl[\mu(s_0)\prod_{t=0}^{T-1}\polth(a_t\mid s_t)\,
+      \tran{s_{t+1}}{s_t,a_t}\Bigr]\\[0.2em]
+   &= \gth\Bigl[\log\mu(s_0) + \sum_{t=0}^{T-1}\log\polth(a_t\mid s_t)
+      + \sum_{t=0}^{T-1}\log \tran{s_{t+1}}{s_t,a_t}\Bigr]\\[0.2em]
+   &= \sum_{t=0}^{T-1}\gth\log\polth(a_t\mid s_t)
+\end{align*}
+O logaritmo transforma produto em soma; a derivada em $\thv$ aniquila todo termo
+que não depende de $\thv$. Sobram apenas os termos da política.
+\end{teobox}
+
+Juntando as duas peças, obtemos o estimador que dá nome à família:
+\begin{equation}\label{eq:pg}
+  \hat g = \frac{1}{m}\sum_{i=1}^{m} R(\traj^{(i)})
+           \sum_{t=0}^{T-1}\gth\log\polth\bigl(a^{(i)}_t \bigm| s^{(i)}_t\bigr).
+\end{equation}
+
+\begin{ideiabox}
+Para calcular \eqref{eq:pg} basta rodar a política, guardar $(s_t,a_t,r_t)$,
+somar as recompensas de cada episódio e derivar $\log\polth$ --- o que a
+diferenciação automática faz sozinha. Nenhum modelo de dinâmica, nenhum $\max$
+sobre ações. Em compensação, precisamos de episódios completos e o estimador é
+\emph{on-policy}: dados coletados com um $\thv$ antigo não servem sem correção.
+\end{ideiabox}
+
+\section{A função escore}
+
+\begin{defbox}{Função escore}
+A derivada do logaritmo de uma verossimilhança parametrizada,
+$\gth\log p(x;\thv)$. No nosso caso, $\gscore$: a direção em $\thv$ que mais
+aumenta a log-probabilidade de ter escolhido a ação $a$ no estado $s$.
+\end{defbox}
+
+\begin{teobox}{Propriedade fundamental: o escore tem média zero}
+\[
+  \E_{a\sim\polth(\cdot\mid s)}\bigl[\gscore\bigr]
+   = \sum_a \polth(a\mid s)\,\frac{\gth\polth(a\mid s)}{\polth(a\mid s)}
+   = \gth\sum_a \polth(a\mid s) = \gth 1 = 0 .
+\]
+\end{teobox}
+
+Vale a pena registrar essa identidade agora: ela reaparece, sem disfarce, na
+demonstração de que a linha de base não introduz viés (Seção~\ref{sec:base}).
+
+\subsection{Política softmax}
+
+Para ações discretas, com atributos $\feat(s,a)$ e pesos lineares:
+\[
+  \polth(a\mid s) = \frac{e^{\feat(s,a)^{\!\top}\thv}}
+                        {\sum_{a'} e^{\feat(s,a')^{\!\top}\thv}} .
+\]
+\begin{align*}
+  \gscore
+   &= \gth\Bigl[\feat(s,a)^{\!\top}\thv
+      - \log\sum_{a'} e^{\feat(s,a')^{\!\top}\thv}\Bigr]\\
+   &= \feat(s,a) - \frac{\sum_{a'}\feat(s,a')\,e^{\feat(s,a')^{\!\top}\thv}}
+                        {\sum_{a'} e^{\feat(s,a')^{\!\top}\thv}}
+    = \feat(s,a) - \E_{a'\sim\polth}\bigl[\feat(s,a')\bigr] .
+\end{align*}
+
+\begin{ideiabox}
+\emph{Atributo observado menos atributo esperado.} Se a ação tomada era típica
+da política atual, o escore é pequeno; se era atípica, é grande. Multiplicado por
+um retorno alto, isso empurra a política exatamente na direção do que foi
+surpreendentemente bom.
+\end{ideiabox}
+
+No caso tabular (atributos \emph{one-hot}, um parâmetro por ação), a expressão
+se reduz a $\gth\log\polth(a) = e_a - \pol$, e o gradiente esperado tem forma
+fechada elegante:
+\begin{equation}\label{eq:bandido}
+  \frac{\partial}{\partial\thv_a}\E[r] = \polth(a)\bigl(r_a - \E[r]\bigr).
+\end{equation}
+Uma ação só ganha probabilidade se render \emph{acima da média} --- a linha de
+base já está aqui, escondida na própria álgebra do escore.
+
+\subsection{Política gaussiana}
+
+Para ações contínuas, com média linear nos atributos do estado:
+\[
+  \mu_{\thv}(s) = \feat(s)^{\!\top}\thv,
+  \qquad a \sim \mathcal{N}\bigl(\mu_{\thv}(s),\sigma^2\bigr),
+  \qquad
+  \gscore = \frac{\bigl(a-\mu_{\thv}(s)\bigr)\feat(s)}{\sigma^2}.
+\]
+O desvio $\sigma$ pode ser fixo ou parametrizado; na prática funciona como um
+controle de exploração que a própria otimização vai encolhendo. Redes profundas
+substituem a forma linear sem alterar uma linha da derivação.
+
+\begin{alertabox}
+O fator $1/\sigma^2$ explode quando $\sigma\to 0$: uma política que ficou quase
+determinística produz gradientes gigantescos e instáveis. É um dos modos de falha
+mais comuns em controle contínuo --- imponha um limite inferior a $\sigma$.
+\end{alertabox}
+
+\subsection{Por que o estimador por escore é notável}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{0.46\linewidth}p{0.46\linewidth}@{}}
+\toprule
+\textbf{Estimador por escore} & \textbf{Estimador por reparametrização}\\
+$\gth\E_{x\sim p_{\thv}}[f(x)] = \E\bigl[f(x)\,\gth\log p_{\thv}(x)\bigr]$
+ & $x = h_{\thv}(\epsilon)$, \ $\gth\E[f] = \E\bigl[\nabla f\cdot \gth h_{\thv}\bigr]$\\
+\midrule
+$+$ $f$ pode ser caixa-preta, descontínua ou desconhecida
+ & $+$ variância bem menor\\
+$+$ serve para $x$ discreto
+ & $-$ exige $f$ diferenciável\\
+$-$ variância alta
+ & $-$ só para $x$ contínuo\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Em aprendizagem por reforço, a ``função'' é o \emph{mundo}: o placar de um jogo,
+a preferência de um avaliador humano, o resultado de um experimento. Não há
+gradiente para pegar. Por isso o estimador por escore --- caro em variância,
+barato em suposições --- é o que sobrevive.
+
+\begin{teobox}{Teorema do gradiente de política (Sutton et al., 2000)}
+Para toda política diferenciável $\polth(a\mid s)$ e para qualquer um dos
+objetivos usuais --- $J_1$ (recompensa episódica), $J_{\mathrm{avR}}$
+(recompensa média por passo) ou $\tfrac{1}{1-\gamma}J_{\mathrm{avV}}$ (valor
+médio) --- vale
+\[
+  \gth J(\thv) = \E_{\polth}\bigl[\,\gscore\; Q^{\polth}(s,a)\,\bigr].
+\]
+\end{teobox}
+
+O teorema generaliza o que derivamos: no lugar do retorno da trajetória inteira
+aparece o valor da ação. O ponto tecnicamente difícil é que a distribuição de
+estados visitados $d^{\polth}$ também depende de $\thv$, e ainda assim
+$\gth d^{\polth}$ \emph{não} aparece no resultado. Todo o restante da aula
+consiste em decidir o que colocar no lugar de $Q^{\polth}(s,a)$.
+
+\begin{discbox}
+Sobre o estimador \eqref{eq:pg}, quais afirmações são verdadeiras?
+(a) exige funções de recompensa diferenciáveis;
+(b) só pode ser usado com processos de decisão de Markov;
+(c) é útil principalmente em tarefas de horizonte infinito.
+\end{discbox}
+
+\section{Redução de variância}
+\label{sec:base}
+
+O estimador \eqref{eq:pg} é não enviesado e, ao mesmo tempo, de variância
+altíssima: o sinal atribuído a \emph{cada} ação é o retorno da trajetória
+\emph{inteira}. Uma decisão excelente no passo 3 recebe a culpa por um desastre
+no passo 300. Há três correções, e cada uma é uma ideia independente.
+
+\subsection{Correção 1: estrutura temporal}
+
+Partindo da forma fatorada,
+\[
+  \gth\E_{\traj}[R] = \E_{\traj}\Bigl[
+    \Bigl(\sum_{t=0}^{T-1} r_t\Bigr)
+    \Bigl(\sum_{t=0}^{T-1}\gth\log\polth(a_t\mid s_t)\Bigr)\Bigr],
+\]
+o mesmo argumento aplicado a uma \emph{única} recompensa $r_{t'}$ dá
+\[
+  \gth\E[r_{t'}] = \E\Bigl[r_{t'}\sum_{t=0}^{t'}\gth\log\polth(a_t\mid s_t)\Bigr],
+\]
+pois apenas as ações tomadas \emph{até} $t'$ podem ter influenciado $r_{t'}$.
+Somando sobre $t'$ e trocando a ordem dos somatórios:
+\[
+  \gth V(\thv)
+   = \E\Bigl[\sum_{t'=0}^{T-1} r_{t'}\sum_{t=0}^{t'}\gth\log\polth(a_t\mid s_t)\Bigr]
+   = \E\Bigl[\sum_{t=0}^{T-1}\gth\log\polth(a_t\mid s_t)
+     \mdestaque{rlLaranja}{\sum_{t'=t}^{T-1} r_{t'}}\Bigr].
+\]
+
+O termo destacado é exatamente o retorno $G_t$, de modo que
+\begin{equation}\label{eq:temporal}
+  \gth V(\thv) \approx \frac{1}{m}\sum_{i=1}^{m}\sum_{t=0}^{T-1}
+    \gth\log\polth\bigl(a^{(i)}_t\bigm| s^{(i)}_t\bigr)\, G^{(i)}_t .
+\end{equation}
+
+\begin{ideiabox}
+Removemos os termos $r_{t'}$ com $t'<t$. Em esperança eles valiam zero --- uma
+ação não influencia o passado --- mas contribuíam com ruído puro. Este é o
+princípio que organiza toda a seção: \emph{remova do estimador tudo que tem
+esperança zero}; isso nunca muda o alvo e sempre reduz a variância.
+\end{ideiabox}
+
+\begin{algbox}{REINFORCE (Williams, 1992)}
+\begin{itemize}[itemsep=0.1em]
+  \item Inicialize $\thv$ arbitrariamente.
+  \item \textbf{para} cada episódio
+    $\{s_0,a_0,r_0,\dots,s_{T-1},a_{T-1},r_{T-1}\}\sim\polth$ \textbf{faça}
+    \begin{itemize}[itemsep=0.05em]
+      \item \textbf{para} $t=0$ até $T-1$:
+        $\quad \thv \leftarrow \thv + \alpha\,\gth\log\polth(a_t\mid s_t)\,G_t$
+    \end{itemize}
+  \item \textbf{devolva} $\thv$.
+\end{itemize}
+\end{algbox}
+
+\subsection{Por que ainda não basta}
+
+Considere um bandido de duas ações com $\rec(a_1)=100$ e $\rec(a_2)=101$. Os dois
+retornos são grandes e positivos, de modo que o estimador aumenta a
+log-probabilidade das \emph{duas} ações em toda amostra; a diferença entre elas
+--- o único sinal útil --- vale $1$, sepultada num sinal de magnitude $100$. Pior:
+some $+1000$ a todas as recompensas. Pela identidade do escore de média zero, o
+gradiente verdadeiro \textbf{não muda}; a variância do estimador, sim, e cresce
+proporcionalmente ao deslocamento.
+
+\begin{alertabox}
+A escala absoluta da recompensa não afeta o gradiente em esperança --- afeta
+apenas o ruído. Corrigir isso é precisamente o papel da linha de base.
+\end{alertabox}
+
+\subsection{Correção 2: linha de base}
+
+\begin{defbox}{Linha de base $b(s)$}
+\[
+  \gth\E_{\traj}[R] = \E_{\traj}\Bigl[\sum_{t=0}^{T-1}
+    \gth\log\polth(a_t\mid s_t)\bigl(G_t - b(s_t)\bigr)\Bigr].
+\]
+Para \textbf{qualquer} função $b$ que dependa apenas do estado (não da ação), o
+estimador permanece não enviesado. A escolha quase ótima é o retorno esperado,
+$b(s_t)\approx \Vpi(s_t)$.
+\end{defbox}
+
+\begin{provabox}
+Basta mostrar que o termo subtraído tem esperança nula:
+\begin{align*}
+  \E_{\traj}\bigl[\gth\log\polth(a_t\mid s_t)\,b(s_t)\bigr]
+   &= \E_{s_{0:t},a_{0:t-1}}\Bigl[\E_{a_t}\bigl[\gth\log\polth(a_t\mid s_t)\,b(s_t)\bigr]\Bigr]
+     && \text{quebrar a esperança}\\
+   &= \E_{s_{0:t},a_{0:t-1}}\Bigl[b(s_t)\,\E_{a_t}\bigl[\gth\log\polth(a_t\mid s_t)\bigr]\Bigr]
+     && \text{$b$ não depende de $a_t$}\\
+   &= \E\Bigl[b(s_t)\sum_a \polth(a\mid s_t)\frac{\gth\polth(a\mid s_t)}{\polth(a\mid s_t)}\Bigr]
+     && \text{razão de verossimilhança}\\
+   &= \E\Bigl[b(s_t)\,\gth\sum_a \polth(a\mid s_t)\Bigr]
+    = \E\bigl[b(s_t)\,\gth 1\bigr] = 0 .
+\end{align*}
+O segundo passo é o que exige $b$ dependente apenas de $s_t$: com $b$ função
+também da ação, ela não sai de dentro da esperança sobre $a_t$.
+\end{provabox}
+
+Interpretação prática: em vez de ``esta ação rendeu 101'', o sinal passa a ser
+``esta ação rendeu $0{,}5$ acima da média deste estado''. O segundo é comparável
+entre estados; o primeiro não é.
+
+\begin{algbox}{Gradiente de política ``baunilha'', com linha de base}
+\begin{itemize}[itemsep=0.1em]
+  \item Inicialize os parâmetros da política $\thv$ e a linha de base $b$.
+  \item \textbf{para} iteração $=1,2,\dots$ \textbf{faça}
+    \begin{itemize}[itemsep=0.05em]
+      \item Colete trajetórias executando a política atual.
+      \item Em cada passo $t$ de cada trajetória $\traj^i$, calcule o retorno
+        $G^i_t = \sum_{t'=t}^{T-1} r^i_{t'}$ e a vantagem estimada
+        $\Ahat^i_t = G^i_t - b(s_t)$.
+      \item Reajuste a linha de base minimizando $\sum_i\sum_t \bigl(b(s_t)-G^i_t\bigr)^2$.
+      \item Atualize a política com
+        $\hat g = \sum_{i,t}\gth\log\polth(a_t\mid s_t)\,\Ahat^i_t$
+        (SGD ou Adam).
+    \end{itemize}
+\end{itemize}
+\end{algbox}
+
+\begin{ideiabox}
+São dois problemas supervisionados alternando: uma regressão (ajustar $b$ aos
+retornos) e uma subida de gradiente ponderada (ajustar $\polth$). Praticamente
+todo algoritmo moderno da família tem esse esqueleto.
+\end{ideiabox}
+
+\subsection{Que linha de base escolher}
+
+\begin{itemize}
+  \item \textbf{Constante:} $b$ = média dos retornos do lote. Trivial de
+    implementar e já resolve boa parte do problema.
+  \item \textbf{Dependente do estado:} $b(s)=\Vhat^{\pol}(s;\wv)$, treinada por
+    regressão. É a escolha padrão.
+  \item \textbf{Ótima em variância:} a linha de base que minimiza $\Var(\hat g)$
+    é a média dos retornos \emph{ponderada pelo quadrado do escore},
+    \[
+      b^{*} = \frac{\E\bigl[(\gth\log\polth)^2\,G_t\bigr]}
+                   {\E\bigl[(\gth\log\polth)^2\bigr]} .
+    \]
+    Raramente compensa: $\Vhat^{\pol}$ chega perto e é muito mais simples.
+\end{itemize}
+
+Na prática faz-se ainda \textbf{normalização de vantagens} por lote,
+$\Ahat \leftarrow (\Ahat - \bar{\Ahat})/(\sigma_{\Ahat}+\varepsilon)$. Isso
+introduz um viés pequeno, mas torna o passo $\alpha$ insensível à escala das
+recompensas.
+
+\begin{discbox}
+Um aluno propõe usar $b(s_t,a_t) = \Qhat^{\pol}(s_t,a_t)$ como linha de base
+--- afinal, $\Qhat$ estima o retorno esperado com mais precisão que $\Vhat$.
+O estimador resultante ainda é não enviesado? O que ele calcularia?
+\end{discbox}
+
+\section{Ator--crítico, vantagem e estimadores de \texorpdfstring{$n$}{n} passos}
+
+Depois das duas correções, o estimador está assim:
+\[
+  \gth\E[R] \approx \frac{1}{m}\sum_{i=1}^{m}\sum_{t=0}^{T-1}
+    \gth\log\polth(a_t\mid s_t)\bigl(G^{(i)}_t - b(s_t)\bigr).
+\]
+Falta a terceira correção: substituir $G^{(i)}_t$, que estima o valor a partir de
+\emph{uma única} execução e carrega o ruído de todas as transições até o fim do
+episódio. O remédio é o mesmo da Aula 4, quando comparamos MC e TD: introduzir
+\textbf{viés} por meio de \emph{bootstrapping} para comprar uma redução grande de
+\textbf{variância}.
+
+\subsection{Ator e crítico}
+
+\begin{defbox}{Ator e crítico}
+O \textbf{ator} é a política $\polth$ --- decide o que fazer. O \textbf{crítico}
+é a função valor $\Vhat(s;\wv)$ ou $\Qhat(s,a;\wv)$ --- avalia o que o ator fez.
+Ambos são aprendidos e atualizados a cada iteração.
+\end{defbox}
+
+\begin{center}
+\begin{tikzpicture}[font=\scriptsize, node distance=8mm]
+  \node[caixa, draw=rlLaranja, fill=rlLaranja!10, minimum width=26mm, minimum height=8mm]
+    (ator) {\textbf{Ator} $\polth(a\mid s)$};
+  \node[caixa, draw=rlTeal, fill=rlTeal!10, minimum width=26mm, minimum height=8mm,
+        below=12mm of ator] (crit) {\textbf{Crítico} $\Vhat(s;\wv)$};
+  \node[caixa, draw=rlAzul, fill=rlAzul!8, minimum width=26mm, minimum height=8mm,
+        right=36mm of ator] (amb) {\textbf{Ambiente}};
+  \draw[trans destac] (ator) -- node[above] {ação $a_t$} (amb);
+  \draw[trans] (amb.south) |- node[pos=0.75, above] {$r_t,\ s_{t+1}$} (crit.east);
+  \draw[trans] (crit) -- node[right] {vantagem $\Ahat_t$} (ator);
+\end{tikzpicture}
+\end{center}
+
+\begin{defbox}{Função vantagem}
+\[
+  \Advpi(s,a) = \Qpi(s,a) - \Vpi(s)
+  \qquad\Longrightarrow\qquad
+  \gth\E_{\traj}[R] \approx \E\Bigl[\sum_{t=0}^{T-1}
+    \gth\log\polth(a_t\mid s_t)\,\Ahat^{\pol}(s_t,a_t)\Bigr].
+\]
+Lê-se: ``quanto esta ação é melhor do que a ação média neste estado''. Por
+construção $\E_{a\sim\pol}[\Advpi(s,a)]=0$ --- a vantagem é centrada.
+\end{defbox}
+
+O centramento importa mais do que parece. Sem ele, um lote em que todos os
+retornos são positivos aumenta a probabilidade de \emph{todas} as ações --- o que
+não faz sentido para uma distribuição, já que as probabilidades somam~1. Com a
+vantagem, sinal positivo significa ``torne esta ação mais provável'' e negativo,
+``menos provável''.
+
+\subsection{Estimadores de \texorpdfstring{$n$}{n} passos}
+
+O crítico pode usar qualquer mistura entre alvo TD e alvo Monte Carlo:
+\[
+  \hat R^{(1)}_t = r_t + \gamma\Vhat(s_{t+1}),\quad
+  \hat R^{(2)}_t = r_t + \gamma r_{t+1} + \gamma^2\Vhat(s_{t+2}),\quad \dots,\quad
+  \hat R^{(\infty)}_t = \sum_{k\ge 0}\gamma^k r_{t+k}.
+\]
+Subtraindo a linha de base $\Vhat(s_t)$, obtêm-se estimadores de vantagem:
+\[
+  \Ahat^{(1)}_t = r_t + \gamma\Vhat(s_{t+1}) - \Vhat(s_t) = \delta_t,
+  \qquad
+  \Ahat^{(\infty)}_t = \sum_{k\ge 0}\gamma^k r_{t+k} - \Vhat(s_t).
+\]
+
+\begin{ideiabox}
+$\Ahat^{(1)}$ é exatamente o \textbf{erro TD} $\delta_t$ da Aula 4, agora
+reaparecendo como sinal de aprendizado da \emph{política}. O mesmo objeto
+matemático, dois papéis diferentes.
+\end{ideiabox}
+
+\begin{center}
+\begin{tikzpicture}[font=\scriptsize]
+  \draw[rlCinza!40, line width=6pt] (0,0) -- (11,0);
+  \foreach \x/\lab in {0/{$\Ahat^{(1)}$}, 2.75/{$\Ahat^{(2)}$}, 5.5/{$\Ahat^{(4)}$},
+                       8.25/{$\Ahat^{(8)}$}, 11/{$\Ahat^{(\infty)}$}}{
+    \fill[rlAzul] (\x,0) circle (2.4pt);
+    \node[below=2mm, rlAzul] at (\x,0) {\lab};}
+  \node[above=5mm, rlTeal, align=center] at (0,0) {\textbf{TD puro}};
+  \node[above=5mm, rlLaranja, align=center] at (11,0) {\textbf{MC puro}};
+  \draw[rlVermelho, very thick, -{Stealth[length=2mm]}] (0.4,1.15) -- (10.6,1.15);
+  \node[rlVermelho, above] at (5.5,1.15) {variância cresce};
+  \draw[rlAmbar!80!black, very thick, -{Stealth[length=2mm]}] (10.6,-1.25) -- (0.4,-1.25);
+  \node[rlAmbar!80!black, below] at (5.5,-1.25) {viés cresce};
+\end{tikzpicture}
+\end{center}
+
+Com $n$ pequeno, o alvo depende fortemente de $\Vhat$, que está errado no início
+do treinamento: entra \textbf{viés}. Com $n$ grande, o alvo acumula o ruído de
+muitas transições: entra \textbf{variância}. O estimador \textbf{GAE}
+(Schulman et al., 2016) evita ter que escolher um único $n$, tomando uma média
+exponencial de todos eles com peso $\lambda$:
+\[
+  \Ahat^{\mathrm{GAE}(\gamma,\lambda)}_t = \sum_{k\ge 0}(\gamma\lambda)^k\,\delta_{t+k},
+\]
+que é o mesmo $\lambda$ de TD($\lambda$) e é o padrão usado em PPO.
+
+\begin{algbox}{Gradiente de política com vantagem (versão final)}
+\begin{itemize}[itemsep=0.1em]
+  \item Inicialize os parâmetros da política $\thv$ e do crítico $\wv$.
+  \item \textbf{para} iteração $=1,2,\dots$ \textbf{faça}
+    \begin{itemize}[itemsep=0.05em]
+      \item Colete trajetórias executando $\polth$.
+      \item Em cada passo, calcule a vantagem $\Ahat^{(n)}_{it}$
+        (escolha de $n$, ou GAE$(\lambda)$).
+      \item Ajuste o crítico:
+        $\wv \leftarrow \argmin_{\wv}\sum_{i,t}\bigl(\Vhat(s_{it};\wv)-\hat R_{it}\bigr)^2$.
+      \item Atualize a política com
+        $\hat g = \sum_{i,t}\gth\log\polth(a_t\mid s_t)\,\Ahat^{(n)}_{it}$.
+    \end{itemize}
+\end{itemize}
+\end{algbox}
+
+Toda a família --- REINFORCE, A2C, A3C, TRPO, PPO, GRPO --- é este esqueleto com
+duas escolhas: \emph{como estimar a vantagem} e \emph{como limitar o tamanho do
+passo}. A próxima aula trata da segunda.
+
+\begin{discbox}
+Classifique $\Ahat^{(1)}$ e $\Ahat^{(\infty)}$ quanto a viés e variância. Por que
+a aproximação $\Vhat(s_t)$ que aparece nos dois não introduz viés, enquanto a
+$\Vhat(s_{t+1})$ do primeiro introduz?
+\end{discbox}
+
+\section{Prática, balanço e formulário}
+
+\subsection{Vantagens e desvantagens da família}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{0.46\linewidth}p{0.46\linewidth}@{}}
+\toprule
+\textbf{Vantagens} & \textbf{Desvantagens}\\
+\midrule
+Convergência suave, sem oscilação causada por troca de $\argmax$.
+  & Converge a um ótimo \emph{local}, não global.\\
+Eficaz em espaços de ação contínuos ou de alta dimensão.
+  & Avaliar a política é ineficiente e de alta variância.\\
+Aprende políticas estocásticas --- necessário sob observabilidade parcial
+ou classe de políticas restrita.
+  & É \emph{on-policy}: cada lote serve a uma atualização e é descartado,
+    o que a torna bem menos eficiente em amostras que o DQN com \emph{replay}.\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Regra prática de escolha: ações discretas com simulador caro sugerem DQN; ações
+contínuas, ou uma política que precisa ser estocástica, sugerem gradiente de
+política; querer as duas coisas leva a ator--crítico off-policy (DDPG, SAC).
+
+\subsection{Armadilhas que aparecem na primeira implementação}
+
+\begin{itemize}
+  \item \textbf{O passo $\alpha$ é criticamente sensível.} Um passo grande demais
+    destrói a política; como os dados seguintes são coletados \emph{por ela}, não
+    há como se recuperar. É o problema que motiva TRPO e PPO.
+  \item \textbf{Colapso de entropia.} A política fica determinística cedo, a
+    exploração morre e o gradiente vai a zero. Remédio usual: um bônus de
+    entropia $+\beta\,\mathcal{H}[\polth(\cdot\mid s)]$ no objetivo.
+  \item \textbf{Escala.} Normalize as vantagens por lote e normalize também as
+    observações.
+  \item \textbf{Lotes grandes.} A variância do estimador cai com $1/\sqrt{m}$;
+    gradiente de política precisa de muito mais amostras por atualização do que
+    aprendizado supervisionado.
+  \item \textbf{Recompensas esparsas} continuam sendo o pior caso: se nenhuma
+    trajetória do lote obtém recompensa, $\hat g \approx 0$ e nada acontece.
+\end{itemize}
+
+\subsection{Formulário}
+
+\begin{teobox}{Resumo em cinco linhas}
+\begin{align*}
+  \text{objetivo} &&
+    V(\thv) &= \sum_{\traj}\Ptraj\,\Rtraj \\
+  \text{razão de verossimilhança} &&
+    \gth V(\thv) &= \E_{\traj}\bigl[\Rtraj\,\gth\log\Ptraj\bigr] \\
+  \text{decomposição} &&
+    \gth\log\Ptraj &= \sum_{t}\gth\log\polth(a_t\mid s_t) \\
+  \text{REINFORCE com linha de base} &&
+    \hat g &= \frac{1}{m}\sum_{i,t}\gth\log\polth(a_t\mid s_t)\bigl(G^i_t - b(s_t)\bigr) \\
+  \text{forma geral (ator--crítico)} &&
+    \hat g &= \frac{1}{m}\sum_{i,t}\gth\log\polth(a_t\mid s_t)\,\Ahat_t
+\end{align*}
+\end{teobox}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Escore} & \textbf{softmax} & $\feat(s,a) - \E_{a'\sim\polth}[\feat(s,a')]$\\
+                & \textbf{gaussiana} & $\bigl(a-\mu_{\thv}(s)\bigr)\feat(s)/\sigma^2$\\
+\midrule
+\textbf{Vantagem} & $n$ passos & $\Ahat^{(n)}_t = \sum_{k<n}\gamma^k r_{t+k} + \gamma^n\Vhat(s_{t+n}) - \Vhat(s_t)$\\
+                  & GAE$(\lambda)$ & $\sum_{k\ge 0}(\gamma\lambda)^k\delta_{t+k}$, \ com $\delta_t = r_t+\gamma\Vhat(s_{t+1})-\Vhat(s_t)$\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Glossário de tradução}
+
+\begin{center}
+\small
+\begin{tabular}{@{}ll@{\hspace{2.2em}}ll@{}}
+\toprule
+\textbf{Inglês} & \textbf{Português} & \textbf{Inglês} & \textbf{Português}\\
+\midrule
+policy gradient        & gradiente de política   & baseline          & linha de base\\
+likelihood ratio       & razão de verossimilhança & advantage        & vantagem\\
+score function         & função escore           & actor--critic     & ator--crítico\\
+trajectory / rollout   & trajetória / episódio   & bias--variance    & viés--variância\\
+step size              & passo                   & on-policy         & (mantido)\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Exercícios}
+
+\begin{exbox}{5.1 --- Escore da softmax tabular}
+Considere um único estado e três ações, com política softmax tabular
+$\pol(a)=e^{\thv_a}/\sum_{a'}e^{\thv_{a'}}$.
+\begin{enumerate}[label=(\alph*), itemsep=0.1em]
+  \item Mostre que $\partial \log\pol(a)/\partial\thv_k = \mathbf{1}\{k=a\} - \pol(k)$.
+  \item Conclua a expressão \eqref{eq:bandido} para $\partial\E[r]/\partial\thv_a$.
+  \item Com $r=(1,\,2,\,0)$ e $\thv=(0,0,0)$, calcule o gradiente esperado.
+    Qual componente é positiva?
+\end{enumerate}
+\end{exbox}
+
+\begin{exbox}{5.2 --- O deslocamento de recompensa}
+Seja um bandido de duas ações com política fixa $\pol=(0{,}5,\,0{,}5)$,
+recompensas $r_1,r_2$ e um deslocamento constante $c$ somado às duas.
+\begin{enumerate}[label=(\alph*), itemsep=0.1em]
+  \item Mostre que o gradiente verdadeiro em $\thv_1$ vale
+    $\tfrac14 (r_1-r_2)$, independentemente de $c$.
+  \item Calcule a variância do estimador de uma amostra
+    $\hat g = (r_a+c)\bigl(\mathbf{1}\{a=1\}-\tfrac12\bigr)$ e mostre que ela
+    cresce como $c^2$.
+  \item Repita com a linha de base $b=\E[r]+c$ e verifique que a variância deixa
+    de depender de $c$.
+\end{enumerate}
+\end{exbox}
+
+\begin{exbox}{5.3 --- Onde a demonstração quebra}
+Refaça a demonstração da Seção~\ref{sec:base} com uma ``linha de base''
+$b(s_t,a_t)$ que depende também da ação. Identifique exatamente qual passo
+deixa de valer e mostre que, se $b = \Qpi$, o estimador tem esperança zero.
+\end{exbox}
+
+\begin{exbox}{5.4 --- Estrutura temporal}
+Explique, sem contas, por que $\E\bigl[r_{t'}\,\gth\log\polth(a_t\mid s_t)\bigr]=0$
+quando $t > t'$. Em seguida escreva a versão com desconto de \eqref{eq:temporal}.
+\end{exbox}
+
+\begin{exbox}{5.5 --- Implementação}
+Implemente REINFORCE para o corredor da Seção~1 (custo $-1$ por passo, início
+uniforme nas casas $\{1,2,4,5\}$, episódio truncado em 120 passos).
+\begin{enumerate}[label=(\alph*), itemsep=0.1em]
+  \item Verifique que $\pol(\text{Leste}\mid\text{casa cinza})$ converge para
+    aproximadamente $0{,}5$.
+  \item Compare o número médio de passos por episódio com o de um Q-learning
+    $\epsilon$-guloso sobre a mesma observação.
+  \item Ligue e desligue a linha de base (média dos retornos do lote) e compare
+    a variabilidade da curva de aprendizado.
+\end{enumerate}
+\end{exbox}
+
+\subsection*{Respostas comentadas}
+
+\textbf{5.1} (a) Derive $\log\pol(a) = \thv_a - \log\sum_{a'}e^{\thv_{a'}}$: o
+primeiro termo contribui $\mathbf{1}\{k=a\}$ e o segundo, $-\pol(k)$.
+(b) $\partial\E[r]/\partial\thv_a = \sum_{a'}\pol(a')r_{a'}(\mathbf{1}\{a=a'\}-\pol(a))
+= \pol(a)(r_a - \E[r])$.
+(c) Com $\pol=(1/3,1/3,1/3)$ e $\E[r]=1$, o gradiente é
+$(0,\ 1/3,\ -1/3)$: apenas a componente de $a_2$ é positiva, pois só ela rende
+acima da média.
+
+\smallskip
+\textbf{5.2} (a) $\E[\hat g] = \tfrac12(r_1+c)\tfrac12 + \tfrac12(r_2+c)(-\tfrac12)
+= \tfrac14(r_1-r_2)$; o $c$ se cancela porque
+$\E[\mathbf{1}\{a=1\}-\tfrac12]=0$. (b) Como
+$(\mathbf{1}\{a=1\}-\tfrac12)^2 = \tfrac14$ sempre,
+$\E[\hat g^2] = \tfrac14\E[(r_a+c)^2]$, que cresce como $c^2$; subtraindo o
+quadrado da média, que não depende de $c$, a variância também cresce como $c^2$.
+(c) Com $b=\E[r]+c$, o fator vira $(r_a - \E[r])$ e o $c$ desaparece antes de
+elevar ao quadrado.
+
+\smallskip
+\textbf{5.3} O passo que quebra é o segundo da demonstração: com $b$ dependendo
+de $a_t$, não é possível retirá-la de dentro de $\E_{a_t}[\cdot]$. Se $b=\Qpi$,
+o termo subtraído é $\E[\gth\log\pol\cdot\Qpi]$ --- exatamente o gradiente
+inteiro, pelo teorema do gradiente de política. O estimador teria esperança zero
+e a política nunca aprenderia.
+
+\smallskip
+\textbf{5.4} A ação em $t$ é escolhida \emph{depois} de $r_{t'}$ ter sido
+gerada, logo $r_{t'}$ é independente de $a_t$ dado $s_t$; a esperança fatora e o
+escore contribui com zero. Com desconto,
+$\hat g = \frac{1}{m}\sum_{i,t}\gamma^t\,\gth\log\polth(a_t\mid s_t)\,G^{(i)}_t$
+com $G^{(i)}_t=\sum_{t'\ge t}\gamma^{t'-t}r_{t'}$; na prática o fator $\gamma^t$
+externo costuma ser omitido, o que introduz um viés bem conhecido e geralmente
+tolerado.
+
+\smallskip
+\textbf{5.5} Espera-se $\pol(\text{Leste})\to 0{,}5$ nas casas cinzas e
+aproximadamente $3{,}5$ passos por episódio; o Q-learning fixa uma ação nas casas
+cinzas e estabiliza num patamar bem mais alto, dependente de $\epsilon$. Sem
+linha de base a curva oscila visivelmente mais, embora convirja para o mesmo
+lugar --- o estimador continua não enviesado. O laboratório interativo da aula
+reproduz os três itens.
+
+\section*{Referências}
+\addcontentsline{toc}{section}{Referências}
+
+\begin{itemize}[itemsep=0.15em]
+  \item R.~S. Sutton e A.~G. Barto. \emph{Reinforcement Learning: An
+    Introduction}, 2ª ed., MIT Press, 2018 --- capítulo 13.
+  \item R.~J. Williams. Simple statistical gradient-following algorithms for
+    connectionist reinforcement learning. \emph{Machine Learning}, 8:229--256, 1992.
+  \item R.~S. Sutton, D. McAllester, S. Singh e Y. Mansour. Policy gradient
+    methods for reinforcement learning with function approximation. \emph{NIPS}, 2000.
+  \item J. Schulman, P. Moritz, S. Levine, M. Jordan e P. Abbeel.
+    High-dimensional continuous control using generalized advantage estimation.
+    \emph{ICLR}, 2016.
+  \item V. Mnih et al. Asynchronous methods for deep reinforcement learning.
+    \emph{ICML}, 2016.
+  \item E. Brunskill. \emph{CS234: Reinforcement Learning}, Stanford University
+    --- \emph{Lecture 5: Policy Gradient I}. Material de origem desta aula.
+\end{itemize}
+
+\end{document}

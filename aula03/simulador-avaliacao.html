@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Console do transecto — avaliação de política sem modelo</title>
+<style>
+:root{
+  --tinta:#16324F;      /* azul-profundo do tema */
+  --mc:#18808D;         /* teal   — Monte Carlo */
+  --td:#E8590C;         /* laranja— TD(0) */
+  --ec:#2E5F8A;         /* azul   — equivalência de certeza */
+  --ambar:#F2A93B;      /* rover / foco */
+  --verde:#2B9348;      /* terminais */
+  --vermelho:#C1121F;
+  --cinza:#5C677D;
+  --papel:#FAFBFC;
+  --poco:#EDF1F6;
+  --linha:#D8E0E9;
+  --display:"Fira Sans","Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  --mono:"Fira Mono","JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--papel);
+  color:var(--tinta);
+  font-family:var(--display);
+  font-size:15px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+.rail{
+  position:relative;background:var(--tinta);color:#fff;overflow:hidden;
+  padding:20px clamp(16px,4vw,44px) 22px;
+}
+.rail svg.motivo{position:absolute;right:-10px;top:-30px;opacity:.13;pointer-events:none}
+.rail .eyebrow{
+  font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--ambar);font-weight:600;margin:0 0 6px;
+}
+.rail h1{font-size:clamp(20px,2.6vw,28px);line-height:1.15;margin:0;font-weight:600;letter-spacing:-.01em}
+.rail p{margin:8px 0 0;max-width:76ch;color:#CBD8E4;font-size:14px}
+main{padding:clamp(14px,2.4vw,26px) clamp(16px,4vw,44px) 60px;max-width:1520px;margin:0 auto}
+
+.card{
+  background:#fff;border:1px solid var(--linha);border-radius:10px;
+  padding:16px 18px 18px;margin-bottom:18px;
+}
+.card > h2{
+  font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--cinza);
+  font-weight:600;margin:0 0 2px;
+}
+.card > .sub{font-size:13px;color:var(--cinza);margin:0 0 14px}
+
+.duas{display:grid;grid-template-columns:352px minmax(0,1fr);gap:18px;align-items:start}
+.duas.inv{grid-template-columns:minmax(0,1fr) 372px}
+@media (max-width:960px){.duas,.duas.inv{grid-template-columns:1fr}}
+
+/* ---------- transecto (elemento-assinatura) ---------- */
+#transecto{width:100%;height:auto;display:block}
+.legenda{display:flex;flex-wrap:wrap;gap:16px;margin-top:10px;font-size:12.5px;color:var(--cinza)}
+.legenda i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+
+/* ---------- controles ---------- */
+.grupo{margin-bottom:15px}
+.grupo:last-child{margin-bottom:0}
+.rot{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--cinza);font-weight:600;margin-bottom:7px}
+.seg{display:flex;border:1px solid var(--linha);border-radius:7px;overflow:hidden}
+.seg button{
+  flex:1;border:0;background:#fff;color:var(--tinta);font-family:inherit;font-size:13px;
+  padding:7px 4px;cursor:pointer;border-right:1px solid var(--linha);transition:background .12s;
+}
+.seg button:last-child{border-right:0}
+.seg button:hover{background:var(--poco)}
+.seg button[aria-pressed="true"]{background:var(--tinta);color:#fff;font-weight:500}
+.deslize{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.deslize label{font-size:13px;min-width:96px}
+.deslize input[type=range]{flex:1;accent-color:var(--td);min-width:0}
+.deslize output{font-family:var(--mono);font-size:13px;min-width:46px;text-align:right;color:var(--tinta)}
+.caixa{display:flex;align-items:flex-start;gap:8px;font-size:13px;margin-top:8px;cursor:pointer}
+.caixa input{margin-top:3px;accent-color:var(--td)}
+.acoes{display:flex;flex-wrap:wrap;gap:7px;margin-top:4px}
+.acoes button{
+  border:1px solid var(--tinta);background:#fff;color:var(--tinta);font-family:inherit;font-size:13px;
+  padding:7px 12px;border-radius:7px;cursor:pointer;transition:background .12s,color .12s;
+}
+.acoes button:hover{background:var(--poco)}
+.acoes button.forte{background:var(--td);border-color:var(--td);color:#fff}
+.acoes button.forte:hover{filter:brightness(1.08)}
+.acoes button.fantasma{border-color:var(--linha);color:var(--cinza);font-size:12.5px;padding:6px 10px}
+.nota{font-size:12px;color:var(--cinza);margin-top:12px;line-height:1.45}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--ambar);outline-offset:2px}
+
+/* ---------- gráfico ---------- */
+.grafwrap{position:relative;width:100%;aspect-ratio:16/7;min-height:210px}
+#grafico{width:100%;height:100%;display:block}
+.grafopts{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:12.5px;color:var(--cinza)}
+
+/* ---------- fita do episódio ---------- */
+.fita{display:flex;gap:6px;overflow-x:auto;padding:4px 2px 10px;min-height:62px}
+.tupla{
+  flex:0 0 auto;border:1px solid var(--linha);border-radius:7px;padding:6px 9px;
+  font-family:var(--mono);font-size:12.5px;background:#fff;text-align:center;min-width:74px;
+}
+.tupla.aplicada{border-color:var(--td);background:#FEF3EC}
+.tupla.atual{border-color:var(--ambar);background:#FFF7E8;box-shadow:0 0 0 2px #F2A93B55}
+.tupla.terminal{border-color:var(--verde);background:#EEF8F0}
+.tupla .r{display:block;font-size:11px;color:var(--cinza);margin-top:2px}
+.tupla .r.premio{color:var(--verde);font-weight:600}
+.vazio{color:var(--cinza);font-size:13px;padding:14px 2px}
+.selo{
+  display:inline-block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  font-weight:600;padding:3px 8px;border-radius:20px;margin-right:8px;
+}
+.selo.mc{background:#E4F2F3;color:var(--mc)}
+.selo.td{background:#FDEDE3;color:var(--td)}
+
+/* ---------- tabela ---------- */
+table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:13px}
+th,td{padding:5px 6px;text-align:right;border-bottom:1px solid var(--linha)}
+th:first-child,td:first-child{text-align:left}
+thead th{
+  font-family:var(--display);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--cinza);font-weight:600;border-bottom:1.5px solid var(--tinta)
+}
+thead th.cMC{color:var(--mc)} thead th.cTD{color:var(--td)} thead th.cEC{color:var(--ec)}
+tbody tr.term td:first-child{color:var(--verde);font-weight:600}
+tfoot td{border-bottom:0;padding-top:9px;font-weight:600}
+
+.rodape{font-size:12.5px;color:var(--cinza);max-width:88ch;line-height:1.6}
+.rodape strong{color:var(--tinta);font-weight:600}
+kbd{font-family:var(--mono);font-size:11.5px;border:1px solid var(--linha);border-bottom-width:2px;
+    border-radius:4px;padding:1px 5px;background:#fff;color:var(--tinta)}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<header class="rail">
+  <svg class="motivo" width="330" height="190" viewBox="0 0 330 190" aria-hidden="true">
+    <g fill="none" stroke="#fff" stroke-width="2.4">
+      <circle cx="60" cy="130" r="15"/><circle cx="128" cy="62" r="15"/><circle cx="205" cy="120" r="15"/>
+      <circle cx="255" cy="45" r="15"/><circle cx="300" cy="132" r="15"/>
+      <path d="M75 126 L113 70 M143 60 L190 112 M218 112 L242 58 M268 55 L294 116 M75 134 L285 136"/>
+    </g>
+  </svg>
+  <p class="eyebrow">Aprendizagem por Reforço · Aula 3 · complemento interativo</p>
+  <h1>Console do transecto: três formas de avaliar a mesma política</h1>
+  <p>Monte Carlo, TD(0) e equivalência de certeza recebem <strong>exatamente a mesma
+  experiência</strong> do rover e discordam de maneiras características. Rode um episódio por vez
+  para ver quem atualiza quando, ou milhares para ver quem chega primeiro.</p>
+</header>
+
+<main>
+
+  <!-- ===================== TRANSECTO ===================== -->
+  <section class="card" aria-labelledby="t-transecto">
+    <h2 id="t-transecto">Transecto · 7 sítios de coleta</h2>
+    <p class="sub">Cada barra é a estimativa de <span style="font-family:var(--mono)">V(s)</span> de um
+      método, medida como profundidade. O traço pontilhado marca o valor verdadeiro
+      <span style="font-family:var(--mono)">V<sup>π</sup></span>, calculado analiticamente a partir do
+      MDP — é o alvo que ninguém conhece durante a execução.</p>
+    <svg id="transecto" viewBox="0 0 1000 300" role="img"
+         aria-label="Cadeia de sete estados com o rover e as estimativas de valor de cada método"></svg>
+    <div class="legenda">
+      <span><i style="background:var(--mc)"></i>Monte Carlo</span>
+      <span><i style="background:var(--td)"></i>TD(0)</span>
+      <span><i style="background:var(--ec)"></i>Equivalência de certeza</span>
+      <span><i style="background:var(--cinza)"></i>V<sup>π</sup> verdadeiro</span>
+      <span><i style="background:var(--ambar)"></i>rover</span>
+      <span><i style="background:var(--verde)"></i>sítio terminal</span>
+    </div>
+  </section>
+
+  <!-- ===================== CONTROLES + GRÁFICO ===================== -->
+  <div class="duas">
+
+    <section class="card" aria-labelledby="t-ctrl">
+      <h2 id="t-ctrl">Painel de controle</h2>
+      <p class="sub">Mudar o ambiente ou os estimadores começa um experimento novo.</p>
+
+      <div class="grupo">
+        <div class="rot">Política avaliada</div>
+        <div class="seg" id="segPol" role="group" aria-label="Política">
+          <button data-v="esq" aria-pressed="true">← esquerda</button>
+          <button data-v="ale" aria-pressed="false">aleatória</button>
+          <button data-v="dir" aria-pressed="false">direita →</button>
+        </div>
+      </div>
+
+      <div class="grupo">
+        <div class="rot">Sítio inicial</div>
+        <div class="seg" id="segIni" role="group" aria-label="Estado inicial">
+          <button data-v="rand" aria-pressed="true">sorteado</button>
+          <button data-v="2" aria-pressed="false">s₃</button>
+          <button data-v="3" aria-pressed="false">s₄</button>
+        </div>
+      </div>
+
+      <div class="grupo">
+        <div class="rot">Ambiente</div>
+        <div class="deslize">
+          <label for="sGama">γ desconto</label>
+          <input type="range" id="sGama" min="0.50" max="1" step="0.01" value="1">
+          <output id="oGama">1,00</output>
+        </div>
+        <div class="deslize">
+          <label for="sEsc">escorregar</label>
+          <input type="range" id="sEsc" min="0" max="0.8" step="0.05" value="0.2">
+          <output id="oEsc">0,20</output>
+        </div>
+      </div>
+
+      <div class="grupo">
+        <div class="rot">Estimadores</div>
+        <div class="deslize">
+          <label for="sAlfa">α do TD</label>
+          <input type="range" id="sAlfa" min="0.01" max="1" step="0.01" value="0.1">
+          <output id="oAlfa">0,10</output>
+        </div>
+        <div class="seg" id="segVis" role="group" aria-label="Variante de Monte Carlo">
+          <button data-v="prim" aria-pressed="true">MC 1ª visita</button>
+          <button data-v="toda" aria-pressed="false">MC toda visita</button>
+        </div>
+        <label class="caixa"><input type="checkbox" id="cIncr">
+          <span>MC incremental com α constante (em vez da média 1/N)</span></label>
+        <label class="caixa"><input type="checkbox" id="cLote">
+          <span>Modo em lote: a cada episódio, o TD repassa <em>todos</em> os dados até convergir
+          (acumula os incrementos do lote inteiro, sem α)</span></label>
+      </div>
+
+      <div class="grupo">
+        <div class="rot">Execução</div>
+        <div class="deslize">
+          <label for="sVel">velocidade</label>
+          <input type="range" id="sVel" min="0" max="100" step="1" value="35">
+          <output id="oVel">12/s</output>
+        </div>
+        <div class="acoes">
+          <button id="bRodar" class="forte">▶ rodar</button>
+          <button id="bPasso">passo</button>
+          <button id="bEp">+1 episódio</button>
+          <button id="bCem">+100</button>
+          <button id="bNova" class="fantasma">nova execução</button>
+          <button id="bLimpa" class="fantasma">limpar rastros</button>
+        </div>
+        <p class="nota">
+          <strong>passo</strong> avança uma única transição — é onde se vê o TD atualizar
+          na hora enquanto o MC ainda espera o fim do episódio.
+          <strong>nova execução</strong> guarda as curvas atuais como rastro para comparar repetições
+          com os mesmos parâmetros.
+        </p>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="t-graf">
+      <h2 id="t-graf">Erro quadrático médio (RMSE) por episódio</h2>
+      <p class="sub">Distância entre a estimativa e <span style="font-family:var(--mono)">V<sup>π</sup></span>,
+        medida sobre os sete sítios. Curvas esmaecidas são execuções anteriores.</p>
+      <div class="grafwrap"><canvas id="grafico"></canvas></div>
+      <div class="grafopts">
+        <label class="caixa" style="margin:0"><input type="checkbox" id="cLog" checked>
+          <span>escala logarítmica no eixo do erro</span></label>
+        <span id="statEp">episódios: 0</span>
+      </div>
+    </section>
+  </div>
+
+  <!-- ===================== FITA + TABELA ===================== -->
+  <div class="duas inv">
+
+    <section class="card" aria-labelledby="t-fita">
+      <h2 id="t-fita">Fita do episódio atual</h2>
+      <p class="sub" id="fitaSub">Cada quadro é uma tupla (s, r, s′) da trajetória.</p>
+      <div class="fita" id="fita"><span class="vazio">Nenhum episódio em andamento. Use <kbd>passo</kbd> ou <kbd>+1 episódio</kbd>.</span></div>
+      <div id="fitaMsg" style="font-size:13px;color:var(--cinza)"></div>
+    </section>
+
+    <section class="card" aria-labelledby="t-tab">
+      <h2 id="t-tab">Valores estimados</h2>
+      <p class="sub">N(s) conta as visitas acumuladas a cada sítio.</p>
+      <table>
+        <thead><tr>
+          <th>sítio</th><th>V<sup>π</sup></th>
+          <th class="cMC">MC</th><th class="cTD">TD</th><th class="cEC">EC</th><th>N(s)</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+        <tfoot><tr>
+          <td>RMSE</td><td>—</td>
+          <td class="cMC" id="fMC">—</td><td class="cTD" id="fTD">—</td><td class="cEC" id="fEC">—</td><td></td>
+        </tr></tfoot>
+      </table>
+    </section>
+  </div>
+
+  <section class="card">
+    <h2>Como ler o console</h2>
+    <div class="rodape">
+      <p><strong>O ambiente.</strong> Sete sítios em linha. Os extremos terminam o episódio e pagam
+      <span style="font-family:var(--mono)">R(s₁)=+1</span> e
+      <span style="font-family:var(--mono)">R(s₇)=+10</span>; os intermediários pagam 0. A política
+      escolhida tenta mover o rover para um lado, mas ele <em>escorrega</em> e fica parado com a
+      probabilidade indicada. É o <em>Mars Rover</em> da aula, com a dinâmica explicitada.</p>
+
+      <p><strong>Três leituras da mesma experiência.</strong> O Monte Carlo espera o episódio acabar
+      e credita o retorno observado a cada sítio visitado. O TD(0) atualiza a cada transição, usando
+      o próprio palpite sobre o sítio seguinte. A equivalência de certeza acumula contagens, monta o
+      MDP de máxima verossimilhança e resolve a equação de Bellman nele.</p>
+
+      <p><strong>O que procurar.</strong> Com γ = 1 e política aleatória, os retornos valem 1 ou 10:
+      o MC balança muito e sua curva de erro fica ruidosa mesmo com muitos episódios — variância alta.
+      O TD desce mais liso, mas com α grande ele oscila em torno do alvo e nunca assenta; com α pequeno
+      demora a sair da inicialização — é o viés inicial. A equivalência de certeza costuma vencer em
+      número de episódios e perder em custo de computação: ela resolve um sistema linear a cada
+      atualização.</p>
+
+      <p><strong>O modo em lote</strong> reproduz o exemplo A–B da aula. Com os dados congelados, o MC
+      não muda — ele já é a média dos retornos observados. O TD, repassando o mesmo lote até convergir,
+      caminha para a resposta da equivalência de certeza: as duas curvas se encontram. É a diferença
+      entre ajustar-se aos retornos que aconteceram e acreditar na estrutura de Markov.</p>
+
+      <p style="margin-bottom:0">Material de apoio da Aula 3 — Prof. Marcelo Keese Albertini,
+      Universidade Federal de Uberlândia. Adaptado de <em>CS234: Reinforcement Learning</em>
+      (Emma Brunskill, Stanford).</p>
+    </div>
+  </section>
+
+</main>
+
+<script>
+"use strict";
+/* =========================================================================
+   AMBIENTE — cadeia de 7 sítios; s1 e s7 terminam o episódio.
+   Convenção da aula: a recompensa é recebida ao agir a partir do sítio,
+   e a ação tomada em um terminal paga R e encerra. Logo V(s1)=R1, V(s7)=R7.
+   ========================================================================= */
+const NS = 7;
+const REC  = [1, 0, 0, 0, 0, 0, 10];
+const TERM = [true, false, false, false, false, false, true];
+
+const par = {
+  pol: 'esq', ini: 'rand', gama: 1, esc: 0.2,
+  alfa: 0.10, visita: 'prim', incr: false, lote: false
+};
+
+/* transições possíveis a partir de um sítio interno (0-indexado, 1..5) */
+function trans(i){
+  const out = [];
+  if (par.esc > 0) out.push([i, par.esc]);
+  const m = 1 - par.esc;
+  if (m > 0){
+    if (par.pol === 'esq') out.push([i-1, m]);
+    else if (par.pol === 'dir') out.push([i+1, m]);
+    else { out.push([i-1, m/2]); out.push([i+1, m/2]); }
+  }
+  return out;
+}
+function sorteiaProx(i){
+  const t = trans(i); let u = Math.random();
+  for (const [j,p] of t){ u -= p; if (u <= 0) return j; }
+  return t[t.length-1][0];
+}
+function sitioInicial(){
+  return par.ini === 'rand' ? 1 + Math.floor(Math.random()*5) : parseInt(par.ini,10);
+}
+
+/* ---- valor verdadeiro: resolve o sistema linear nos 5 sítios internos ---- */
+function valorVerdadeiro(){
+  const NT = [1,2,3,4,5], idx = {}; NT.forEach((s,k)=>idx[s]=k);
+  const A = NT.map(()=>new Array(5).fill(0)), b = new Array(5).fill(0);
+  NT.forEach((i,a)=>{
+    A[a][a] = 1;                       // recompensa dos internos é 0
+    for (const [j,p] of trans(i)){
+      if (TERM[j]) b[a] += par.gama * p * REC[j];
+      else         A[a][idx[j]] -= par.gama * p;
+    }
+  });
+  const x = gauss(A, b, 5);
+  const V = new Array(NS).fill(0);
+  V[0] = REC[0]; V[6] = REC[6];
+  NT.forEach((s,k)=> V[s] = x[k]);
+  return V;
+}
+function gauss(A, b, n){
+  const M = A.map((r,i)=>r.concat([b[i]]));
+  for (let c=0;c<n;c++){
+    let piv = c;
+    for (let r=c+1;r<n;r++) if (Math.abs(M[r][c]) > Math.abs(M[piv][c])) piv = r;
+    [M[c],M[piv]] = [M[piv],M[c]];
+    if (Math.abs(M[c][c]) < 1e-14) continue;
+    for (let r=0;r<n;r++){
+      if (r===c) continue;
+      const f = M[r][c]/M[c][c];
+      for (let k=c;k<=n;k++) M[r][k] -= f*M[c][k];
+    }
+  }
+  return M.map((r,i)=> Math.abs(r[i])<1e-14 ? 0 : r[n]/r[i]);
+}
+
+/* =========================================================================
+   ESTADO DO EXPERIMENTO
+   ========================================================================= */
+let Vtrue, Vmc, Vtd, Vec, Nmc, Gmc, Nvis, Rsum, Cont, historico, fantasmas = [];
+let dados, epAtual, epIdx, sitioRover, nEp, rodando, animId, acumulador, ultimoT;
+
+function zerar(guardarRastro){
+  if (guardarRastro && historico && historico.mc.length > 3){
+    fantasmas.push(historico);
+    if (fantasmas.length > 4) fantasmas.shift();
+  }
+  Vtrue = valorVerdadeiro();
+  Vmc = new Array(NS).fill(0);
+  Vtd = new Array(NS).fill(0);
+  Vec = new Array(NS).fill(0);
+  Nmc = new Array(NS).fill(0);   // visitas contadas pelo MC (1ª ou toda)
+  Gmc = new Array(NS).fill(0);   // soma de retornos
+  Nvis = new Array(NS).fill(0);  // visitas para o modelo estimado
+  Rsum = new Array(NS).fill(0);
+  Cont = Array.from({length:NS}, ()=> new Array(NS+1).fill(0)); // NS = absorvente
+  historico = { mc:[], td:[], ec:[] };
+  dados = []; epAtual = null; epIdx = 0; sitioRover = null; nEp = 0;
+  parar();
+  desenharTudo();
+}
+
+/* =========================================================================
+   GERAÇÃO E APLICAÇÃO DE EPISÓDIOS
+   ========================================================================= */
+function geraEpisodio(){
+  let s = sitioInicial(); const tr = [];
+  for (let g=0; g<4000; g++){
+    if (TERM[s]){ tr.push({s, r:REC[s], sp:null}); break; }
+    const sp = sorteiaProx(s);
+    tr.push({s, r:0, sp});
+    s = sp;
+  }
+  return tr;
+}
+
+/* uma transição: alimenta TD (se online) e as contagens do modelo */
+function aplicaTransicao(t){
+  const alvo = t.r + (t.sp === null ? 0 : par.gama * Vtd[t.sp]);
+  if (!par.lote) Vtd[t.s] += par.alfa * (alvo - Vtd[t.s]);
+  Nvis[t.s]++; Rsum[t.s] += t.r;
+  Cont[t.s][t.sp === null ? NS : t.sp]++;
+}
+
+/* fim do episódio: MC, modelo estimado, TD em lote e ponto no gráfico */
+function fechaEpisodio(tr){
+  // --- Monte Carlo: retornos calculados de trás para frente
+  let G = 0; const G_t = new Array(tr.length);
+  for (let t = tr.length-1; t >= 0; t--){ G = tr[t].r + par.gama*G; G_t[t] = G; }
+  const jaVisto = new Set();
+  for (let t = 0; t < tr.length; t++){
+    const s = tr[t].s;
+    if (par.visita === 'prim'){ if (jaVisto.has(s)) continue; jaVisto.add(s); }
+    Nmc[s]++;
+    if (par.incr) Vmc[s] += par.alfa * (G_t[t] - Vmc[s]);
+    else { Gmc[s] += G_t[t]; Vmc[s] = Gmc[s]/Nmc[s]; }
+  }
+  dados.push(tr);
+  if (dados.length > 2000) dados.shift();   // janela do modo em lote
+
+  Vec = resolveModelo();
+  if (par.lote) Vtd = tdEmLote();
+
+  nEp++;
+  historico.mc.push(rmse(Vmc));
+  historico.td.push(rmse(Vtd));
+  historico.ec.push(rmse(Vec));
+}
+
+/* equivalência de certeza: itera Bellman no MDP de máxima verossimilhança */
+function resolveModelo(){
+  const v = Vec.slice();
+  for (let it=0; it<800; it++){
+    let d = 0;
+    for (let i=0;i<NS;i++){
+      if (Nvis[i] === 0){ v[i] = 0; continue; }
+      let x = Rsum[i]/Nvis[i];
+      for (let j=0;j<NS;j++) if (Cont[i][j]) x += par.gama * (Cont[i][j]/Nvis[i]) * v[j];
+      d = Math.max(d, Math.abs(x - v[i])); v[i] = x;
+    }
+    if (d < 1e-12) break;
+  }
+  return v;
+}
+
+/* TD em lote (batch updating, Sutton & Barto): os incrementos sao acumulados
+   sobre o lote inteiro e aplicados de uma vez; repete-se ate o ponto fixo.
+   Esse ponto fixo e o valor do MDP de maxima verossimilhanca -- o console
+   mostra as duas curvas se encontrando. Parte da solucao anterior (warm start). */
+function tdEmLote(){
+  const v = Vtd.slice();
+  const acc = new Array(NS).fill(0), cnt = new Array(NS).fill(0);
+  let n = 0; for (const ep of dados) n += ep.length;
+  const varreduras = Math.max(20, Math.min(600, Math.floor(2e6 / Math.max(1,n))));
+  for (let it=0; it<varreduras; it++){
+    acc.fill(0); cnt.fill(0);
+    for (const ep of dados) for (const t of ep){
+      const alvo = t.r + (t.sp === null ? 0 : par.gama * v[t.sp]);
+      acc[t.s] += alvo - v[t.s]; cnt[t.s]++;
+    }
+    let d = 0;
+    for (let i=0;i<NS;i++){
+      if (!cnt[i]) continue;
+      const dv = acc[i]/cnt[i];
+      v[i] += dv; if (Math.abs(dv) > d) d = Math.abs(dv);
+    }
+    if (d < 1e-11) break;
+  }
+  return v;
+}
+
+function rmse(V){
+  let s = 0; for (let i=0;i<NS;i++){ const e = V[i]-Vtrue[i]; s += e*e; }
+  return Math.sqrt(s/NS);
+}
+
+/* ------- avanço em granularidade de transição ou de episódio ------- */
+function passo(){
+  if (!epAtual){ epAtual = geraEpisodio(); epIdx = 0; sitioRover = epAtual[0].s; desenharTudo(); return; }
+  const t = epAtual[epIdx];
+  aplicaTransicao(t);
+  sitioRover = t.sp === null ? t.s : t.sp;
+  epIdx++;
+  if (epIdx >= epAtual.length){
+    fechaEpisodio(epAtual);
+    epAtual = null; epIdx = 0;
+  }
+  desenharTudo();
+}
+function episodioCompleto(){
+  if (epAtual){ while (epAtual) passoSilencioso(); }
+  const tr = geraEpisodio();
+  for (const t of tr) aplicaTransicao(t);
+  fechaEpisodio(tr);
+  sitioRover = tr[tr.length-1].s;
+}
+function passoSilencioso(){
+  const t = epAtual[epIdx]; aplicaTransicao(t);
+  sitioRover = t.sp === null ? t.s : t.sp; epIdx++;
+  if (epIdx >= epAtual.length){ fechaEpisodio(epAtual); epAtual = null; epIdx = 0; }
+}
+
+/* =========================================================================
+   LAÇO DE ANIMAÇÃO
+   ========================================================================= */
+function velocidade(){                    // transições por segundo
+  const x = +$('sVel').value / 100;
+  return Math.round(2 * Math.pow(1200, x));
+}
+function rotuloVel(){
+  const v = velocidade();
+  return v >= 400 ? 'turbo' : v + '/s';
+}
+function laco(ts){
+  if (!rodando) return;
+  if (!ultimoT) ultimoT = ts;
+  const dt = Math.min(0.25, (ts - ultimoT)/1000); ultimoT = ts;
+  const v = velocidade();
+  if (v >= 400){                          // turbo: episódios inteiros por quadro
+    const alvo = Math.max(1, Math.round(v/60/6));
+    for (let k=0;k<alvo;k++) episodioCompleto();
+  } else {
+    acumulador += dt * v;
+    let n = Math.floor(acumulador);
+    acumulador -= n;
+    while (n-- > 0){
+      if (!epAtual){ epAtual = geraEpisodio(); epIdx = 0; sitioRover = epAtual[0].s; }
+      else passoSilencioso();
+    }
+  }
+  desenharTudo();
+  animId = requestAnimationFrame(laco);
+}
+function rodar(){
+  rodando = true; ultimoT = 0; acumulador = 0;
+  $('bRodar').textContent = '⏸ pausar'; $('bRodar').classList.remove('forte');
+  animId = requestAnimationFrame(laco);
+}
+function parar(){
+  rodando = false; if (animId) cancelAnimationFrame(animId); animId = null;
+  const b = $('bRodar'); if (b){ b.textContent = '▶ rodar'; b.classList.add('forte'); }
+}
+
+/* =========================================================================
+   DESENHO — transecto (SVG)
+   ========================================================================= */
+const SVGNS = 'http://www.w3.org/2000/svg';
+const MONO = '"Fira Mono", ui-monospace, Menlo, Consolas, monospace';
+const X = i => 60 + i * (880/6);
+const TOPO = 96, FUNDO = 272, PROF = FUNDO - TOPO;
+let elBarras = [], elTicks = [], elTickTxt = [], elRover, elNums = [];
+
+function montaTransecto(){
+  const svg = $('transecto');
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+  const mk = (tag, at) => { const e = document.createElementNS(SVGNS, tag);
+    for (const k in at) e.setAttribute(k, at[k]); return e; };
+
+  // superfície
+  svg.appendChild(mk('line',{x1:24,y1:TOPO-14,x2:976,y2:TOPO-14,stroke:'#C9D4E0','stroke-width':1.5}));
+  svg.appendChild(mk('line',{x1:24,y1:FUNDO+8,x2:976,y2:FUNDO+8,stroke:'#E6ECF3','stroke-width':1}));
+
+  elBarras = []; elTicks = []; elTickTxt = []; elNums = [];
+  const cores = ['#18808D','#E8590C','#2E5F8A'];
+
+  for (let i=0;i<NS;i++){
+    const x = X(i);
+    // poço
+    svg.appendChild(mk('rect',{x:x-25,y:TOPO,width:50,height:PROF,rx:4,fill:'#EDF1F6'}));
+    // marca do valor verdadeiro
+    const tk = mk('line',{x1:x-29,x2:x+29,y1:TOPO,y2:TOPO,stroke:'#5C677D',
+                          'stroke-width':1.6,'stroke-dasharray':'4 3'});
+    svg.appendChild(tk); elTicks.push(tk);
+    const tt = mk('text',{x:x+33,y:TOPO,'font-size':10.5,fill:'#5C677D',
+                          'font-family':MONO,'dominant-baseline':'middle'});
+    svg.appendChild(tt); elTickTxt.push(tt);
+    // três barras
+    const trio = [];
+    for (let k=0;k<3;k++){
+      const b = mk('rect',{x:x-19+k*13,y:TOPO,width:10,height:0,rx:2,fill:cores[k]});
+      svg.appendChild(b); trio.push(b);
+    }
+    elBarras.push(trio);
+    // sítio
+    const term = TERM[i];
+    svg.appendChild(mk('circle',{cx:x,cy:TOPO-42,r:17,
+      fill: term ? '#EAF6EC' : '#fff',
+      stroke: term ? '#2B9348' : '#16324F','stroke-width': term ? 2.6 : 2}));
+    if (term) svg.appendChild(mk('circle',{cx:x,cy:TOPO-42,r:13,fill:'none',
+      stroke:'#2B9348','stroke-width':1}));
+    const lb = mk('text',{x:x,y:TOPO-42,'text-anchor':'middle','dominant-baseline':'central',
+      'font-size':13,'font-family':MONO,fill: term?'#2B9348':'#16324F'});
+    lb.textContent = 's' + (i+1); svg.appendChild(lb);
+    if (term){
+      const pr = mk('text',{x:x,y:TOPO-66,'text-anchor':'middle','font-size':11.5,
+        'font-weight':600,'font-family':MONO,fill:'#2B9348'});
+      pr.textContent = (REC[i]>0?'+':'') + REC[i]; svg.appendChild(pr);
+    }
+    // leitura numérica sob o poço
+    const nm = mk('text',{x:x,y:FUNDO+24,'text-anchor':'middle','font-size':10.5,
+      'font-family':MONO,fill:'#5C677D'});
+    svg.appendChild(nm); elNums.push(nm);
+  }
+
+  // rover
+  elRover = mk('g',{transform:`translate(${X(3)},${TOPO-42})`,opacity:0});
+  elRover.style.transition = 'transform .16s ease-out';
+  elRover.appendChild(mk('circle',{cx:0,cy:0,r:23,fill:'none',stroke:'#F2A93B','stroke-width':3}));
+  const seta = mk('path',{d:'M -7 -32 L 7 -32 L 0 -22 Z',fill:'#F2A93B'});
+  elRover.appendChild(seta);
+  svg.appendChild(elRover);
+}
+
+function desenhaTransecto(){
+  const vmax = Math.max(0.001, Math.max.apply(null, Vtrue)) * 1.06;
+  const d = v => Math.max(0, Math.min(PROF, (v/vmax) * PROF));
+  const Vs = [Vmc, Vtd, Vec];
+  for (let i=0;i<NS;i++){
+    for (let k=0;k<3;k++){
+      const h = d(Vs[k][i]);
+      elBarras[i][k].setAttribute('height', h);
+      elBarras[i][k].setAttribute('y', TOPO);
+    }
+    const y = TOPO + d(Vtrue[i]);
+    elTicks[i].setAttribute('y1', y); elTicks[i].setAttribute('y2', y);
+    elTickTxt[i].setAttribute('y', y);
+    elTickTxt[i].textContent = num(Vtrue[i], 2);
+    elNums[i].textContent = Nvis[i] ? 'n=' + Nvis[i] : '—';
+  }
+  if (sitioRover === null){ elRover.setAttribute('opacity', 0); }
+  else {
+    elRover.setAttribute('opacity', 1);
+    elRover.setAttribute('transform', `translate(${X(sitioRover)},${TOPO-42})`);
+  }
+}
+
+/* =========================================================================
+   DESENHO — gráfico de RMSE (canvas)
+   ========================================================================= */
+function desenhaGrafico(){
+  const cv = $('grafico'), ctx = cv.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth, H = cv.clientHeight;
+  if (!W || !H) return;
+  cv.width = W*dpr; cv.height = H*dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+
+  const ml=52, mr=12, mt=12, mb=30;
+  const pw = W-ml-mr, ph = H-mt-mb;
+  const log = $('cLog').checked;
+  const series = [historico].concat(fantasmas);
+
+  let n = 0, maxY = 1e-6, minY = Infinity;
+  for (const s of series){
+    n = Math.max(n, s.mc.length);
+    for (const k of ['mc','td','ec']) for (const y of s[k]){
+      if (y > maxY) maxY = y;
+      if (y > 0 && y < minY) minY = y;
+    }
+  }
+  if (!isFinite(minY)) minY = 0.01;
+  if (n < 2) n = 2;
+  maxY *= 1.08;
+  const loY = log ? Math.max(minY*0.75, maxY/4000) : 0;
+
+  const px = i => ml + (n<=1 ? 0 : i/(n-1)) * pw;
+  const py = v => {
+    if (!log) return mt + ph - (v/maxY)*ph;
+    const c = Math.max(v, loY);
+    return mt + ph - (Math.log(c/loY)/Math.log(maxY/loY))*ph;
+  };
+
+  // grade + eixos
+  ctx.font = '11px ' + MONO;
+  ctx.fillStyle = '#5C677D'; ctx.strokeStyle = '#E6ECF3'; ctx.lineWidth = 1;
+  const marcas = log ? marcasLog(loY, maxY) : marcasLin(maxY);
+  for (const v of marcas){
+    const y = py(v);
+    if (y < mt-1 || y > mt+ph+1) continue;
+    ctx.beginPath(); ctx.moveTo(ml,y); ctx.lineTo(ml+pw,y); ctx.stroke();
+    ctx.textAlign='right'; ctx.textBaseline='middle';
+    ctx.fillText(num(v, v>=10?0:(v>=1?1:(v>=0.1?2:3))), ml-7, y);
+  }
+  ctx.strokeStyle = '#C9D4E0';
+  ctx.beginPath(); ctx.moveTo(ml,mt); ctx.lineTo(ml,mt+ph); ctx.lineTo(ml+pw,mt+ph); ctx.stroke();
+  ctx.textAlign='center'; ctx.textBaseline='top';
+  ctx.fillText('0', ml, mt+ph+7);
+  ctx.fillText(String(historico.mc.length), ml+pw, mt+ph+7);
+  ctx.fillText('episódios', ml+pw/2, mt+ph+7);
+  ctx.save(); ctx.translate(13, mt+ph/2); ctx.rotate(-Math.PI/2);
+  ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('RMSE', 0, 0); ctx.restore();
+
+  const cor = { mc:'#18808D', td:'#E8590C', ec:'#2E5F8A' };
+  const traca = (arr, c, larg, alfa) => {
+    if (arr.length < 2) return;
+    ctx.globalAlpha = alfa; ctx.strokeStyle = c; ctx.lineWidth = larg;
+    ctx.lineJoin='round'; ctx.lineCap='round';
+    ctx.beginPath();
+    const salto = Math.max(1, Math.floor(arr.length / Math.max(400, pw)));
+    for (let i=0;i<arr.length;i+=salto){
+      const x = px(i), y = py(arr[i]);
+      i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    }
+    ctx.lineTo(px(arr.length-1), py(arr[arr.length-1]));
+    ctx.stroke(); ctx.globalAlpha = 1;
+  };
+  for (const f of fantasmas) for (const k of ['mc','td','ec']) traca(f[k], cor[k], 1.2, 0.16);
+  for (const k of ['ec','mc','td']) traca(historico[k], cor[k], 2, 1);
+}
+function marcasLin(max){
+  const p = Math.pow(10, Math.floor(Math.log10(max||1)));
+  const passo = (max/p > 5 ? 2 : (max/p > 2 ? 1 : 0.5)) * p;
+  const out = []; for (let v=0; v<=max*1.0001; v+=passo) out.push(v);
+  return out;
+}
+function marcasLog(lo, hi){
+  const out = [];
+  for (let e = Math.floor(Math.log10(lo)); e <= Math.ceil(Math.log10(hi)); e++)
+    for (const m of [1,3]) { const v = m*Math.pow(10,e); if (v>=lo && v<=hi) out.push(v); }
+  return out;
+}
+
+/* =========================================================================
+   DESENHO — fita e tabela
+   ========================================================================= */
+function desenhaFita(){
+  const box = $('fita'), msg = $('fitaMsg');
+  box.innerHTML = '';
+  if (!epAtual){
+    box.innerHTML = '<span class="vazio">Nenhum episódio em andamento. Use <kbd>passo</kbd> ou <kbd>+1 episódio</kbd>.</span>';
+    msg.innerHTML = nEp
+      ? '<span class="selo mc">MC</span>último episódio encerrado: o Monte Carlo creditou o retorno a todos os sítios visitados.'
+      : '';
+    return;
+  }
+  const ini = Math.max(0, epIdx - 28);
+  epAtual.slice(ini, ini+34).forEach((t, k) => {
+    const i = ini + k;
+    const d = document.createElement('div');
+    d.className = 'tupla' + (i < epIdx ? ' aplicada' : '') + (i === epIdx ? ' atual' : '')
+                + (t.sp === null ? ' terminal' : '');
+    const destino = t.sp === null ? '⊣' : 's' + (t.sp+1);
+    d.innerHTML = 's' + (t.s+1) + ' → ' + destino +
+      '<span class="r' + (t.r ? ' premio' : '') + '">r=' + (t.r>0?'+':'') + t.r + '</span>';
+    box.appendChild(d);
+  });
+  const restantes = epAtual.length - epIdx;
+  msg.innerHTML = '<span class="selo td">TD</span>' +
+    (epIdx > 0 ? epIdx + (epIdx===1?' transição já atualizou':' transições já atualizaram') + ' o TD. ' : 'nenhuma transição aplicada ainda. ') +
+    '<span class="selo mc" style="margin-left:6px">MC</span>' +
+    'aguardando o fim do episódio — faltam ' + restantes + '.';
+}
+
+function desenhaTabela(){
+  const tb = $('tbody'); tb.innerHTML = '';
+  for (let i=0;i<NS;i++){
+    const tr = document.createElement('tr');
+    if (TERM[i]) tr.className = 'term';
+    tr.innerHTML = '<td>s' + (i+1) + '</td>'
+      + '<td>' + num(Vtrue[i],2) + '</td>'
+      + '<td>' + num(Vmc[i],2) + '</td>'
+      + '<td>' + num(Vtd[i],2) + '</td>'
+      + '<td>' + num(Vec[i],2) + '</td>'
+      + '<td>' + Nvis[i] + '</td>';
+    tb.appendChild(tr);
+  }
+  $('fMC').textContent = num(rmse(Vmc),3);
+  $('fTD').textContent = num(rmse(Vtd),3);
+  $('fEC').textContent = num(rmse(Vec),3);
+  $('statEp').textContent = 'episódios: ' + nEp + (par.lote ? ' · modo em lote' : '');
+}
+
+function desenharTudo(){ desenhaTransecto(); desenhaGrafico(); desenhaFita(); desenhaTabela(); }
+
+/* =========================================================================
+   UTILITÁRIOS E LIGAÇÕES DE INTERFACE
+   ========================================================================= */
+function $(id){ return document.getElementById(id); }
+function num(x, d){
+  if (!isFinite(x)) return '—';
+  if (Math.abs(x) < 5e-4) x = 0;
+  return x.toFixed(d).replace('.', ',');
+}
+function segmento(id, chave, aoMudar){
+  const g = $(id);
+  g.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    [...g.children].forEach(c => c.setAttribute('aria-pressed', String(c === b)));
+    par[chave] = b.dataset.v;
+    aoMudar();
+  });
+}
+const reinicia = () => zerar(false);
+
+segmento('segPol','pol',reinicia);
+segmento('segIni','ini',reinicia);
+segmento('segVis','visita',reinicia);
+
+function deslizante(id, saida, chave, fmt, aoMudar){
+  const el = $(id), out = $(saida);
+  const atualiza = () => { par[chave] = +el.value; out.textContent = fmt(+el.value); };
+  el.addEventListener('input', () => { atualiza(); aoMudar(); });
+  atualiza();
+}
+deslizante('sGama','oGama','gama', v => num(v,2), reinicia);
+deslizante('sEsc','oEsc','esc',   v => num(v,2), reinicia);
+deslizante('sAlfa','oAlfa','alfa',v => num(v,2), reinicia);
+$('sVel').addEventListener('input', () => { $('oVel').textContent = rotuloVel(); });
+$('oVel').textContent = rotuloVel();
+
+$('cIncr').addEventListener('change', e => { par.incr = e.target.checked; reinicia(); });
+$('cLote').addEventListener('change', e => {
+  par.lote = e.target.checked;
+  reinicia();
+});
+$('cLog').addEventListener('change', desenhaGrafico);
+
+$('bRodar').addEventListener('click', () => rodando ? (parar(), desenharTudo()) : rodar());
+$('bPasso').addEventListener('click', () => { parar(); passo(); });
+$('bEp').addEventListener('click',   () => { parar(); episodioCompleto(); desenharTudo(); });
+$('bCem').addEventListener('click',  () => {
+  parar();
+  for (let k=0;k<100;k++) episodioCompleto();
+  desenharTudo();
+});
+$('bNova').addEventListener('click',  () => zerar(true));
+$('bLimpa').addEventListener('click', () => { fantasmas = []; desenhaGrafico(); });
+
+window.addEventListener('keydown', e => {
+  if (e.target.matches('input,button,select')) return;
+  if (e.key === ' '){ e.preventDefault(); rodando ? (parar(), desenharTudo()) : rodar(); }
+  if (e.key === 'ArrowRight'){ e.preventDefault(); parar(); passo(); }
+});
+new ResizeObserver(() => desenhaGrafico()).observe($('grafico').parentElement);
+
+/* partida */
+montaTransecto();
+zerar(false);
+</script>
+</body>
+</html>

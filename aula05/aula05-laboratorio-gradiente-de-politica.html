@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Laboratório de gradiente de política — Aula 5</title>
+<style>
+  :root{
+    --azul:#16324F; --azul-claro:#2E5F8A; --teal:#18808D; --laranja:#E8590C;
+    --ambar:#F2A93B; --vermelho:#C1121F; --verde:#2B9348; --cinza:#5C677D;
+    --tinta:#0B1B2B; --papel:#F7F9FB; --linha:#DCE3EA;
+    --sans:"Fira Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+    --mono:"Fira Mono","SFMono-Regular",ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:var(--sans); color:var(--tinta); background:var(--papel);
+    -webkit-font-smoothing:antialiased; line-height:1.5;
+  }
+  a{color:var(--azul-claro)}
+
+  /* ---------- cabeçalho ---------- */
+  header{
+    background:var(--azul); color:#fff; padding:26px 28px 22px;
+    border-bottom:4px solid var(--laranja);
+  }
+  .eyebrow{
+    font-size:11px; letter-spacing:.18em; text-transform:uppercase;
+    color:var(--ambar); font-weight:600; margin:0 0 6px;
+  }
+  header h1{font-size:26px; line-height:1.15; margin:0 0 6px; font-weight:600; letter-spacing:-.01em}
+  header p{margin:0; color:#BFD0E0; font-size:14px; max-width:70ch}
+
+  /* ---------- layout ---------- */
+  .wrap{display:grid; grid-template-columns:250px minmax(0,1fr); gap:0; min-height:calc(100vh - 132px)}
+  nav{background:#fff; border-right:1px solid var(--linha); padding:16px 0}
+  nav button{
+    display:block; width:100%; text-align:left; background:none; border:0;
+    border-left:3px solid transparent; padding:12px 18px; cursor:pointer;
+    font-family:var(--sans); font-size:14px; color:var(--tinta); line-height:1.3;
+  }
+  nav button .num{
+    font-family:var(--mono); font-size:11px; color:var(--cinza);
+    display:block; margin-bottom:2px; letter-spacing:.08em;
+  }
+  nav button:hover{background:#F0F4F8}
+  nav button[aria-selected="true"]{
+    border-left-color:var(--laranja); background:#F0F4F8; font-weight:600; color:var(--azul);
+  }
+  nav button:focus-visible{outline:2px solid var(--laranja); outline-offset:-2px}
+  main{padding:22px 28px 60px; max-width:1080px}
+
+  h2{font-size:20px; margin:0 0 4px; color:var(--azul); font-weight:600}
+  .lede{color:var(--cinza); font-size:14px; margin:0 0 18px; max-width:78ch}
+
+  .panel{background:#fff; border:1px solid var(--linha); border-radius:6px; padding:16px; margin-bottom:16px}
+  .panel > h3{
+    font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--cinza);
+    margin:0 0 12px; font-weight:600;
+  }
+  .cols{display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:16px; align-items:start}
+  canvas{display:block; width:100%; height:auto; border-radius:4px}
+
+  .ctl{margin-bottom:12px}
+  .ctl label{display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px}
+  .ctl label b{font-family:var(--mono); font-weight:500; color:var(--azul)}
+  input[type=range]{width:100%; accent-color:var(--laranja)}
+  .row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  button.act{
+    font-family:var(--sans); font-size:13px; padding:8px 14px; border-radius:4px;
+    border:1px solid var(--azul); background:var(--azul); color:#fff; cursor:pointer;
+  }
+  button.act.ghost{background:#fff; color:var(--azul)}
+  button.act:hover{filter:brightness(1.12)}
+  button.act:focus-visible{outline:2px solid var(--laranja); outline-offset:2px}
+  .switch{display:flex; align-items:center; gap:8px; font-size:13px; margin:10px 0}
+  .switch input{accent-color:var(--teal); width:16px; height:16px}
+
+  table.stats{width:100%; border-collapse:collapse; font-size:13px; margin-top:6px}
+  table.stats th{text-align:left; font-weight:600; color:var(--cinza); font-size:11px;
+    text-transform:uppercase; letter-spacing:.08em; padding:4px 0}
+  table.stats td{padding:4px 0; font-family:var(--mono); border-top:1px solid var(--linha)}
+  table.stats td.k{font-family:var(--sans); color:var(--tinta)}
+
+  .note{
+    border-left:3px solid var(--ambar); background:#FFF8EE; padding:10px 14px;
+    font-size:13.5px; border-radius:0 4px 4px 0; margin:14px 0 0;
+  }
+  .note b{color:#B45309}
+  .warn{border-left-color:var(--vermelho); background:#FDF2F2}
+  .warn b{color:var(--vermelho)}
+  .legend{display:flex; gap:14px; flex-wrap:wrap; font-size:12px; color:var(--cinza); margin-top:8px}
+  .legend span{display:flex; align-items:center; gap:5px}
+  .key{width:12px; height:3px; border-radius:2px; display:inline-block}
+  .math{font-family:var(--mono); font-size:13px; color:var(--azul); background:#F0F4F8;
+    padding:1px 5px; border-radius:3px}
+  .hidden{display:none}
+  footer{padding:18px 28px; color:var(--cinza); font-size:12px; border-top:1px solid var(--linha)}
+  @media (max-width:900px){
+    .wrap{grid-template-columns:1fr}
+    nav{display:flex; overflow-x:auto; border-right:0; border-bottom:1px solid var(--linha); padding:0}
+    nav button{border-left:0; border-bottom:3px solid transparent; white-space:nowrap; width:auto}
+    nav button[aria-selected="true"]{border-left-color:transparent; border-bottom-color:var(--laranja)}
+    .cols{grid-template-columns:1fr}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <p class="eyebrow">Aprendizagem por Reforço &middot; UFU &middot; Aula 5</p>
+  <h1>Laboratório de gradiente de política</h1>
+  <p>Quatro experimentos que seguem a derivação da aula: da função escore ao compromisso viés–variância.
+     Tudo roda no navegador — mexa nos controles e observe o estimador reagir.</p>
+</header>
+
+<div class="wrap">
+  <nav role="tablist" aria-label="Experimentos">
+    <button role="tab" aria-selected="true" data-tab="t1"><span class="num">01</span>A função escore</button>
+    <button role="tab" aria-selected="false" data-tab="t2"><span class="num">02</span>Variância e linha de base</button>
+    <button role="tab" aria-selected="false" data-tab="t3"><span class="num">03</span>REINFORCE no corredor</button>
+    <button role="tab" aria-selected="false" data-tab="t4"><span class="num">04</span>Estimadores de <i>n</i> passos</button>
+  </nav>
+
+  <main>
+
+  <!-- ============ TAB 1 ============ -->
+  <section id="t1" role="tabpanel">
+    <h2>A função escore empurra a distribuição</h2>
+    <p class="lede">Um estado, três ações, política softmax com atributos <i>one-hot</i>. O escore da ação
+      escolhida é <span class="math">∇θ log π(a) = e_a − π</span>: sobe a probabilidade da ação tomada e
+      desce a de todas as outras, na proporção de quão prováveis já eram.</p>
+
+    <div class="cols">
+      <div class="panel">
+        <h3>Política e escore</h3>
+        <canvas id="c1" width="640" height="330"></canvas>
+        <div class="legend">
+          <span><i class="key" style="background:var(--azul-claro)"></i>π(a) atual</span>
+          <span><i class="key" style="background:var(--laranja)"></i>escore da ação escolhida</span>
+          <span><i class="key" style="background:var(--teal)"></i>gradiente esperado ∇θV</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Controles</h3>
+        <div class="ctl"><label>Recompensa de a₁ <b id="l-r1">1,0</b></label>
+          <input type="range" id="r1" min="-3" max="3" step="0.1" value="1"></div>
+        <div class="ctl"><label>Recompensa de a₂ <b id="l-r2">2,0</b></label>
+          <input type="range" id="r2" min="-3" max="3" step="0.1" value="2"></div>
+        <div class="ctl"><label>Recompensa de a₃ <b id="l-r3">0,0</b></label>
+          <input type="range" id="r3" min="-3" max="3" step="0.1" value="0"></div>
+        <div class="ctl"><label>Passo α <b id="l-a1">0,20</b></label>
+          <input type="range" id="alpha1" min="0.01" max="1" step="0.01" value="0.2"></div>
+        <div class="row">
+          <button class="act" id="step1">Amostrar e dar um passo</button>
+          <button class="act ghost" id="run1">Rodar 200×</button>
+          <button class="act ghost" id="reset1">Reiniciar</button>
+        </div>
+        <table class="stats">
+          <tr><th>Grandeza</th><th style="text-align:right">Valor</th></tr>
+          <tr><td class="k">Última ação amostrada</td><td id="s1-a" style="text-align:right">—</td></tr>
+          <tr><td class="k">Passos dados</td><td id="s1-n" style="text-align:right">0</td></tr>
+          <tr><td class="k">Valor esperado 𝔼[r]</td><td id="s1-v" style="text-align:right">—</td></tr>
+        </table>
+        <div class="note">
+          <b>Repare:</b> o gradiente esperado vale exatamente <span class="math">π_a (r_a − 𝔼[r])</span>.
+          Uma ação só ganha probabilidade se render acima da média — a linha de base já está aqui,
+          escondida dentro da própria matemática do escore.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TAB 2 ============ -->
+  <section id="t2" role="tabpanel" class="hidden">
+    <h2>Onde mora a variância</h2>
+    <p class="lede">Bandido de duas ações. Cada ponto laranja é uma estimativa de gradiente obtida com
+      <i>m</i> amostras. A marca vertical é o gradiente verdadeiro. Agora desloque todas as recompensas por
+      uma constante <i>c</i>: o gradiente verdadeiro não se move — a nuvem, sim.</p>
+
+    <div class="cols">
+      <div class="panel">
+        <h3>Distribuição das estimativas de ĝ</h3>
+        <canvas id="c2" width="640" height="330"></canvas>
+        <div class="legend">
+          <span><i class="key" style="background:var(--laranja)"></i>sem linha de base</span>
+          <span><i class="key" style="background:var(--teal)"></i>com linha de base b = 𝔼[r]</span>
+          <span><i class="key" style="background:var(--azul)"></i>gradiente verdadeiro</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Controles</h3>
+        <div class="ctl"><label>Recompensa de a₁ <b id="l-b1">1,0</b></label>
+          <input type="range" id="b1" min="-2" max="4" step="0.1" value="1"></div>
+        <div class="ctl"><label>Recompensa de a₂ <b id="l-b2">2,0</b></label>
+          <input type="range" id="b2" min="-2" max="4" step="0.1" value="2"></div>
+        <div class="ctl"><label>Deslocamento c em todas <b id="l-c">0</b></label>
+          <input type="range" id="cshift" min="0" max="1000" step="10" value="0"></div>
+        <div class="ctl"><label>Amostras por estimativa m <b id="l-m">20</b></label>
+          <input type="range" id="mm" min="1" max="200" step="1" value="20"></div>
+        <div class="row">
+          <button class="act" id="run2">Gerar 2000 estimativas</button>
+          <button class="act ghost" id="reset2">Limpar</button>
+        </div>
+        <table class="stats">
+          <tr><th>Estimador</th><th style="text-align:right">média</th><th style="text-align:right">desvio</th></tr>
+          <tr><td class="k">sem base</td><td id="s2-m1" style="text-align:right">—</td><td id="s2-d1" style="text-align:right">—</td></tr>
+          <tr><td class="k">com base</td><td id="s2-m2" style="text-align:right">—</td><td id="s2-d2" style="text-align:right">—</td></tr>
+          <tr><td class="k">verdadeiro</td><td id="s2-t" style="text-align:right">—</td><td style="text-align:right">0</td></tr>
+        </table>
+        <div class="note warn">
+          <b>A lição:</b> as duas médias coincidem com o valor verdadeiro para qualquer <i>c</i> — as duas são
+          não enviesadas. Mas o desvio do estimador sem linha de base cresce proporcionalmente a <i>c</i>,
+          enquanto o outro não se mexe. Recompensa deslocada é ruído puro.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TAB 3 ============ -->
+  <section id="t3" role="tabpanel" class="hidden">
+    <h2>REINFORCE aprende a ser aleatório</h2>
+    <p class="lede">O corredor da aula: cinco casas, objetivo no centro, e as casas 2 e 4 produzindo a mesma
+      observação. Custo de −1 por passo. À esquerda, o gradiente de política; à direita, Q-learning
+      ε-guloso sobre a mesma observação ambígua.</p>
+
+    <div class="cols">
+      <div class="panel">
+        <h3>Corredor e políticas aprendidas</h3>
+        <canvas id="c3" width="640" height="360"></canvas>
+        <div class="legend">
+          <span><i class="key" style="background:var(--laranja)"></i>REINFORCE (estocástico)</span>
+          <span><i class="key" style="background:var(--azul-claro)"></i>Q-learning ε-guloso</span>
+          <span><i class="key" style="background:var(--verde)"></i>ótimo alcançável</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Controles</h3>
+        <div class="ctl"><label>Passo α <b id="l-a3">0,05</b></label>
+          <input type="range" id="alpha3" min="0.005" max="0.3" step="0.005" value="0.05"></div>
+        <div class="ctl"><label>ε do Q-learning <b id="l-e3">0,10</b></label>
+          <input type="range" id="eps3" min="0.01" max="0.5" step="0.01" value="0.1"></div>
+        <div class="ctl"><label>Episódios por lote <b id="l-bt">10</b></label>
+          <input type="range" id="batch3" min="1" max="40" step="1" value="10"></div>
+        <div class="switch">
+          <input type="checkbox" id="base3" checked>
+          <label for="base3">Usar linha de base (média do lote)</label>
+        </div>
+        <div class="row">
+          <button class="act" id="run3">Treinar / pausar</button>
+          <button class="act ghost" id="reset3">Reiniciar</button>
+        </div>
+        <table class="stats">
+          <tr><th>Grandeza</th><th style="text-align:right">Valor</th></tr>
+          <tr><td class="k">Lotes treinados</td><td id="s3-it" style="text-align:right">0</td></tr>
+          <tr><td class="k">π(Leste | casa cinza)</td><td id="s3-p" style="text-align:right">0,50</td></tr>
+          <tr><td class="k">Passos/episódio (PG)</td><td id="s3-lpg" style="text-align:right">—</td></tr>
+          <tr><td class="k">Passos/episódio (QL)</td><td id="s3-lql" style="text-align:right">—</td></tr>
+        </table>
+        <div class="note">
+          <b>O que observar:</b> a curva laranja estabiliza a probabilidade perto de 0,50 e o número de
+          passos cai. O Q-learning fixa uma ação nas casas cinzas e passa a depender do ε para escapar —
+          sua curva de passos fica bem acima.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TAB 4 ============ -->
+  <section id="t4" role="tabpanel" class="hidden">
+    <h2>Quanto viés vale a pena comprar</h2>
+    <p class="lede">Cadeia de 24 passos, recompensas ruidosas de média zero, crítico <i>V̂</i> com erro
+      controlável. Para cada <i>n</i>, o estimador
+      <span class="math">Â⁽ⁿ⁾ = Σ r + V̂(s₊ₙ) − V̂(s)</span> é avaliado empiricamente: viés² vem do erro do
+      crítico, variância vem das recompensas somadas.</p>
+
+    <div class="cols">
+      <div class="panel">
+        <h3>Decomposição do erro quadrático por horizonte n</h3>
+        <canvas id="c4" width="640" height="340"></canvas>
+        <div class="legend">
+          <span><i class="key" style="background:var(--ambar)"></i>viés²</span>
+          <span><i class="key" style="background:var(--vermelho)"></i>variância</span>
+          <span><i class="key" style="background:var(--azul)"></i>erro quadrático médio</span>
+          <span><i class="key" style="background:var(--verde)"></i>n que minimiza o EQM</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Controles</h3>
+        <div class="ctl"><label>Ruído das recompensas σ <b id="l-sg">1,0</b></label>
+          <input type="range" id="sig4" min="0.1" max="3" step="0.1" value="1"></div>
+        <div class="ctl"><label>Erro típico do crítico <b id="l-er">1,5</b></label>
+          <input type="range" id="err4" min="0" max="4" step="0.1" value="1.5"></div>
+        <div class="ctl"><label>Desconto γ <b id="l-gm">1,00</b></label>
+          <input type="range" id="gam4" min="0.8" max="1" step="0.01" value="1"></div>
+        <div class="row">
+          <button class="act ghost" id="reroll4">Sortear novo crítico</button>
+        </div>
+        <table class="stats">
+          <tr><th>Grandeza</th><th style="text-align:right">Valor</th></tr>
+          <tr><td class="k">n ótimo</td><td id="s4-n" style="text-align:right">—</td></tr>
+          <tr><td class="k">EQM em n=1</td><td id="s4-1" style="text-align:right">—</td></tr>
+          <tr><td class="k">EQM em n=∞</td><td id="s4-i" style="text-align:right">—</td></tr>
+        </table>
+        <div class="note">
+          <b>Leia o gráfico assim:</b> com crítico ruim, o mínimo desliza para a direita (confie nas
+          recompensas reais); com recompensas muito ruidosas, ele desliza para a esquerda (confie no
+          crítico). GAE(λ) é a maneira de não ter que escolher um único n.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  </main>
+</div>
+
+<footer>
+  Complemento interativo da Aula 5 — Gradientes de política I &nbsp;·&nbsp;
+  Prof. Marcelo Keese Albertini, Universidade Federal de Uberlândia &nbsp;·&nbsp;
+  adaptado de Emma Brunskill, CS234 (Stanford).
+</footer>
+
+<script>
+"use strict";
+const C = {azul:"#16324F", azulc:"#2E5F8A", teal:"#18808D", laranja:"#E8590C",
+           ambar:"#F2A93B", vermelho:"#C1121F", verde:"#2B9348", cinza:"#5C677D",
+           tinta:"#0B1B2B", linha:"#DCE3EA"};
+function $(id){ return document.getElementById(id); }
+const fmt = (x,d=2)=> (!isFinite(x)? "—" : (Math.abs(x)>=10000? x.toExponential(1) : x.toFixed(d)).replace(".",","));
+
+/* ---------- canvas nítido em telas HiDPI, preservando a proporção original ---------- */
+function prep(cv){
+  if(!cv.dataset.ratio) cv.dataset.ratio = (cv.height/cv.width).toString();
+  const ratio = parseFloat(cv.dataset.ratio);
+  const dpr = window.devicePixelRatio || 1;
+  const w = cv.clientWidth || 640, h = Math.round(w*ratio);
+  cv.style.height = h + "px";
+  cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr);
+  const g = cv.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0);
+  g.clearRect(0,0,w,h);
+  return {g, w, h};
+}
+function axes(g,x0,y0,x1,y1){
+  g.strokeStyle=C.linha; g.lineWidth=1;
+  g.beginPath(); g.moveTo(x0,y0); g.lineTo(x0,y1); g.lineTo(x1,y1); g.stroke();
+}
+function label(g,txt,x,y,color,align,size,weight){
+  g.fillStyle=color; g.font=(weight||"400")+" "+(size||11)+"px 'Fira Sans', system-ui, sans-serif";
+  g.textAlign=align||"left"; g.textBaseline="middle"; g.fillText(txt,x,y);
+}
+function gauss(){ let u=0,v=0; while(!u) u=Math.random(); while(!v) v=Math.random();
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+function softmax(th){ const mx=Math.max.apply(null,th), e=th.map(t=>Math.exp(t-mx)),
+  s=e.reduce((a,b)=>a+b,0); return e.map(x=>x/s); }
+function sample(p){ let u=Math.random(), c=0; for(let i=0;i<p.length;i++){c+=p[i]; if(u<c) return i;} return p.length-1; }
+function stats(a){ const mu=a.reduce((x,y)=>x+y,0)/a.length;
+  const v=a.reduce((x,y)=>x+(y-mu)*(y-mu),0)/a.length; return [mu, Math.sqrt(v)]; }
+
+/* ================= abas ================= */
+const tabs=[].slice.call(document.querySelectorAll('nav button'));
+tabs.forEach(b=>b.addEventListener('click',()=>{
+  tabs.forEach(x=>x.setAttribute('aria-selected', String(x===b)));
+  ["t1","t2","t3","t4"].forEach(id=>
+    $(id).classList.toggle("hidden", id!==b.dataset.tab));
+  redrawAll();
+}));
+
+/* ================= 01 — a função escore ================= */
+let th1=[0,0,0], n1=0, lastA=null;
+function draw1(){
+  const {g,w,h}=prep($("c1"));
+  const r=[+$("r1").value, +$("r2").value, +$("r3").value];
+  const p=softmax(th1);
+  const Er = p.reduce((a,pi,i)=>a+pi*r[i],0);
+  const grad = p.map((pi,i)=> pi*(r[i]-Er));
+  $("s1-v").textContent = fmt(Er);
+  $("s1-n").textContent = String(n1);
+
+  const padL=44, padR=16, top=30, bot=h-58, mid=(top+bot)/2;
+  const bw=(w-padL-padR)/3;
+  axes(g,padL,top,w-padR,bot);
+  label(g,"π(a)  ·  escore  ·  ∇θV",padL,top-14,C.cinza,"left",11,"600");
+  g.strokeStyle=C.linha; g.setLineDash([3,3]);
+  g.beginPath(); g.moveTo(padL,mid); g.lineTo(w-padR,mid); g.stroke(); g.setLineDash([]);
+
+  const gmax=Math.max(0.05, Math.max.apply(null,grad.map(Math.abs)));
+  for(let i=0;i<3;i++){
+    const base=padL+i*bw, bwid=bw*0.20;
+    const hgt=(bot-top)*p[i];
+    g.fillStyle=C.azulc; g.fillRect(base+bw*0.10, bot-hgt, bwid, hgt);
+    label(g,fmt(p[i]), base+bw*0.10+bwid/2, bot-hgt-10, C.azulc,"center",11,"600");
+    if(lastA!==null){
+      const sc=((i===lastA)?1:0)-p[i], hh=(bot-top)*0.40*sc;
+      g.fillStyle=C.laranja;
+      g.fillRect(base+bw*0.40, mid-Math.max(hh,0), bwid, Math.abs(hh));
+    }
+    const hg=(bot-top)*0.40*grad[i]/gmax;
+    g.fillStyle=C.teal;
+    g.fillRect(base+bw*0.68, mid-Math.max(hg,0), bwid, Math.abs(hg));
+    label(g,"a"+(i+1)+"   r = "+fmt(r[i],1), base+bw/2, bot+18, C.tinta,"center",12,"600");
+  }
+  label(g,"acima da linha tracejada: a probabilidade sobe", padL, bot+40, C.cinza,"left",11);
+}
+function step1(){
+  const r=[+$("r1").value, +$("r2").value, +$("r3").value];
+  const a=+$("alpha1").value;
+  const p=softmax(th1), i=sample(p);
+  lastA=i; n1++;
+  for(let k=0;k<3;k++) th1[k]+= a*r[i]*(((k===i)?1:0)-p[k]);
+  $("s1-a").textContent="a"+(i+1);
+}
+$("step1").onclick=()=>{ step1(); draw1(); };
+$("run1").onclick=()=>{ for(let k=0;k<200;k++) step1(); draw1(); };
+$("reset1").onclick=()=>{ th1=[0,0,0]; n1=0; lastA=null; $("s1-a").textContent="—"; draw1(); };
+[["r1","r1"],["r2","r2"],["r3","r3"],["alpha1","a1"]].forEach(pair=>{
+  $(pair[0]).addEventListener("input",()=>{
+    $("l-"+pair[1]).textContent = fmt(+$(pair[0]).value, pair[0]==="alpha1"?2:1);
+    draw1();
+  });
+});
+
+/* ================= 02 — variância e linha de base ================= */
+let cloud1=[], cloud2=[];
+function trueGrad(){ const r1=+$("b1").value, r2=+$("b2").value; return 0.25*(r1-r2); }
+function estimate(m, withBase){
+  const r=[+$("b1").value, +$("b2").value], c=+$("cshift").value;
+  const p=[0.5,0.5];
+  const b = withBase ? (0.5*r[0]+0.5*r[1]+c) : 0;
+  let s=0;
+  for(let k=0;k<m;k++){
+    const i=sample(p);
+    s += (r[i]+c-b)*(((i===0)?1:0)-p[0]);
+  }
+  return s/m;
+}
+function run2(){
+  const m=+$("mm").value;
+  cloud1=[]; cloud2=[];
+  for(let k=0;k<2000;k++){ cloud1.push(estimate(m,false)); cloud2.push(estimate(m,true)); }
+  draw2();
+}
+function draw2(){
+  const {g,w,h}=prep($("c2"));
+  const tg=trueGrad();
+  $("s2-t").textContent=fmt(tg);
+  const padL=44,padR=16,top=24,bot=h-46;
+  if(!cloud1.length){
+    axes(g,padL,top,w-padR,bot);
+    label(g,"Clique em “Gerar 2000 estimativas”.", (padL+w-padR)/2,(top+bot)/2, C.cinza,"center",13);
+    $("s2-m1").textContent="—"; $("s2-d1").textContent="—";
+    $("s2-m2").textContent="—"; $("s2-d2").textContent="—";
+    return;
+  }
+  const a1=stats(cloud1), a2=stats(cloud2);
+  $("s2-m1").textContent=fmt(a1[0]); $("s2-d1").textContent=fmt(a1[1]);
+  $("s2-m2").textContent=fmt(a2[0]); $("s2-d2").textContent=fmt(a2[1]);
+
+  let lo=Math.min(Math.min.apply(null,cloud1), Math.min.apply(null,cloud2), tg);
+  let hi=Math.max(Math.max.apply(null,cloud1), Math.max.apply(null,cloud2), tg);
+  const pad=(hi-lo)*0.08+1e-6; lo-=pad; hi+=pad;
+
+  const NB=64, h1=new Array(NB).fill(0), h2=new Array(NB).fill(0);
+  const bin=v=>Math.min(NB-1,Math.max(0,Math.floor((v-lo)/(hi-lo)*NB)));
+  cloud1.forEach(v=>h1[bin(v)]++); cloud2.forEach(v=>h2[bin(v)]++);
+  const mx=Math.max(Math.max.apply(null,h1), Math.max.apply(null,h2));
+  const bw=(w-padL-padR)/NB;
+  axes(g,padL,top,w-padR,bot);
+  for(let i=0;i<NB;i++){
+    const x=padL+i*bw;
+    g.fillStyle="rgba(232,89,12,0.55)";
+    g.fillRect(x, bot-(bot-top)*h1[i]/mx, Math.max(bw-0.5,1), (bot-top)*h1[i]/mx);
+    g.fillStyle="rgba(24,128,141,0.78)";
+    g.fillRect(x, bot-(bot-top)*h2[i]/mx, Math.max(bw-0.5,1), (bot-top)*h2[i]/mx);
+  }
+  const X=v=>padL+(v-lo)/(hi-lo)*(w-padL-padR);
+  g.strokeStyle=C.azul; g.lineWidth=2;
+  g.beginPath(); g.moveTo(X(tg),top-6); g.lineTo(X(tg),bot); g.stroke();
+  label(g,"verdadeiro = "+fmt(tg), X(tg)+6, top+6, C.azul,"left",11,"600");
+  label(g,fmt(lo), padL, bot+16, C.cinza,"left",11);
+  label(g,fmt(hi), w-padR, bot+16, C.cinza,"right",11);
+  label(g,"valor da estimativa ĝ", (padL+w-padR)/2, bot+32, C.cinza,"center",11);
+}
+$("run2").onclick=run2;
+$("reset2").onclick=()=>{cloud1=[];cloud2=[];draw2();};
+[["b1","b1",1],["b2","b2",1],["cshift","c",0],["mm","m",0]].forEach(t=>{
+  $(t[0]).addEventListener("input",()=>{
+    $("l-"+t[1]).textContent = t[2] ? fmt(+$(t[0]).value,1) : $(t[0]).value;
+    cloud1=[];cloud2=[]; draw2();
+  });
+});
+
+/* ================= 03 — REINFORCE no corredor ================= */
+/* casas 0..4 (rótulos 1..5); objetivo na casa 2 (índice 2);
+   observações: 0 -> fim esquerdo, 1 e 3 -> cinza (ambíguas), 4 -> fim direito */
+function obsOf(s){ return s===0?0 : (s===4?2:1); }
+let pgTh=[[0,0],[0,0],[0,0]], qlQ=[[0,0],[0,0],[0,0]], it3=0, hist3=[], running3=false, timer3=null;
+const GAMMA_QL=0.95;
+
+function rollout(policyFn, maxT=120){
+  let s=[0,1,3,4][Math.floor(Math.random()*4)];
+  const traj=[];
+  for(let t=0;t<maxT;t++){
+    const o=obsOf(s);
+    const a=policyFn(o);                       // 0 = Oeste, 1 = Leste
+    const ns = a===1? Math.min(4,s+1) : Math.max(0,s-1);
+    traj.push({o:o,a:a,r:-1,ns:ns,done:ns===2});
+    s=ns;
+    if(s===2) break;
+  }
+  return traj;
+}
+function trainPG(){
+  const alpha=+$("alpha3").value, B=+$("batch3").value, useB=$("base3").checked;
+  const all=[]; let tot=0;
+  for(let b=0;b<B;b++){
+    const tr=rollout(o=>sample(softmax(pgTh[o])));
+    tot+=tr.length;
+    let G=0;
+    const gs=new Array(tr.length);
+    for(let t=tr.length-1;t>=0;t--){ G+=tr[t].r; gs[t]=G; }
+    tr.forEach((st,t)=>all.push({o:st.o,a:st.a,G:gs[t]}));
+  }
+  const bl = useB ? all.reduce((x,y)=>x+y.G,0)/all.length : 0;
+  all.forEach(d=>{
+    const p=softmax(pgTh[d.o]), adv=d.G-bl;
+    for(let k=0;k<2;k++) pgTh[d.o][k] += alpha*adv*(((k===d.a)?1:0)-p[k])/B;
+  });
+  return tot/B;
+}
+function trainQL(){
+  const eps=+$("eps3").value, B=+$("batch3").value, lr=0.1;
+  let tot=0;
+  for(let b=0;b<B;b++){
+    const tr=rollout(o=> Math.random()<eps ? (Math.random()<0.5?0:1)
+                                           : (qlQ[o][0]>=qlQ[o][1]?0:1));
+    tot+=tr.length;
+    tr.forEach(st=>{
+      const no=obsOf(st.ns);
+      const target = st.done ? st.r : st.r + GAMMA_QL*Math.max(qlQ[no][0], qlQ[no][1]);
+      qlQ[st.o][st.a] += lr*(target-qlQ[st.o][st.a]);
+    });
+  }
+  return tot/B;
+}
+function tick3(){
+  const lp=trainPG(), lq=trainQL();
+  it3++;
+  hist3.push({pg:lp, ql:lq});
+  if(hist3.length>500) hist3.shift();
+  $("s3-it").textContent=String(it3);
+  $("s3-p").textContent=fmt(softmax(pgTh[1])[1]);
+  $("s3-lpg").textContent=fmt(lp,1);
+  $("s3-lql").textContent=fmt(lq,1);
+  draw3();
+}
+function draw3(){
+  const {g,w,h}=prep($("c3"));
+  const cw=42, x0=(w-5*cw)/2, y0=14;
+  for(let i=0;i<5;i++){
+    g.fillStyle = (i===1||i===3)? "#D9DEE5" : "#FFFFFF";
+    g.strokeStyle=C.azul; g.lineWidth=1.6;
+    g.fillRect(x0+i*cw,y0,cw,cw); g.strokeRect(x0+i*cw,y0,cw,cw);
+    if(i===2) label(g,"$",x0+i*cw+cw/2,y0+cw/2,C.verde,"center",20,"700");
+    if(i===0||i===4) label(g,"×",x0+i*cw+cw/2,y0+cw/2,C.vermelho,"center",18,"600");
+    label(g,String(i+1), x0+i*cw+cw/2, y0+cw+9, C.cinza,"center",10);
+  }
+  const pE=softmax(pgTh[1])[1];
+  [1,3].forEach(i=>{
+    const cx=x0+i*cw+cw/2, cy=y0+cw+26;
+    g.strokeStyle=C.laranja; g.lineCap="round";
+    g.lineWidth=1.5+7*(1-pE); g.beginPath(); g.moveTo(cx-5,cy); g.lineTo(cx-17,cy); g.stroke();
+    g.lineWidth=1.5+7*pE;     g.beginPath(); g.moveTo(cx+5,cy); g.lineTo(cx+17,cy); g.stroke();
+  });
+  g.lineCap="butt";
+  label(g,"espessura = π(ação | casa cinza)   ·   π(Leste) = "+fmt(pE), x0, y0+cw+46, C.cinza,"left",11);
+
+  const padL=46,padR=16,top=y0+cw+62,bot=h-30;
+  axes(g,padL,top,w-padR,bot);
+  if(hist3.length<2){
+    label(g,"Clique em “Treinar / pausar”.",(padL+w-padR)/2,(top+bot)/2,C.cinza,"center",13);
+    return;
+  }
+  let ymax=10;
+  hist3.forEach(d=>{ ymax=Math.max(ymax,d.pg,d.ql); });
+  const X=i=>padL+i/(hist3.length-1)*(w-padL-padR);
+  const Y=v=>bot-(v/ymax)*(bot-top);
+  g.strokeStyle=C.verde; g.setLineDash([4,3]); g.lineWidth=1.5;
+  g.beginPath(); g.moveTo(padL,Y(3.5)); g.lineTo(w-padR,Y(3.5)); g.stroke(); g.setLineDash([]);
+  label(g,"3,5 = ótimo com π = 0,5/0,5", w-padR-4, Y(3.5)-10, C.verde,"right",10);
+  const line=(key,col)=>{
+    g.strokeStyle=col; g.lineWidth=2; g.beginPath();
+    hist3.forEach((d,i)=> i? g.lineTo(X(i),Y(d[key])) : g.moveTo(X(i),Y(d[key])));
+    g.stroke();
+  };
+  line("ql",C.azulc); line("pg",C.laranja);
+  label(g,"passos por episódio",padL,top-10,C.cinza,"left",11,"600");
+  label(g,"0",padL-8,bot,C.cinza,"right",11);
+  label(g,String(Math.round(ymax)),padL-8,top,C.cinza,"right",11);
+  label(g,"lotes de treino →",(padL+w-padR)/2,bot+16,C.cinza,"center",11);
+}
+$("run3").onclick=()=>{
+  running3=!running3;
+  if(running3){ timer3=setInterval(tick3,60); } else { clearInterval(timer3); }
+};
+$("reset3").onclick=()=>{
+  clearInterval(timer3); running3=false;
+  pgTh=[[0,0],[0,0],[0,0]]; qlQ=[[0,0],[0,0],[0,0]]; it3=0; hist3=[];
+  $("s3-it").textContent="0"; $("s3-p").textContent="0,50";
+  $("s3-lpg").textContent="—"; $("s3-lql").textContent="—";
+  draw3();
+};
+[["alpha3","a3",3],["eps3","e3",2],["batch3","bt",-1]].forEach(t=>{
+  $(t[0]).addEventListener("input",()=>{
+    $("l-"+t[1]).textContent = t[2]<0 ? $(t[0]).value : fmt(+$(t[0]).value,t[2]);
+  });
+});
+
+/* ================= 04 — estimadores de n passos ================= */
+const L4=24;
+let critShape=null;                       // erro do crítico normalizado (desvio 1)
+function rollCritic(){
+  const raw=[]; for(let i=0;i<=L4;i++) raw.push(gauss());
+  const m=raw.reduce((a,b)=>a+b,0)/raw.length;
+  const v=Math.sqrt(raw.reduce((a,b)=>a+(b-m)*(b-m),0)/raw.length)||1;
+  critShape=raw.map(x=>(x-m)/v);
+}
+function draw4(){
+  const {g,w,h}=prep($("c4"));
+  if(!critShape) rollCritic();
+  const sig=+$("sig4").value, gam=+$("gam4").value, e=+$("err4").value;
+  const Vh = critShape.map(x=> e*x);      // V̂(s_i);  o valor verdadeiro é 0
+
+  const bias2=[], vari=[], mse=[];
+  for(let n=1;n<=L4;n++){
+    const b = Math.pow(gam,n)*Vh[n] - Vh[0];
+    let vs=0; for(let k=0;k<n;k++) vs += Math.pow(gam,2*k);
+    const v = sig*sig*vs;
+    bias2.push(b*b); vari.push(v); mse.push(b*b+v);
+  }
+  let best=0; for(let i=1;i<mse.length;i++) if(mse[i]<mse[best]) best=i;
+  $("s4-n").textContent = String(best+1);
+  $("s4-1").textContent = fmt(mse[0]);
+  $("s4-i").textContent = fmt(mse[mse.length-1]);
+
+  const padL=52,padR=16,top=26,bot=h-42;
+  let ymax=0; mse.forEach(v=>ymax=Math.max(ymax,v)); ymax=ymax*1.08+1e-9;
+  const X=n=>padL+(n-1)/(L4-1)*(w-padL-padR);
+  const Y=v=>bot-(Math.min(v,ymax)/ymax)*(bot-top);
+  axes(g,padL,top,w-padR,bot);
+  const curve=(arr,col,lw)=>{
+    g.strokeStyle=col; g.lineWidth=lw||2; g.beginPath();
+    arr.forEach((v,i)=> i? g.lineTo(X(i+1),Y(v)) : g.moveTo(X(i+1),Y(v)));
+    g.stroke();
+  };
+  curve(vari,C.vermelho); curve(bias2,C.ambar); curve(mse,C.azul,2.6);
+  g.fillStyle=C.verde; g.beginPath(); g.arc(X(best+1),Y(mse[best]),5,0,Math.PI*2); g.fill();
+  label(g,"n = "+(best+1), X(best+1)+8, Y(mse[best])-12, C.verde,"left",12,"600");
+  label(g,"erro",padL-8,top,C.cinza,"right",11);
+  label(g,"0",padL-8,bot,C.cinza,"right",11);
+  label(g,"n = 1  (TD)",padL,bot+18,C.cinza,"left",11);
+  label(g,"n = "+L4+"  (Monte Carlo)",w-padR,bot+18,C.cinza,"right",11);
+}
+$("reroll4").onclick=()=>{ rollCritic(); draw4(); };
+[["sig4","sg",1],["err4","er",1],["gam4","gm",2]].forEach(t=>{
+  $(t[0]).addEventListener("input",()=>{
+    $("l-"+t[1]).textContent=fmt(+$(t[0]).value,t[2]);
+    draw4();
+  });
+});
+
+/* ================= arranque ================= */
+function redrawAll(){ draw1(); draw2(); draw3(); draw4(); }
+let rzTimer=null;
+window.addEventListener("resize", ()=>{ clearTimeout(rzTimer); rzTimer=setTimeout(redrawAll,120); });
+redrawAll();
+</script>
+</body>
+</html>

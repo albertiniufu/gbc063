@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mars Rover — processo de recompensa de Markov</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Fira+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --azul:#16324F;      /* tinta primária */
+  --azul-claro:#2E5F8A;
+  --teal:#18808D;
+  --laranja:#E8590C;   /* acento / ação */
+  --ambar:#F2A93B;
+  --verde:#2B9348;
+  --vermelho:#C1121F;
+  --cinza:#5C677D;
+  --papel:#F4F6F8;
+  --carta:#FFFFFF;
+  --linha:#DDE3EA;
+  --sombra:0 1px 2px rgba(22,50,79,.06), 0 8px 24px rgba(22,50,79,.06);
+  --r:10px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--papel);
+  color:var(--azul);
+  font-family:"Fira Sans","TeX Gyre Heros",system-ui,sans-serif;
+  font-size:15px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1180px;margin:0 auto;padding:26px 20px 60px}
+
+/* ---------- cabeçalho ---------- */
+.eyebrow{
+  font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--laranja);margin:0 0 6px;
+}
+h1{
+  font-size:clamp(26px,3.4vw,38px);font-weight:700;letter-spacing:-.02em;
+  margin:0 0 6px;line-height:1.12;
+}
+.dek{margin:0;max-width:66ch;color:var(--cinza);font-size:15.5px}
+.regua{height:3px;width:56px;background:var(--laranja);border-radius:2px;margin:16px 0 22px}
+
+/* ---------- barra de controles ---------- */
+.controles{
+  background:var(--carta);border:1px solid var(--linha);border-radius:var(--r);
+  box-shadow:var(--sombra);padding:14px 18px;margin-bottom:18px;
+  display:flex;flex-wrap:wrap;gap:22px;align-items:flex-end;
+}
+.campo{display:flex;flex-direction:column;gap:5px;min-width:190px;flex:1 1 190px}
+.campo label{
+  font-size:10.5px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--cinza);display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+}
+.campo label b{
+  font-family:"Fira Mono",ui-monospace,monospace;font-size:14px;font-weight:500;
+  color:var(--azul);font-variant-numeric:tabular-nums;letter-spacing:0;
+}
+input[type=range]{
+  -webkit-appearance:none;appearance:none;width:100%;height:22px;background:transparent;margin:0;cursor:pointer;
+}
+input[type=range]::-webkit-slider-runnable-track{height:4px;background:var(--linha);border-radius:2px}
+input[type=range]::-moz-range-track{height:4px;background:var(--linha);border-radius:2px}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:16px;height:16px;border-radius:50%;
+  background:var(--laranja);border:2px solid #fff;box-shadow:0 0 0 1px var(--laranja);
+  margin-top:-6px;
+}
+input[type=range]::-moz-range-thumb{
+  width:14px;height:14px;border-radius:50%;background:var(--laranja);
+  border:2px solid #fff;box-shadow:0 0 0 1px var(--laranja);
+}
+input[type=range]:focus-visible{outline:2px solid var(--azul-claro);outline-offset:4px;border-radius:4px}
+
+.botoes{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+button{
+  font-family:inherit;font-size:13.5px;font-weight:500;
+  padding:8px 15px;border-radius:7px;border:1px solid var(--linha);
+  background:var(--carta);color:var(--azul);cursor:pointer;
+  transition:background .12s,border-color .12s,color .12s;
+}
+button:hover{background:#EEF2F6;border-color:#C6D0DA}
+button:focus-visible{outline:2px solid var(--azul-claro);outline-offset:2px}
+button.primario{background:var(--laranja);border-color:var(--laranja);color:#fff}
+button.primario:hover{background:#CF4F0A;border-color:#CF4F0A}
+.contador{
+  font-family:"Fira Mono",monospace;font-size:13px;color:var(--cinza);
+  font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+.contador b{color:var(--azul);font-weight:700;font-size:15px}
+
+/* ---------- cartões ---------- */
+.grade{display:grid;grid-template-columns:repeat(12,1fr);gap:18px}
+.carta{
+  background:var(--carta);border:1px solid var(--linha);border-radius:var(--r);
+  box-shadow:var(--sombra);padding:18px 20px;min-width:0;
+}
+.carta > h2{
+  font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--cinza);margin:0 0 2px;
+}
+.carta > .sub{margin:0 0 14px;font-size:13px;color:var(--cinza)}
+.span12{grid-column:span 12}
+.span7{grid-column:span 7}
+.span5{grid-column:span 5}
+
+/* ---------- diagrama ---------- */
+.palco{width:100%;overflow-x:auto;overflow-y:hidden}
+svg{display:block;width:100%;height:auto}
+#chain{min-width:700px}
+.st-circulo{fill:#EAF0F6;stroke:var(--azul);stroke-width:2.2;transition:fill .15s,stroke .15s}
+.st-alvo{cursor:pointer}
+.st-alvo:focus-visible{outline:none}
+.st-alvo:focus-visible .st-circulo{stroke:var(--azul-claro);stroke-width:3.4}
+.st-alvo:hover .st-circulo{fill:#DDE7F1}
+.sel .st-circulo{fill:#FDE3D2;stroke:var(--laranja);stroke-width:3}
+.contrib .st-circulo{stroke:var(--teal);stroke-width:3;fill:#DFF0F1}
+.st-rot{font-family:"Fira Mono",monospace;font-size:13px;fill:var(--azul);font-weight:500}
+.barra{fill:var(--azul-claro);transition:y .25s ease,height .25s ease,fill .15s}
+.barra.sel{fill:var(--laranja)}
+.alvo-linha{stroke:var(--cinza);stroke-width:1.6;stroke-dasharray:4 3}
+.val-rot{
+  font-family:"Fira Mono",monospace;font-size:12.5px;fill:var(--azul);
+  font-weight:500;font-variant-numeric:tabular-nums;
+}
+.rec-rot{font-family:"Fira Mono",monospace;font-size:11.5px;font-weight:500}
+.arco{fill:none;stroke:#B9C4D0;stroke-width:1.6}
+.arco.aceso{stroke:var(--teal);stroke-width:2.8}
+.p-rot{font-family:"Fira Mono",monospace;font-size:10.5px;fill:var(--cinza)}
+.p-rot.aceso{fill:var(--teal);font-weight:700}
+.eixo{stroke:var(--linha);stroke-width:1}
+.eixo-rot{font-family:"Fira Mono",monospace;font-size:10px;fill:var(--cinza)}
+.legenda{
+  display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--cinza);
+  margin-top:6px;padding-top:12px;border-top:1px solid var(--linha);
+}
+.legenda span{display:flex;align-items:center;gap:6px}
+.chip{width:11px;height:11px;border-radius:2px;display:inline-block}
+.chip.tracejado{
+  width:16px;height:0;border-top:2px dashed var(--cinza);border-radius:0;
+}
+
+/* ---------- leitura de Bellman ---------- */
+.eq{
+  font-family:"Fira Mono",monospace;font-size:14px;line-height:2.05;
+  font-variant-numeric:tabular-nums;overflow-x:auto;padding-bottom:4px;
+}
+.eq .lin{white-space:nowrap}
+.eq .rot{color:var(--cinza);font-size:11.5px}
+.eq .imed{color:var(--verde)}
+.eq .fut{color:var(--teal)}
+.eq .res{color:var(--laranja);font-weight:700}
+.passo-rec{display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap}
+.passo-rec span{font-size:12.5px;color:var(--cinza)}
+.passo-rec b{
+  font-family:"Fira Mono",monospace;font-size:15px;color:var(--azul);
+  min-width:46px;text-align:center;font-variant-numeric:tabular-nums;
+}
+button.mini{padding:3px 11px;font-size:15px;line-height:1.2;font-family:"Fira Mono",monospace}
+
+/* ---------- avisos ---------- */
+.aviso{
+  border-left:3px solid var(--vermelho);background:#FDF2F2;
+  padding:9px 13px;border-radius:0 6px 6px 0;font-size:13px;margin-top:14px;
+}
+.aviso.ok{border-left-color:var(--verde);background:#F1F9F3}
+.aviso.info{border-left-color:var(--ambar);background:#FFF8EE}
+.oculto{display:none}
+
+/* ---------- episódios ---------- */
+.trilha{
+  display:flex;gap:5px;flex-wrap:wrap;font-family:"Fira Mono",monospace;font-size:12px;
+  max-height:112px;overflow-y:auto;padding:10px;background:var(--papel);
+  border-radius:6px;border:1px solid var(--linha);
+}
+.trilha .vazio{color:var(--cinza);font-family:"Fira Sans",sans-serif}
+.passo{
+  padding:2px 7px;border-radius:4px;background:#E7EDF3;color:var(--azul);white-space:nowrap;
+}
+.passo.premio{background:#DFF3E4;color:#1E6B33;font-weight:700}
+.passo.reticencias{background:none;color:var(--cinza)}
+.placar{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:14px 0 4px}
+.metrica{background:var(--papel);border-radius:7px;padding:10px 12px;border:1px solid var(--linha)}
+.metrica .k{
+  font-size:10px;font-weight:600;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--cinza);display:block;margin-bottom:3px;
+}
+.metrica .v{
+  font-family:"Fira Mono",monospace;font-size:19px;font-weight:500;
+  font-variant-numeric:tabular-nums;display:block;
+}
+.metrica .v.destaque{color:var(--laranja)}
+.metrica .v.alvo{color:var(--teal)}
+
+/* ---------- rodapé ---------- */
+footer{
+  margin-top:34px;padding-top:16px;border-top:1px solid var(--linha);
+  font-size:12.5px;color:var(--cinza);display:flex;justify-content:space-between;
+  gap:14px;flex-wrap:wrap;
+}
+
+@media (max-width:920px){
+  .span7,.span5{grid-column:span 12}
+  .placar{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none !important;animation:none !important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="eyebrow">UFU · Aprendizagem por Reforço · Aula 1</p>
+  <h1>Mars Rover como processo de recompensa de Markov</h1>
+  <p class="dek">Sete posições, transições ruidosas, recompensa em duas pontas. Ajuste o desconto,
+     rode a iteração de Bellman e veja de onde vem cada número.</p>
+  <div class="regua"></div>
+
+  <!-- ================= controles ================= -->
+  <div class="controles">
+    <div class="campo">
+      <label for="gama">Fator de desconto γ <b id="gama-val">0,90</b></label>
+      <input type="range" id="gama" min="0" max="1" step="0.01" value="0.9">
+    </div>
+    <div class="campo">
+      <label for="pmov">Probabilidade de mover p <b id="pmov-val">0,40</b></label>
+      <input type="range" id="pmov" min="0" max="0.5" step="0.02" value="0.4">
+    </div>
+    <div class="botoes">
+      <button id="btn-passo">Um passo</button>
+      <button id="btn-rodar" class="primario">Rodar</button>
+      <button id="btn-zerar">Zerar</button>
+      <span class="contador">iteração <b id="k-val">0</b></span>
+    </div>
+  </div>
+
+  <!-- ================= diagrama ================= -->
+  <div class="grade">
+    <div class="carta span12">
+      <h2>Cadeia e função valor</h2>
+      <p class="sub">A coluna sobre cada estado é <em>V<sub>k</sub>(s)</em>; o traço pontilhado marca o
+         valor exato <em>V*(s)</em>. Clique em um estado para inspecioná-lo.</p>
+      <div class="palco">
+        <svg id="chain" viewBox="0 0 1000 380" role="img"
+             aria-label="Cadeia de Markov de sete estados com colunas de valor"></svg>
+      </div>
+      <div class="legenda">
+        <span><i class="chip" style="background:var(--azul-claro)"></i> V<sub>k</sub>(s) — iteração atual</span>
+        <span><i class="chip" style="background:var(--laranja)"></i> estado selecionado</span>
+        <span><i class="chip tracejado"></i> V*(s) — solução exata</span>
+        <span><i class="chip" style="background:var(--teal)"></i> estados que alimentam o backup</span>
+      </div>
+    </div>
+
+    <!-- ================= leitura de Bellman ================= -->
+    <div class="carta span7">
+      <h2>Equação de Bellman, com os números de agora</h2>
+      <p class="sub" id="bell-sub">Backup do estado selecionado.</p>
+      <div class="eq" id="bell-eq"></div>
+      <div class="passo-rec">
+        <span>Recompensa <span id="rec-estado">R(s₄)</span></span>
+        <button class="mini" id="rec-menos" aria-label="Diminuir recompensa">−</button>
+        <b id="rec-val">0</b>
+        <button class="mini" id="rec-mais" aria-label="Aumentar recompensa">+</button>
+        <button id="rec-reset">Restaurar +1 / +10</button>
+      </div>
+      <div class="aviso info oculto" id="aviso-gama"></div>
+    </div>
+
+    <!-- ================= contração ================= -->
+    <div class="carta span5">
+      <h2>Velocidade de convergência</h2>
+      <p class="sub">Erro máximo ‖V<sub>k</sub> − V*‖<sub>∞</sub> em escala logarítmica.</p>
+      <div class="palco">
+        <svg id="grafico" viewBox="0 0 420 250" role="img"
+             aria-label="Gráfico do erro máximo por iteração em escala logarítmica"></svg>
+      </div>
+      <div class="legenda">
+        <span><i class="chip" style="background:var(--laranja)"></i> erro observado</span>
+        <span><i class="chip" style="background:var(--cinza)"></i> limite teórico γ<sup>k</sup>·erro₀</span>
+      </div>
+    </div>
+
+    <!-- ================= episódios ================= -->
+    <div class="carta span12">
+      <h2>Amostrando episódios</h2>
+      <p class="sub">Sem usar a matriz P para calcular: apenas sorteando trajetórias e somando
+         recompensas descontadas. É assim que os métodos sem modelo trabalham.</p>
+      <div class="botoes" style="margin-bottom:14px">
+        <button id="btn-ep1">Sortear 1 episódio</button>
+        <button id="btn-ep100" class="primario">Sortear 100</button>
+        <button id="btn-ep-zerar">Zerar amostras</button>
+        <span class="contador">saindo de <b id="ep-origem">s₄</b></span>
+      </div>
+      <div class="trilha" id="trilha"><span class="vazio">Nenhum episódio sorteado ainda.</span></div>
+      <div class="placar">
+        <div class="metrica">
+          <span class="k">Retorno do último episódio</span>
+          <span class="v" id="ep-g">—</span>
+        </div>
+        <div class="metrica">
+          <span class="k">Média de <span id="ep-n">0</span> episódios</span>
+          <span class="v destaque" id="ep-media">—</span>
+        </div>
+        <div class="metrica">
+          <span class="k">Valor exato V*(s)</span>
+          <span class="v alvo" id="ep-alvo">—</span>
+        </div>
+      </div>
+      <div class="aviso ok" id="ep-nota" style="margin-top:6px">
+        Sorteie alguns episódios e compare a média com o valor exato.
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <span>Adaptado de CS234 (Emma Brunskill, Stanford) · Prof. Marcelo Keese Albertini · UFU</span>
+    <span>Aula 1 — material de apoio</span>
+  </footer>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   1. MODELO
+   ============================================================ */
+const N = 7;
+const R_PADRAO = [1, 0, 0, 0, 0, 0, 10];
+
+const est = {
+  gama: 0.9,
+  p: 0.4,
+  R: R_PADRAO.slice(),
+  V: new Array(N).fill(0),
+  Vstar: new Array(N).fill(0),
+  k: 0,
+  erros: [],
+  sel: 3,               // índice 0-based do estado selecionado (s4)
+  rodando: false,
+  temporizador: null,
+  divergiu: false,
+  ep: { n: 0, soma: 0, ultimoG: null, trilha: null, truncou: false }
+};
+
+/* Matriz de transição: interior anda p para cada lado, fica com 1-2p.
+   Bordas absorvem o excedente no laço próprio. Sempre normalizada. */
+function matrizP(p) {
+  const P = Array.from({ length: N }, () => new Array(N).fill(0));
+  for (let i = 0; i < N; i++) {
+    const esq = i > 0 ? p : 0;
+    const dir = i < N - 1 ? p : 0;
+    if (esq) P[i][i - 1] = esq;
+    if (dir) P[i][i + 1] = dir;
+    P[i][i] = 1 - esq - dir;
+  }
+  return P;
+}
+
+/* Solução exata de (I - γP)V = R por eliminação com pivotamento parcial. */
+function resolveExato(P, R, g) {
+  if (g >= 0.9995) return null;             // I - P é singular
+  const A = Array.from({ length: N }, (_, i) =>
+    Array.from({ length: N }, (_, j) => (i === j ? 1 : 0) - g * P[i][j]).concat([R[i]])
+  );
+  for (let c = 0; c < N; c++) {
+    let piv = c;
+    for (let r = c + 1; r < N; r++) if (Math.abs(A[r][c]) > Math.abs(A[piv][c])) piv = r;
+    if (Math.abs(A[piv][c]) < 1e-12) return null;
+    [A[c], A[piv]] = [A[piv], A[c]];
+    for (let r = 0; r < N; r++) {
+      if (r === c) continue;
+      const f = A[r][c] / A[c][c];
+      for (let j = c; j <= N; j++) A[r][j] -= f * A[c][j];
+    }
+  }
+  return A.map((lin, i) => lin[N] / A[i][i]);
+}
+
+function passoBellman() {
+  const P = matrizP(est.p), Vn = new Array(N);
+  for (let i = 0; i < N; i++) {
+    let s = 0;
+    for (let j = 0; j < N; j++) s += P[i][j] * est.V[j];
+    Vn[i] = est.R[i] + est.gama * s;
+  }
+  est.V = Vn;
+  est.k++;
+  if (est.Vstar) {
+    let e = 0;
+    for (let i = 0; i < N; i++) e = Math.max(e, Math.abs(est.V[i] - est.Vstar[i]));
+    est.erros.push(e);
+  }
+  est.divergiu = est.V.some(v => !isFinite(v) || Math.abs(v) > 1e12);
+  if (est.divergiu) pausar();
+}
+
+function recalcularExato() {
+  est.Vstar = resolveExato(matrizP(est.p), est.R, est.gama);
+}
+
+function zerarIteracao() {
+  est.V = new Array(N).fill(0);
+  est.k = 0;
+  est.divergiu = false;
+  est.erros = [];
+  if (est.Vstar) {
+    let e = 0;
+    for (let i = 0; i < N; i++) e = Math.max(e, Math.abs(est.Vstar[i]));
+    est.erros.push(e);
+  }
+}
+
+/* ============================================================
+   2. FORMATAÇÃO
+   ============================================================ */
+const nf = (x, d = 2) => {
+  if (!isFinite(x)) return "∞";
+  if (Math.abs(x) >= 1e7) return x.toExponential(1).replace(".", ",");
+  return x.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
+};
+const SUB = ["₁","₂","₃","₄","₅","₆","₇"];
+const nomeEstado = i => "s" + SUB[i];
+
+/* ============================================================
+   3. DIAGRAMA DA CADEIA
+   ============================================================ */
+const svgNS = "http://www.w3.org/2000/svg";
+const chain = document.getElementById("chain");
+const X0 = 78, DX = 141, Y_BASE = 250, H_MAX = 176, Y_TOPO = Y_BASE - H_MAX;
+const xs = i => X0 + i * DX;
+
+function el(tag, attrs, txt) {
+  const n = document.createElementNS(svgNS, tag);
+  for (const a in attrs) n.setAttribute(a, attrs[a]);
+  if (txt !== undefined) n.textContent = txt;
+  return n;
+}
+
+function desenharCadeia() {
+  chain.textContent = "";
+  const P = matrizP(est.p);
+  const sel = est.sel;
+  const vizinhos = new Set();
+  for (let j = 0; j < N; j++) if (P[sel][j] > 0) vizinhos.add(j);
+
+  /* --- escala vertical --- */
+  let vmax = 1;
+  for (let i = 0; i < N; i++) {
+    vmax = Math.max(vmax, Math.abs(est.V[i]));
+    if (est.Vstar) vmax = Math.max(vmax, Math.abs(est.Vstar[i]));
+  }
+  vmax = isFinite(vmax) ? vmax * 1.12 : 1;
+  const alt = v => Math.max(0, Math.min(H_MAX, (Math.abs(v) / vmax) * H_MAX));
+
+  /* --- eixo de referência --- */
+  chain.appendChild(el("line", { class: "eixo", x1: 24, y1: Y_BASE, x2: 976, y2: Y_BASE }));
+  chain.appendChild(el("line", { class: "eixo", x1: 24, y1: Y_TOPO, x2: 976, y2: Y_TOPO,
+                                 "stroke-dasharray": "2 4" }));
+  chain.appendChild(el("text", { class: "eixo-rot", x: 24, y: Y_TOPO - 7 }, nf(vmax, 1)));
+  chain.appendChild(el("text", { class: "eixo-rot", x: 24, y: Y_BASE + 14 }, "0"));
+
+  /* --- arcos de transição (abaixo) --- */
+  for (let i = 0; i < N - 1 && est.p > 0.0001; i++) {
+    const aceso = (i === sel && vizinhos.has(i + 1)) || (i + 1 === sel && vizinhos.has(i));
+    const a = xs(i), b = xs(i + 1), yc = Y_BASE + 66;
+    chain.appendChild(el("path", {
+      class: "arco" + (aceso ? " aceso" : ""),
+      d: `M ${a + 22} ${Y_BASE + 26} Q ${(a + b) / 2} ${yc} ${b - 22} ${Y_BASE + 26}`
+    }));
+    chain.appendChild(el("text", {
+      class: "p-rot" + (aceso ? " aceso" : ""), x: (a + b) / 2, y: yc - 2,
+      "text-anchor": "middle"
+    }, nf(est.p, 2)));
+  }
+  /* laços próprios */
+  for (let i = 0; i < N; i++) {
+    const pp = P[i][i];
+    if (pp <= 0.0001) continue;
+    const aceso = i === sel;
+    const x = xs(i);
+    chain.appendChild(el("path", {
+      class: "arco" + (aceso ? " aceso" : ""),
+      d: `M ${x - 11} ${Y_BASE + 24} C ${x - 26} ${Y_BASE + 58} ${x + 26} ${Y_BASE + 58} ${x + 11} ${Y_BASE + 24}`
+    }));
+    chain.appendChild(el("text", {
+      class: "p-rot" + (aceso ? " aceso" : ""), x: x, y: Y_BASE + 74, "text-anchor": "middle"
+    }, nf(pp, 2)));
+  }
+
+  /* --- colunas de valor, círculos, rótulos --- */
+  for (let i = 0; i < N; i++) {
+    const x = xs(i), v = est.V[i], h = alt(v), ehSel = i === sel;
+
+    // coluna
+    chain.appendChild(el("rect", {
+      class: "barra" + (ehSel ? " sel" : ""), x: x - 24, width: 48,
+      y: Y_BASE - h, height: h, rx: 3
+    }));
+
+    // marcador de V*
+    if (est.Vstar) {
+      const hs = alt(est.Vstar[i]);
+      chain.appendChild(el("line", {
+        class: "alvo-linha", x1: x - 31, x2: x + 31, y1: Y_BASE - hs, y2: Y_BASE - hs
+      }));
+    }
+
+    // rótulo numérico de V_k
+    chain.appendChild(el("text", {
+      class: "val-rot", x: x, y: Y_BASE - h - 9, "text-anchor": "middle"
+    }, nf(v, 2)));
+
+    // grupo clicável: círculo + nome
+    const g = el("g", {
+      class: "st-alvo" + (ehSel ? " sel" : (vizinhos.has(i) ? " contrib" : "")),
+      tabindex: "0", role: "button",
+      "aria-label": `Estado ${i + 1}, valor ${nf(v, 2)}`
+    });
+    g.appendChild(el("circle", { class: "st-circulo", cx: x, cy: Y_BASE + 1, r: 21 }));
+    g.appendChild(el("text", { class: "st-rot", x: x, y: Y_BASE + 6, "text-anchor": "middle" },
+                    nomeEstado(i)));
+    g.addEventListener("click", () => selecionar(i));
+    g.addEventListener("keydown", e => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selecionar(i); }
+    });
+    chain.appendChild(g);
+
+    // recompensa
+    const r = est.R[i];
+    const cor = r > 0 ? "var(--verde)" : (r < 0 ? "var(--vermelho)" : "var(--cinza)");
+    chain.appendChild(el("text", {
+      class: "rec-rot", x: x, y: Y_BASE + 108, "text-anchor": "middle", fill: cor
+    }, "R = " + (r > 0 ? "+" : "") + r));
+  }
+}
+
+/* ============================================================
+   4. LEITURA DA EQUAÇÃO DE BELLMAN
+   ============================================================ */
+function desenharBellman() {
+  const i = est.sel, P = matrizP(est.p), cx = document.getElementById("bell-eq");
+  const viz = [];
+  for (let j = 0; j < N; j++) if (P[i][j] > 0) viz.push(j);
+
+  const somaFut = viz.reduce((a, j) => a + P[i][j] * est.V[j], 0);
+  const novo = est.R[i] + est.gama * somaFut;
+
+  const termos = viz.map(j =>
+    `${nf(P[i][j], 2)}·${nf(est.V[j], 2)}`).join(" + ");
+  const nums = viz.map(j => `V(${nomeEstado(j)})`).join(", ");
+
+  cx.innerHTML =
+    `<div class="lin"><span class="rot">simbólico</span> &nbsp; ` +
+    `V(${nomeEstado(i)}) = R(${nomeEstado(i)}) + γ · Σ P(s′|${nomeEstado(i)})·V(s′)</div>` +
+    `<div class="lin"><span class="rot">números &nbsp;</span> &nbsp; ` +
+    `V(${nomeEstado(i)}) = <span class="imed">${nf(est.R[i], 2)}</span> + ` +
+    `<span class="fut">${nf(est.gama, 2)} · (${termos})</span></div>` +
+    `<div class="lin"><span class="rot">resultado</span> &nbsp; ` +
+    `V<sub>${est.k + 1}</sub>(${nomeEstado(i)}) = <span class="res">${nf(novo, 3)}</span>` +
+    (est.Vstar ? `&nbsp;&nbsp;<span class="rot">exato: ${nf(est.Vstar[i], 3)}</span>` : "") +
+    `</div>`;
+
+  document.getElementById("bell-sub").textContent =
+    `Backup de ${nomeEstado(i)}: puxa valor de ${nums}.`;
+  document.getElementById("rec-estado").textContent = `R(${nomeEstado(i)})`;
+  document.getElementById("rec-val").textContent = est.R[i];
+  document.getElementById("ep-origem").textContent = nomeEstado(i);
+}
+
+/* ============================================================
+   5. GRÁFICO DE CONTRAÇÃO
+   ============================================================ */
+const graf = document.getElementById("grafico");
+const GW = 420, GH = 250, ML = 46, MR = 12, MT = 14, MB = 34;
+
+function desenharGrafico() {
+  graf.textContent = "";
+  const w = GW - ML - MR, h = GH - MT - MB;
+
+  if (!est.Vstar) {
+    graf.appendChild(el("text", {
+      x: GW / 2, y: GH / 2 - 6, "text-anchor": "middle", class: "eixo-rot"
+    }, "Sem valor exato para comparar."));
+    graf.appendChild(el("text", {
+      x: GW / 2, y: GH / 2 + 12, "text-anchor": "middle", class: "eixo-rot"
+    }, "Com γ = 1 a série não converge."));
+    return;
+  }
+
+  const dados = est.erros.map(e => Math.max(e, 1e-14));
+  const kmax = Math.max(24, dados.length - 1);
+  const topo = 2, base = -12;                       // expoentes de 10
+  const px = k => ML + (k / kmax) * w;
+  const py = e => {
+    const l = Math.log10(e);
+    return MT + (1 - (l - base) / (topo - base)) * h;
+  };
+
+  // grade horizontal por década
+  for (let d = topo; d >= base; d -= 2) {
+    const y = py(Math.pow(10, d));
+    graf.appendChild(el("line", { class: "eixo", x1: ML, x2: ML + w, y1: y, y2: y }));
+    graf.appendChild(el("text", {
+      class: "eixo-rot", x: ML - 6, y: y + 3.5, "text-anchor": "end"
+    }, "10" + supIndice(d)));
+  }
+  graf.appendChild(el("line", { class: "eixo", x1: ML, x2: ML, y1: MT, y2: MT + h }));
+  graf.appendChild(el("line", { class: "eixo", x1: ML, x2: ML + w, y1: MT + h, y2: MT + h }));
+  for (let k = 0; k <= kmax; k += Math.ceil(kmax / 6)) {
+    graf.appendChild(el("text", {
+      class: "eixo-rot", x: px(k), y: GH - 14, "text-anchor": "middle"
+    }, k));
+  }
+  graf.appendChild(el("text", {
+    class: "eixo-rot", x: ML + w / 2, y: GH - 2, "text-anchor": "middle"
+  }, "iteração k"));
+
+  // limite teórico γ^k · erro₀
+  if (dados.length && est.gama > 0) {
+    const e0 = dados[0];
+    let d = "";
+    for (let k = 0; k <= kmax; k++) {
+      const e = Math.max(e0 * Math.pow(est.gama, k), 1e-14);
+      d += (k ? " L " : "M ") + px(k) + " " + py(e);
+    }
+    graf.appendChild(el("path", {
+      d, fill: "none", stroke: "var(--cinza)", "stroke-width": 1.4, "stroke-dasharray": "5 4"
+    }));
+  }
+
+  // erro observado
+  if (dados.length > 1) {
+    let d = "";
+    dados.forEach((e, k) => { d += (k ? " L " : "M ") + px(k) + " " + py(e); });
+    graf.appendChild(el("path", {
+      d, fill: "none", stroke: "var(--laranja)", "stroke-width": 2.2,
+      "stroke-linejoin": "round"
+    }));
+    const ult = dados.length - 1;
+    graf.appendChild(el("circle", {
+      cx: px(ult), cy: py(dados[ult]), r: 3.4, fill: "var(--laranja)"
+    }));
+  }
+}
+function supIndice(n) {
+  const m = { "-": "⁻", 0: "⁰", 1: "¹", 2: "²", 3: "³", 4: "⁴", 5: "⁵",
+              6: "⁶", 7: "⁷", 8: "⁸", 9: "⁹" };
+  return String(n).split("").map(c => m[c] || c).join("");
+}
+
+/* ============================================================
+   6. EPISÓDIOS AMOSTRADOS
+   ============================================================ */
+function sortearEpisodio(inicio) {
+  const P = matrizP(est.p);
+  const LIM = est.gama >= 0.9995 ? 250 : 3000;
+  let s = inicio, G = 0, desc = 1, t = 0;
+  const trilha = [];
+  while (t < LIM && desc > 1e-9) {
+    G += desc * est.R[s];
+    if (trilha.length < 40) trilha.push({ s, r: est.R[s] });
+    // sorteio do próximo estado
+    let u = Math.random(), acc = 0, prox = s;
+    for (let j = 0; j < N; j++) { acc += P[s][j]; if (u <= acc) { prox = j; break; } }
+    s = prox; desc *= est.gama; t++;
+  }
+  return { G, trilha, truncou: t >= LIM };
+}
+
+function rodarEpisodios(quantos) {
+  let ultimo = null;
+  for (let i = 0; i < quantos; i++) {
+    ultimo = sortearEpisodio(est.sel);
+    est.ep.soma += ultimo.G;
+    est.ep.n++;
+  }
+  est.ep.ultimoG = ultimo.G;
+  est.ep.trilha = ultimo.trilha;
+  est.ep.truncou = ultimo.truncou;
+  desenharEpisodios();
+}
+
+function zerarEpisodios() {
+  est.ep = { n: 0, soma: 0, ultimoG: null, trilha: null, truncou: false };
+  desenharEpisodios();
+}
+
+function desenharEpisodios() {
+  const tr = document.getElementById("trilha");
+  if (!est.ep.trilha) {
+    tr.innerHTML = '<span class="vazio">Nenhum episódio sorteado ainda.</span>';
+  } else {
+    tr.innerHTML = est.ep.trilha.map(p =>
+      `<span class="passo${p.r !== 0 ? " premio" : ""}">${nomeEstado(p.s)}${
+        p.r !== 0 ? " " + (p.r > 0 ? "+" : "") + p.r : ""}</span>`
+    ).join("") + '<span class="passo reticencias">…</span>';
+  }
+  document.getElementById("ep-g").textContent =
+    est.ep.ultimoG === null ? "—" : nf(est.ep.ultimoG, 2);
+  document.getElementById("ep-n").textContent = est.ep.n;
+  document.getElementById("ep-media").textContent =
+    est.ep.n ? nf(est.ep.soma / est.ep.n, 2) : "—";
+  document.getElementById("ep-alvo").textContent =
+    est.Vstar ? nf(est.Vstar[est.sel], 2) : "não definido";
+
+  const nota = document.getElementById("ep-nota");
+  if (!est.ep.n) {
+    nota.className = "aviso ok";
+    nota.textContent = "Sorteie alguns episódios e compare a média com o valor exato.";
+  } else if (!est.Vstar) {
+    nota.className = "aviso";
+    nota.textContent = "Com γ = 1 os episódios foram truncados em 250 passos: o retorno " +
+      "não converge e a média cresce sem limite.";
+  } else {
+    const m = est.ep.soma / est.ep.n, v = est.Vstar[est.sel];
+    const dif = Math.abs(m - v);
+    nota.className = "aviso ok";
+    nota.textContent = `Erro da média amostral: ${nf(dif, 3)}. ` +
+      (est.ep.n < 30
+        ? "Poucas amostras ainda — o erro cai aproximadamente com 1/√n."
+        : "Isto é avaliação de Monte Carlo: o mesmo número, sem tocar na matriz P.");
+  }
+}
+
+/* ============================================================
+   7. AVISOS E SINCRONIZAÇÃO
+   ============================================================ */
+function atualizarAvisos() {
+  const av = document.getElementById("aviso-gama");
+  if (est.divergiu) {
+    av.className = "aviso";
+    av.textContent = "Os valores divergiram. Com γ = 1 e horizonte infinito a soma " +
+      "de recompensas não é limitada — por isso descontamos o futuro.";
+  } else if (!est.Vstar) {
+    av.className = "aviso info";
+    av.textContent = "Com γ = 1 a matriz I − γP é singular: não existe solução exata única. " +
+      "Rode a iteração e veja os valores crescerem sem parar.";
+  } else if (est.gama === 0) {
+    av.className = "aviso info";
+    av.textContent = "Com γ = 0 o agente é míope: V(s) = R(s) e a iteração converge em um " +
+      "único passo.";
+  } else {
+    av.className = "aviso info oculto";
+  }
+}
+
+function selecionar(i) {
+  est.sel = i;
+  zerarEpisodios();
+  desenharCadeia();
+  desenharBellman();
+}
+
+function redesenhar() {
+  desenharCadeia();
+  desenharBellman();
+  desenharGrafico();
+  atualizarAvisos();
+  document.getElementById("k-val").textContent = est.k;
+  document.getElementById("ep-alvo").textContent =
+    est.Vstar ? nf(est.Vstar[est.sel], 2) : "não definido";
+}
+
+function reiniciarTudo() {
+  recalcularExato();
+  zerarIteracao();
+  zerarEpisodios();
+  redesenhar();
+}
+
+/* ============================================================
+   8. EXECUÇÃO AUTOMÁTICA
+   ============================================================ */
+function pausar() {
+  est.rodando = false;
+  clearInterval(est.temporizador);
+  document.getElementById("btn-rodar").textContent = "Rodar";
+}
+function alternarRodar() {
+  if (est.rodando) { pausar(); return; }
+  est.rodando = true;
+  document.getElementById("btn-rodar").textContent = "Pausar";
+  est.temporizador = setInterval(() => {
+    passoBellman();
+    redesenhar();
+    const e = est.erros[est.erros.length - 1];
+    if ((est.Vstar && e < 1e-10) || est.k > 400) pausar();
+  }, 260);
+}
+
+/* ============================================================
+   9. LIGAÇÕES DE INTERFACE
+   ============================================================ */
+const slGama = document.getElementById("gama");
+const slP = document.getElementById("pmov");
+
+slGama.addEventListener("input", () => {
+  est.gama = parseFloat(slGama.value);
+  document.getElementById("gama-val").textContent = nf(est.gama, 2);
+  pausar(); reiniciarTudo();
+});
+slP.addEventListener("input", () => {
+  est.p = parseFloat(slP.value);
+  document.getElementById("pmov-val").textContent = nf(est.p, 2);
+  pausar(); reiniciarTudo();
+});
+
+document.getElementById("btn-passo").addEventListener("click", () => {
+  pausar(); passoBellman(); redesenhar();
+});
+document.getElementById("btn-rodar").addEventListener("click", alternarRodar);
+document.getElementById("btn-zerar").addEventListener("click", () => {
+  pausar(); zerarIteracao(); redesenhar();
+});
+
+document.getElementById("rec-mais").addEventListener("click", () => {
+  est.R[est.sel] = Math.min(20, est.R[est.sel] + 1); pausar(); reiniciarTudo();
+});
+document.getElementById("rec-menos").addEventListener("click", () => {
+  est.R[est.sel] = Math.max(-20, est.R[est.sel] - 1); pausar(); reiniciarTudo();
+});
+document.getElementById("rec-reset").addEventListener("click", () => {
+  est.R = R_PADRAO.slice(); pausar(); reiniciarTudo();
+});
+
+document.getElementById("btn-ep1").addEventListener("click", () => rodarEpisodios(1));
+document.getElementById("btn-ep100").addEventListener("click", () => rodarEpisodios(100));
+document.getElementById("btn-ep-zerar").addEventListener("click", zerarEpisodios);
+
+/* atalhos de teclado para uso em aula */
+document.addEventListener("keydown", e => {
+  const t = e.target;
+  if (t.tagName === "INPUT" || t.tagName === "BUTTON") return;
+  if (t.closest && t.closest(".st-alvo")) return;
+  if (e.key === "ArrowRight") { pausar(); passoBellman(); redesenhar(); }
+  if (e.key === " ") { e.preventDefault(); alternarRodar(); }
+  if (e.key === "r" || e.key === "R") { pausar(); zerarIteracao(); redesenhar(); }
+});
+
+/* início */
+reiniciarTudo();
+</script>
+</body>
+</html>

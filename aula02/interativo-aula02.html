@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aula 2 — Laboratório interativo: MDPs, Iteração de Valor e de Política</title>
+<style>
+:root{
+  --azul:#16324F; --azul-claro:#2E5F8A; --teal:#18808D; --laranja:#E8590C;
+  --ambar:#F2A93B; --vermelho:#C1121F; --verde:#2B9348; --cinza:#5C677D;
+  --fundo:#FAFBFC; --fundo-quiz:#FFF8EE; --borda:#E3E8EF;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{
+  font-family:'Fira Sans','Segoe UI',system-ui,-apple-system,sans-serif;
+  background:#F2F4F7; color:#1c2430; line-height:1.5; padding-bottom:4rem;
+}
+code,.mono{font-family:'Fira Mono',ui-monospace,'Cascadia Mono',Consolas,monospace;}
+
+/* ---------- cabeçalho ---------- */
+header{
+  background:var(--azul); color:#fff; padding:2.2rem 1.5rem 2.6rem;
+  position:relative; overflow:hidden;
+}
+header::after{ /* grafo decorativo, eco da capa do deck */
+  content:""; position:absolute; right:-40px; top:-30px; width:340px; height:220px;
+  background-image:radial-gradient(circle 14px at 60px 120px, transparent 12px, rgba(255,255,255,.16) 13px, rgba(255,255,255,.16) 14px, transparent 15px),
+                   radial-gradient(circle 14px at 150px 60px, transparent 12px, rgba(255,255,255,.16) 13px, rgba(255,255,255,.16) 14px, transparent 15px),
+                   radial-gradient(circle 14px at 240px 140px, transparent 12px, rgba(255,255,255,.16) 13px, rgba(255,255,255,.16) 14px, transparent 15px),
+                   radial-gradient(circle 14px at 290px 40px, transparent 12px, rgba(255,255,255,.16) 13px, rgba(255,255,255,.16) 14px, transparent 15px);
+  pointer-events:none;
+}
+header .wrap{max-width:1080px; margin:0 auto;}
+header .curso{color:var(--ambar); font-size:.8rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase;}
+header h1{font-size:clamp(1.4rem,3.4vw,2.1rem); font-weight:700; margin:.45rem 0 .3rem; max-width:46ch;}
+header .sub{color:#cdd9e6; font-size:.95rem; max-width:70ch;}
+header .filete{width:52px; height:4px; background:var(--laranja); margin-top:1rem; border-radius:2px;}
+header .credito{margin-top:.9rem; font-size:.78rem; color:#9db3c8;}
+
+/* ---------- abas ---------- */
+nav.abas{
+  max-width:1080px; margin:-1.4rem auto 0; padding:0 1.5rem; display:flex; gap:.5rem;
+  position:relative; z-index:2; flex-wrap:wrap;
+}
+nav.abas button{
+  border:none; cursor:pointer; font:inherit; font-weight:600; font-size:.9rem;
+  padding:.7rem 1.15rem; border-radius:9px 9px 0 0; background:#dfe6ee; color:var(--cinza);
+  transition:background .15s,color .15s;
+}
+nav.abas button:hover{background:#eef2f7;}
+nav.abas button.ativa{background:#fff; color:var(--azul); box-shadow:0 -2px 8px rgba(22,50,79,.10);}
+nav.abas button:focus-visible{outline:3px solid var(--ambar); outline-offset:2px;}
+
+main{max-width:1080px; margin:0 auto; background:#fff; border-radius:0 12px 12px 12px;
+     box-shadow:0 4px 22px rgba(22,50,79,.08); padding:1.6rem 1.5rem 2rem;}
+section.painel{display:none;}
+section.painel.ativa{display:block; animation:surge .25s ease;}
+@keyframes surge{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;}}
+@media (prefers-reduced-motion:reduce){ *{animation:none!important; transition:none!important;} }
+
+h2{color:var(--azul); font-size:1.25rem; margin-bottom:.2rem;}
+.subtitulo{color:var(--cinza); font-size:.9rem; margin-bottom:1.1rem;}
+
+/* ---------- caixas temáticas (eco do .sty) ---------- */
+.caixa{border-left:4px solid; border-radius:6px; padding:.75rem .95rem; margin:.9rem 0;
+       font-size:.9rem; background:var(--fundo);}
+.caixa b.rotulo{display:block; font-size:.8rem; letter-spacing:.02em; margin-bottom:.25rem;}
+.caixa.ideia{border-color:var(--ambar); background:#FEF6E7;}
+.caixa.ideia b.rotulo{color:var(--laranja);}
+.caixa.alerta{border-color:var(--vermelho); background:#FCF1F2;}
+.caixa.alerta b.rotulo{color:var(--vermelho);}
+.caixa.def{border-color:var(--teal); background:#F0F7F8;}
+.caixa.def b.rotulo{color:var(--teal);}
+.caixa.quiz{border:1.5px solid var(--ambar); border-left:4px solid var(--ambar); background:var(--fundo-quiz);}
+.caixa.quiz b.rotulo{color:var(--laranja);}
+
+/* ---------- controles ---------- */
+.controles{display:flex; flex-wrap:wrap; gap:.65rem 1.2rem; align-items:center;
+           background:var(--fundo); border:1px solid var(--borda); border-radius:9px;
+           padding:.8rem 1rem; margin:.8rem 0 1.1rem;}
+.controles .grupo{display:flex; align-items:center; gap:.5rem;}
+.controles label{font-size:.82rem; font-weight:600; color:var(--cinza);}
+button.acao{
+  font:inherit; font-weight:600; font-size:.86rem; border:none; cursor:pointer;
+  border-radius:7px; padding:.5rem .95rem; transition:filter .12s;
+}
+button.acao:focus-visible{outline:3px solid var(--ambar); outline-offset:2px;}
+button.acao:hover{filter:brightness(1.08);}
+button.acao:disabled{opacity:.45; cursor:not-allowed;}
+.btn-prim{background:var(--laranja); color:#fff;}
+.btn-sec{background:var(--azul-claro); color:#fff;}
+.btn-neutro{background:#e6ebf1; color:var(--azul);}
+input[type=range]{accent-color:var(--laranja); width:130px;}
+select{font:inherit; font-size:.85rem; padding:.32rem .4rem; border-radius:6px;
+       border:1px solid var(--borda); background:#fff; color:var(--azul);}
+.medidor{font-size:.85rem; color:var(--azul); font-weight:700; min-width:3.2ch;
+         font-variant-numeric:tabular-nums;}
+
+/* ---------- palco da cadeia ---------- */
+.palco{border:1px solid var(--borda); border-radius:10px; padding:.6rem .4rem .2rem; overflow-x:auto;}
+.palco svg{display:block; margin:0 auto;}
+.estado-circ{fill:#EDF1F6; stroke:var(--azul); stroke-width:2.6; cursor:pointer; transition:fill .2s;}
+.estado-circ.recompensado{fill:#FBE3D3; stroke:var(--laranja);}
+.estado-circ.selecionado{stroke:var(--ambar); stroke-width:4;}
+.estado-rotulo{font-size:15px; font-weight:600; fill:var(--azul); pointer-events:none; text-anchor:middle;}
+.valor-num{font-size:12.5px; font-weight:700; fill:var(--azul); text-anchor:middle; font-variant-numeric:tabular-nums;}
+.barra-valor{fill:var(--teal); opacity:.85; transition:height .3s, y .3s;}
+.seta-pol{stroke:var(--laranja); stroke-width:3; fill:none; marker-end:url(#ponta);}
+.recomp-tag{font-size:11.5px; font-weight:700; fill:var(--verde); text-anchor:middle;}
+.legenda-mini{font-size:.76rem; color:var(--cinza); text-align:center; padding:.35rem 0 .5rem;}
+
+/* ---------- grade de dois blocos ---------- */
+.duplo{display:grid; grid-template-columns:1fr 1fr; gap:1rem; align-items:start;}
+@media(max-width:860px){.duplo{grid-template-columns:1fr;}}
+.bloco{border:1px solid var(--borda); border-radius:10px; padding:.9rem 1rem;}
+.bloco h3{font-size:.95rem; color:var(--azul); margin-bottom:.5rem;}
+.bloco h3 .tag{font-size:.7rem; background:var(--azul); color:#fff; border-radius:4px;
+               padding:.12rem .45rem; vertical-align:2px; margin-left:.4rem;}
+
+/* anatomia do backup */
+.anatomia{font-size:.86rem;}
+.anatomia .linha{padding:.3rem .45rem; border-radius:6px; margin:.22rem 0;
+                 display:flex; justify-content:space-between; gap:.8rem; align-items:baseline;
+                 font-variant-numeric:tabular-nums;}
+.anatomia .linha .expr{flex:1;}
+.anatomia .linha .num{font-weight:700; white-space:nowrap;}
+.anatomia .a1{background:#EDF1F6;}
+.anatomia .a2{background:#FBE9DD;}
+.anatomia .vencedor{outline:2px solid var(--laranja);}
+.anatomia .max{background:var(--azul); color:#fff; font-weight:700;}
+.anatomia .max .num{color:var(--ambar);}
+.formula{background:var(--fundo); border:1px dashed var(--borda); border-radius:8px;
+         padding:.55rem .8rem; font-size:.88rem; color:var(--azul); margin:.5rem 0 .8rem;
+         overflow-x:auto; white-space:nowrap;}
+.formula i{color:var(--laranja); font-style:normal; font-weight:700;}
+
+/* gráfico de convergência / histograma */
+canvas{width:100%; height:auto; display:block;}
+.grafico-caixa{border:1px solid var(--borda); border-radius:10px; padding:.7rem .8rem .4rem;}
+.grafico-caixa h3{font-size:.9rem; color:var(--azul); margin-bottom:.3rem;}
+.grafico-legenda{font-size:.76rem; color:var(--cinza); padding:.25rem 0 .3rem;}
+
+/* tabela de políticas (PI) */
+table.hist-pol{width:100%; border-collapse:collapse; font-size:.84rem; font-variant-numeric:tabular-nums;}
+table.hist-pol th{color:var(--cinza); font-weight:600; text-align:left; padding:.3rem .45rem;
+                  border-bottom:2px solid var(--borda); font-size:.78rem;}
+table.hist-pol td{padding:.3rem .45rem; border-bottom:1px solid var(--borda);}
+table.hist-pol tr.atual{background:#FEF6E7;}
+.pol-str{letter-spacing:.14em; font-weight:700; color:var(--laranja);}
+.melhora-sim{color:var(--verde); font-weight:700;}
+.melhora-nao{color:var(--cinza);}
+
+.destaque-num{color:var(--laranja); font-weight:700;}
+.rodape{max-width:1080px; margin:1.4rem auto 0; padding:0 1.5rem; font-size:.78rem; color:var(--cinza);}
+.rodape a{color:var(--azul-claro);}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="curso">Aprendizagem por Reforço · UFU · Aula 2</div>
+    <h1>Laboratório interativo: decidir bem com um modelo do mundo</h1>
+    <p class="sub">Companheiro dos slides da Aula 2. Manipule o MDP do <em>Mars Rover</em> e observe,
+    passo a passo, a iteração de valor contrair, a iteração de política melhorar monotonicamente
+    e o Monte Carlo estimar por amostras.</p>
+    <div class="filete"></div>
+    <p class="credito">Prof. Marcelo Keese Albertini — Universidade Federal de Uberlândia ·
+    adaptado de Emma Brunskill, CS234 (Stanford)</p>
+  </div>
+</header>
+
+<nav class="abas" role="tablist" aria-label="Painéis do laboratório">
+  <button class="ativa" role="tab" aria-selected="true" data-alvo="p-vi">1 · Iteração de Valor</button>
+  <button role="tab" aria-selected="false" data-alvo="p-pi">2 · Iteração de Política</button>
+  <button role="tab" aria-selected="false" data-alvo="p-mc">3 · Retornos amostrais</button>
+</nav>
+
+<main>
+
+<!-- ============================ PAINEL 1: VI ============================ -->
+<section id="p-vi" class="painel ativa" role="tabpanel">
+  <h2>Iteração de Valor</h2>
+  <p class="subtitulo">Cada clique em <b>Backup</b> aplica o operador de Bellman
+  <span class="mono">V ← 𝓑V</span> a todos os estados. Clique em um estado para dissecar o cálculo.</p>
+
+  <div class="formula">
+    V<sub>k+1</sub>(s) = max<sub>a</sub> [ R(s,a) + <i>γ</i> Σ<sub>s′</sub> P(s′|s,a) · V<sub>k</sub>(s′) ]
+  </div>
+
+  <div class="controles">
+    <div class="grupo">
+      <button class="acao btn-prim" id="vi-passo">▸ Backup (1 iteração)</button>
+      <button class="acao btn-sec" id="vi-auto">▶▶ Executar</button>
+      <button class="acao btn-neutro" id="vi-reset">↺ Reiniciar</button>
+    </div>
+    <div class="grupo">
+      <label for="vi-gamma">γ</label>
+      <input type="range" id="vi-gamma" min="0" max="0.99" step="0.01" value="0.9">
+      <span class="medidor" id="vi-gamma-val">0.90</span>
+    </div>
+    <div class="grupo">
+      <label for="vi-din">dinâmica</label>
+      <select id="vi-din">
+        <option value="det">determinística (como no slide 11)</option>
+        <option value="est">estocástica (escorrega com prob. 0,3)</option>
+      </select>
+    </div>
+    <div class="grupo">
+      <label>iteração</label><span class="medidor" id="vi-k">0</span>
+    </div>
+    <div class="grupo">
+      <label>‖V<sub>k+1</sub>−V<sub>k</sub>‖<sub>∞</sub></label>
+      <span class="medidor" id="vi-delta">—</span>
+    </div>
+  </div>
+
+  <div class="palco">
+    <svg id="vi-svg" width="920" height="240" viewBox="0 0 920 240" role="img"
+         aria-label="Cadeia do Mars Rover com barras de valor e setas de política"></svg>
+    <p class="legenda-mini">Barras teal: V<sub>k</sub>(s). Setas laranja: política gulosa em relação a V<sub>k</sub>.
+    Recompensas: <b style="color:var(--verde)">+1</b> em s₁ e <b style="color:var(--verde)">+10</b> em s₇ (por ação tomada nesses estados).</p>
+  </div>
+
+  <div class="duplo" style="margin-top:1rem;">
+    <div class="bloco">
+      <h3>Anatomia do backup <span class="tag" id="vi-anat-estado">s₆</span></h3>
+      <div class="anatomia" id="vi-anatomia"></div>
+    </div>
+    <div class="grafico-caixa">
+      <h3>Convergência (escala log)</h3>
+      <canvas id="vi-canvas" width="520" height="300"></canvas>
+      <p class="grafico-legenda">‖V<sub>k+1</sub> − V<sub>k</sub>‖<sub>∞</sub> por iteração.
+      A reta em escala log é a assinatura da contração: o erro cai por um fator ≈ γ a cada passo.</p>
+    </div>
+  </div>
+
+  <div class="caixa quiz"><b class="rotulo">Teste sua compreensão</b>
+    Aumente γ de 0,50 para 0,95 e reinicie. O número de iterações até ‖·‖<sub>∞</sub> &lt; 0,01
+    cresce — em que proporção? Relacione com a cota γ<sup>k</sup>‖V₀ − V*‖<sub>∞</sub> vista em aula.
+  </div>
+  <div class="caixa ideia"><b class="rotulo">Intuição</b>
+    Observe as barras nas primeiras iterações: o valor <em>irradia</em> a partir de s₁ e s₇,
+    um estado por rodada. É a informação de recompensa se propagando para trás pelas transições.
+  </div>
+</section>
+
+<!-- ============================ PAINEL 2: PI ============================ -->
+<section id="p-pi" class="painel" role="tabpanel">
+  <h2>Iteração de Política</h2>
+  <p class="subtitulo">Alterne <b>Avaliar</b> (resolve V<sup>π</sup> exatamente, por
+  (I − γP<sup>π</sup>)<sup>−1</sup>R<sup>π</sup>) e <b>Melhorar</b> (gulosa em Q<sup>π</sup>).
+  Acompanhe a melhoria monotônica na tabela.</p>
+
+  <div class="formula">
+    π<sub>i+1</sub>(s) = arg max<sub>a</sub> Q<sup>π<sub>i</sub></sup>(s,a),&nbsp;&nbsp;
+    Q<sup>π<sub>i</sub></sup>(s,a) = R(s,a) + <i>γ</i> Σ<sub>s′</sub> P(s′|s,a) · V<sup>π<sub>i</sub></sup>(s′)
+  </div>
+
+  <div class="controles">
+    <div class="grupo">
+      <button class="acao btn-sec" id="pi-avaliar">① Avaliar π</button>
+      <button class="acao btn-prim" id="pi-melhorar" disabled>② Melhorar π</button>
+      <button class="acao btn-neutro" id="pi-reset">↺ Nova π₀ aleatória</button>
+    </div>
+    <div class="grupo">
+      <label for="pi-gamma">γ</label>
+      <input type="range" id="pi-gamma" min="0" max="0.99" step="0.01" value="0.9">
+      <span class="medidor" id="pi-gamma-val">0.90</span>
+    </div>
+    <div class="grupo">
+      <label>rodada i</label><span class="medidor" id="pi-i">0</span>
+    </div>
+    <div class="grupo"><span class="medidor" id="pi-status" style="min-width:16ch; font-weight:600; color:var(--cinza); font-size:.82rem;"></span></div>
+  </div>
+
+  <div class="palco">
+    <svg id="pi-svg" width="920" height="240" viewBox="0 0 920 240" role="img"
+         aria-label="Cadeia do Mars Rover com política atual e valores"></svg>
+    <p class="legenda-mini">Setas laranja: π<sub>i</sub>(s). Barras teal: V<sup>π<sub>i</sub></sup>(s) após avaliar.
+    Dinâmica determinística; recompensas +1 em s₁ e +10 em s₇.</p>
+  </div>
+
+  <div class="duplo" style="margin-top:1rem;">
+    <div class="bloco">
+      <h3>Histórico de políticas</h3>
+      <table class="hist-pol" id="pi-tabela">
+        <thead><tr><th>i</th><th>π (s₁…s₇)</th><th>V<sup>π</sup>(s₄)</th><th>Σ V<sup>π</sup></th><th>melhorou?</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="grafico-caixa">
+      <h3>Valor da política por rodada</h3>
+      <canvas id="pi-canvas" width="520" height="300"></canvas>
+      <p class="grafico-legenda">V<sup>π<sub>i</sub></sup>(s₄) a cada rodada. A curva nunca desce:
+      é o teorema da melhoria monotônica em ação.</p>
+    </div>
+  </div>
+
+  <div class="caixa quiz"><b class="rotulo">Teste sua compreensão</b>
+    Gere várias π₀ aleatórias. Quantas rodadas PI leva até parar? Compare com o teto teórico
+    |𝒜|<sup>|𝒮|</sup> = 2⁷ = 128 e com o número de iterações que VI precisou no painel 1.
+  </div>
+  <div class="caixa alerta"><b class="rotulo">Atenção</b>
+    Com γ pequeno (ex.: 0,20), a política ótima muda: perto de s₁ passa a valer mais o +1 imediato
+    do que o +10 distante. A fronteira de decisão entre “ir para a esquerda” e “ir para a direita”
+    depende de γ — teste e encontre-a.
+  </div>
+</section>
+
+<!-- ============================ PAINEL 3: MC ============================ -->
+<section id="p-mc" class="painel" role="tabpanel">
+  <h2>Retornos amostrais (ponte para a Aula 3)</h2>
+  <p class="subtitulo">Passeio aleatório do slide de retornos: de cada estado, o rover vai para o
+  vizinho com prob. 0,4 para cada lado e fica parado com 0,2 (0,6 nas bordas).
+  Episódios de H = 4 passos a partir de s₄, γ = ½.</p>
+
+  <div class="formula">
+    G = r₁ + ½·r₂ + ¼·r₃ + ⅛·r₄ &nbsp;&nbsp;·&nbsp;&nbsp; V(s₄) = 𝔼[G] ≈ média de muitas amostras
+  </div>
+
+  <div class="controles">
+    <div class="grupo">
+      <button class="acao btn-prim" id="mc-um">▸ 1 episódio</button>
+      <button class="acao btn-sec" id="mc-cem">▶▶ +100 episódios</button>
+      <button class="acao btn-sec" id="mc-mil">▶▶▶ +1000</button>
+      <button class="acao btn-neutro" id="mc-reset">↺ Zerar</button>
+    </div>
+    <div class="grupo"><label>episódios</label><span class="medidor" id="mc-n">0</span></div>
+    <div class="grupo"><label>média Ḡ</label><span class="medidor" id="mc-media">—</span></div>
+    <div class="grupo"><label>V(s₄) exato</label><span class="medidor" id="mc-exato">—</span></div>
+  </div>
+
+  <div class="bloco" style="margin-bottom:1rem;">
+    <h3>Último episódio sorteado</h3>
+    <p id="mc-traj" class="mono" style="font-size:.95rem; color:var(--azul);">— clique em “1 episódio”</p>
+    <p id="mc-conta" style="font-size:.86rem; color:var(--cinza); margin-top:.3rem;"></p>
+  </div>
+
+  <div class="duplo">
+    <div class="grafico-caixa">
+      <h3>Distribuição dos retornos</h3>
+      <canvas id="mc-hist" width="520" height="300"></canvas>
+      <p class="grafico-legenda">Histograma de G. A linha laranja marca a média amostral;
+      a linha verde tracejada, o valor exato V(s₄) calculado por programação dinâmica.</p>
+    </div>
+    <div class="grafico-caixa">
+      <h3>Média acumulada</h3>
+      <canvas id="mc-media-canvas" width="520" height="300"></canvas>
+      <p class="grafico-legenda">Média Ḡ<sub>n</sub> após n episódios. A faixa é ±1,96·σ̂/√n
+      (aprox. de intervalo de 95%). A precisão melhora com 1/√n — devagar.</p>
+    </div>
+  </div>
+
+  <div class="caixa quiz"><b class="rotulo">Teste sua compreensão</b>
+    Após 1000 episódios, qual é a largura da faixa de confiança? Quantos episódios seriam
+    necessários para reduzi-la à metade? E para um décimo?
+  </div>
+  <div class="caixa ideia"><b class="rotulo">Intuição</b>
+    Note como o histograma é <em>discreto e espalhado</em>: retornos 0; 0,125; 1,25… cada
+    trajetória conta uma história diferente. DP calcula a média sem nunca sortear; Monte Carlo
+    sorteia sem nunca conhecer P. A Aula 3 vive exatamente nesse contraste.
+  </div>
+  <div class="caixa def"><b class="rotulo">Definição — o que este painel não usa</b>
+    Em nenhum momento o estimador de Monte Carlo consulta a matriz P: apenas <em>interage</em>.
+    É por isso que ele funciona sem modelo — e sem sequer exigir a propriedade de Markov.
+  </div>
+</section>
+
+</main>
+
+<p class="rodape">Material didático da disciplina de Aprendizagem por Reforço (UFU), adaptado de
+<em>CS234: Reinforcement Learning</em>, Emma Brunskill, Stanford University. Uso educacional.</p>
+
+<script>
+"use strict";
+/* ================= núcleo do MDP: Mars Rover, 7 estados ================= */
+const N = 7, ACOES = [0, 1];               // 0 = esquerda (a1), 1 = direita (a2)
+function recompensa(s /*0-index*/) { return s === 0 ? 1 : (s === 6 ? 10 : 0); } // R(s,a) p/ toda ação
+
+// matriz P[a][s] -> lista de [s', prob]
+function dinamica(tipo) {
+  const P = [[], []];
+  for (let s = 0; s < N; s++) {
+    const esq = Math.max(0, s - 1), dir = Math.min(N - 1, s + 1);
+    if (tipo === "det") {
+      P[0][s] = [[esq, 1]];
+      P[1][s] = [[dir, 1]];
+    } else { // escorrega: 0,7 vai; 0,3 fica
+      P[0][s] = [[esq, 0.7], [s, 0.3]];
+      P[1][s] = [[dir, 0.7], [s, 0.3]];
+    }
+  }
+  return P;
+}
+
+function qValor(P, V, s, a, gamma) {
+  let soma = 0;
+  for (const [sp, pr] of P[a][s]) soma += pr * V[sp];
+  return recompensa(s) + gamma * soma;
+}
+function backupBellman(P, V, gamma) {
+  const novo = new Array(N), pol = new Array(N);
+  for (let s = 0; s < N; s++) {
+    const q0 = qValor(P, V, s, 0, gamma), q1 = qValor(P, V, s, 1, gamma);
+    novo[s] = Math.max(q0, q1);
+    pol[s] = q1 >= q0 ? 1 : 0;
+  }
+  return { novo, pol };
+}
+// resolve V^pi exatamente por eliminação gaussiana em (I - gamma P^pi) V = R^pi
+function avaliarExato(P, pol, gamma) {
+  const A = [], b = [];
+  for (let s = 0; s < N; s++) {
+    const linha = new Array(N).fill(0);
+    linha[s] = 1;
+    for (const [sp, pr] of P[pol[s]][s]) linha[sp] -= gamma * pr;
+    A.push(linha); b.push(recompensa(s));
+  }
+  // gauss com pivoteamento parcial
+  for (let c = 0; c < N; c++) {
+    let piv = c;
+    for (let r = c + 1; r < N; r++) if (Math.abs(A[r][c]) > Math.abs(A[piv][c])) piv = r;
+    [A[c], A[piv]] = [A[piv], A[c]]; [b[c], b[piv]] = [b[piv], b[c]];
+    for (let r = 0; r < N; r++) {
+      if (r === c || A[r][c] === 0) continue;
+      const f = A[r][c] / A[c][c];
+      for (let k = c; k < N; k++) A[r][k] -= f * A[c][k];
+      b[r] -= f * b[c];
+    }
+  }
+  return b.map((v, i) => v / A[i][i]);
+}
+const fmt = (x, d = 2) => x.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
+
+/* ================= desenho da cadeia (SVG) ================= */
+function desenharCadeia(svg, V, pol, selecionado, aoClicar) {
+  const W = 920, H = 240, cy = 150, r = 26;
+  const xs = Array.from({ length: N }, (_, i) => 90 + i * (W - 180) / (N - 1));
+  const vmax = Math.max(10.0001, ...V.map(Math.abs));
+  let ptr = `<defs><marker id="ponta" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 z" fill="#E8590C"/></marker></defs>`;
+  // barras de valor
+  for (let s = 0; s < N; s++) {
+    const h = Math.max(1.5, 78 * Math.abs(V[s]) / vmax);
+    ptr += `<rect class="barra-valor" x="${xs[s] - 11}" y="${cy - r - 12 - h}" width="22" height="${h}" rx="3"></rect>`;
+    ptr += `<text class="valor-num" x="${xs[s]}" y="${cy - r - 18 - h}">${fmt(V[s])}</text>`;
+  }
+  // setas de política (abaixo dos círculos)
+  if (pol) for (let s = 0; s < N; s++) {
+    const dx = pol[s] === 1 ? 1 : -1;
+    ptr += `<path class="seta-pol" d="M ${xs[s] - dx * 17} ${cy + r + 22} L ${xs[s] + dx * 17} ${cy + r + 22}"></path>`;
+  }
+  // arestas neutras entre vizinhos
+  for (let s = 0; s < N - 1; s++)
+    ptr += `<line x1="${xs[s] + r}" y1="${cy}" x2="${xs[s + 1] - r}" y2="${cy}" stroke="#C6D0DC" stroke-width="2"></line>`;
+  // círculos
+  for (let s = 0; s < N; s++) {
+    const cls = ["estado-circ", (s === 0 || s === 6) ? "recompensado" : "", s === selecionado ? "selecionado" : ""].join(" ");
+    ptr += `<circle class="${cls}" data-s="${s}" cx="${xs[s]}" cy="${cy}" r="${r}" tabindex="0" role="button"
+             aria-label="estado s${s + 1}, valor ${fmt(V[s])}"></circle>`;
+    ptr += `<text class="estado-rotulo" x="${xs[s]}" y="${cy + 5}">s${["₁","₂","₃","₄","₅","₆","₇"][s]}</text>`;
+  }
+  ptr += `<text class="recomp-tag" x="${xs[0]}" y="${cy + r + 46}">+1</text>`;
+  ptr += `<text class="recomp-tag" x="${xs[6]}" y="${cy + r + 46}">+10</text>`;
+  svg.innerHTML = ptr;
+  if (aoClicar) svg.querySelectorAll(".estado-circ").forEach(c => {
+    const ir = () => aoClicar(+c.dataset.s);
+    c.addEventListener("click", ir);
+    c.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); ir(); } });
+  });
+}
+
+/* ================= gráfico de linha genérico ================= */
+function grafLinha(canvas, series, opts = {}) {
+  const ctx = canvas.getContext("2d");
+  const W = canvas.width, H = canvas.height, mL = 52, mR = 12, mT = 12, mB = 30;
+  ctx.clearRect(0, 0, W, H);
+  let todos = series.flatMap(s => s.pts.map(p => p[1])).filter(v => isFinite(v));
+  if (opts.banda) todos = todos.concat(opts.banda.flatMap(b => [b[1], b[2]]).filter(v => isFinite(v)));
+  if (!todos.length) { ctx.fillStyle = "#5C677D"; ctx.font = "13px Fira Sans, sans-serif";
+    ctx.fillText(opts.vazio || "Sem dados ainda — execute o algoritmo.", mL, H / 2); return; }
+  const log = !!opts.log;
+  const ys = log ? todos.map(v => Math.log10(Math.max(v, 1e-6))) : todos;
+  let ymin = Math.min(...ys), ymax = Math.max(...ys);
+  if (opts.yMin !== undefined) ymin = log ? Math.log10(opts.yMin) : opts.yMin;
+  if (ymax - ymin < 1e-9) { ymax += 1; ymin -= 1; }
+  const xmax = Math.max(1, ...series.flatMap(s => s.pts.map(p => p[0])));
+  const X = x => mL + (W - mL - mR) * x / xmax;
+  const Y = v => { const yy = log ? Math.log10(Math.max(v, 1e-6)) : v;
+    return H - mB - (H - mT - mB) * (yy - ymin) / (ymax - ymin); };
+  // grade + eixos
+  ctx.strokeStyle = "#E3E8EF"; ctx.fillStyle = "#5C677D"; ctx.font = "11px Fira Sans, sans-serif";
+  ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  for (let i = 0; i <= 4; i++) {
+    const yy = ymin + (ymax - ymin) * i / 4, py = H - mB - (H - mT - mB) * i / 4;
+    ctx.beginPath(); ctx.moveTo(mL, py); ctx.lineTo(W - mR, py); ctx.stroke();
+    ctx.fillText(log ? ("10^" + yy.toFixed(2)) : fmt(yy, 1), mL - 6, py);
+  }
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  for (let i = 0; i <= 4; i++) {
+    const xv = Math.round(xmax * i / 4);
+    ctx.fillText(xv, X(xv), H - mB + 6);
+  }
+  if (opts.xLabel) ctx.fillText(opts.xLabel, (mL + W - mR) / 2, H - 14);
+  // faixa (banda de confiança), se houver
+  if (opts.banda) {
+    ctx.beginPath();
+    opts.banda.forEach((p, i) => { const px = X(p[0]), py = Y(p[1]); i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); });
+    for (let i = opts.banda.length - 1; i >= 0; i--) ctx.lineTo(X(opts.banda[i][0]), Y(opts.banda[i][2]));
+    ctx.closePath(); ctx.fillStyle = "rgba(232,89,12,.12)"; ctx.fill();
+  }
+  // linhas de referência
+  (opts.refs || []).forEach(rf => {
+    ctx.setLineDash([5, 4]); ctx.strokeStyle = rf.cor; ctx.beginPath();
+    ctx.moveTo(mL, Y(rf.y)); ctx.lineTo(W - mR, Y(rf.y)); ctx.stroke(); ctx.setLineDash([]);
+  });
+  // séries
+  series.forEach(s => {
+    ctx.strokeStyle = s.cor; ctx.lineWidth = 2.2; ctx.beginPath();
+    s.pts.forEach((p, i) => { const px = X(p[0]), py = Y(p[1]); i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); });
+    ctx.stroke();
+    if (s.pontos) { ctx.fillStyle = s.cor;
+      s.pts.forEach(p => { ctx.beginPath(); ctx.arc(X(p[0]), Y(p[1]), 3.2, 0, 7); ctx.fill(); }); }
+  });
+}
+
+/* ================= PAINEL 1: iteração de valor ================= */
+const vi = { V: new Array(N).fill(0), k: 0, hist: [], sel: 5, timer: null };
+const $ = id => document.getElementById(id);
+function viDin() { return dinamica($("vi-din").value); }
+function viGamma() { return parseFloat($("vi-gamma").value); }
+
+function viAnatomia() {
+  const P = viDin(), g = viGamma(), s = vi.sel;
+  const dets = ACOES.map(a => {
+    const termos = P[a][s].map(([sp, pr]) =>
+      `${fmt(pr, 1)}·V(s${sp + 1})=${fmt(pr, 1)}·${fmt(vi.V[sp])}`).join(" + ");
+    return { a, q: qValor(P, vi.V, s, a, g), termos };
+  });
+  const melhor = dets[1].q >= dets[0].q ? 1 : 0;
+  const nome = a => a === 0 ? "a₁ ←" : "a₂ →";
+  $("vi-anat-estado").textContent = "s" + ["₁","₂","₃","₄","₅","₆","₇"][s];
+  $("vi-anatomia").innerHTML = dets.map(d => `
+    <div class="linha ${d.a ? "a2" : "a1"} ${d.a === melhor ? "vencedor" : ""}">
+      <span class="expr"><b>Q(s, ${nome(d.a)})</b> = ${fmt(recompensa(s))} + ${fmt(g)}·[ ${d.termos} ]</span>
+      <span class="num">= ${fmt(d.q, 3)}</span>
+    </div>`).join("") + `
+    <div class="linha max">
+      <span class="expr">V<sub>k+1</sub>(s) = max(Q₁, Q₂) — a ação vencedora vira a política gulosa</span>
+      <span class="num">${fmt(Math.max(dets[0].q, dets[1].q), 3)}</span>
+    </div>`;
+}
+function viRender(pol) {
+  desenharCadeia($("vi-svg"), vi.V, pol ?? backupBellman(viDin(), vi.V, viGamma()).pol,
+    vi.sel, s => { vi.sel = s; viAnatomia(); viRender(); });
+  $("vi-k").textContent = vi.k;
+  $("vi-delta").textContent = vi.hist.length ? fmt(vi.hist[vi.hist.length - 1][1], 4) : "—";
+  grafLinha($("vi-canvas"), [{ cor: "#E8590C", pts: vi.hist, pontos: true }],
+    { log: true, xLabel: "iteração k", vazio: "Aplique um backup para começar." });
+  viAnatomia();
+}
+function viPasso() {
+  const { novo } = backupBellman(viDin(), vi.V, viGamma());
+  const delta = Math.max(...novo.map((v, i) => Math.abs(v - vi.V[i])));
+  vi.V = novo; vi.k++; vi.hist.push([vi.k, delta]); viRender();
+  return delta;
+}
+function viPararAuto() { if (vi.timer) { clearInterval(vi.timer); vi.timer = null; $("vi-auto").textContent = "▶▶ Executar"; } }
+$("vi-passo").addEventListener("click", () => { viPararAuto(); viPasso(); });
+$("vi-auto").addEventListener("click", () => {
+  if (vi.timer) { viPararAuto(); return; }
+  $("vi-auto").textContent = "⏸ Pausar";
+  vi.timer = setInterval(() => { if (viPasso() < 1e-3 || vi.k > 400) viPararAuto(); }, 220);
+});
+function viReset() { viPararAuto(); vi.V = new Array(N).fill(0); vi.k = 0; vi.hist = []; viRender(); }
+$("vi-reset").addEventListener("click", viReset);
+$("vi-gamma").addEventListener("input", () => { $("vi-gamma-val").textContent = fmt(viGamma()); viRender(); });
+$("vi-din").addEventListener("change", viReset);
+
+/* ================= PAINEL 2: iteração de política ================= */
+const pi = { pol: null, V: new Array(N).fill(0), i: 0, avaliada: false, hist: [] };
+function piGamma() { return parseFloat($("pi-gamma").value); }
+function piPolAleatoria() { return Array.from({ length: N }, () => Math.random() < 0.5 ? 0 : 1); }
+function piStr(pol) { return pol.map(a => a === 1 ? "→" : "←").join(" "); }
+function piRender() {
+  desenharCadeia($("pi-svg"), pi.V, pi.pol, -1, null);
+  $("pi-i").textContent = pi.i;
+  const tb = $("pi-tabela").querySelector("tbody");
+  tb.innerHTML = pi.hist.map((h, idx) => `
+    <tr class="${idx === pi.hist.length - 1 ? "atual" : ""}">
+      <td>${h.i}</td><td class="pol-str">${piStr(h.pol)}</td>
+      <td>${fmt(h.v4, 3)}</td><td>${fmt(h.soma, 2)}</td>
+      <td class="${h.melhorou === "sim" ? "melhora-sim" : "melhora-nao"}">${h.melhorou}</td>
+    </tr>`).join("");
+  grafLinha($("pi-canvas"),
+    [{ cor: "#2B9348", pts: pi.hist.map(h => [h.i, h.v4]), pontos: true }],
+    { xLabel: "rodada i", vazio: "Avalie a política inicial para começar." });
+}
+$("pi-avaliar").addEventListener("click", () => {
+  pi.V = avaliarExato(dinamica("det"), pi.pol, piGamma());
+  pi.avaliada = true;
+  const soma = pi.V.reduce((a, b) => a + b, 0);
+  const ant = pi.hist[pi.hist.length - 1];
+  pi.hist.push({ i: pi.i, pol: [...pi.pol], v4: pi.V[3], soma,
+    melhorou: ant ? (soma > ant.soma + 1e-9 ? "sim" : "estável") : "—" });
+  $("pi-melhorar").disabled = false; $("pi-avaliar").disabled = true;
+  $("pi-status").textContent = "π avaliada — agora melhore.";
+  piRender();
+});
+$("pi-melhorar").addEventListener("click", () => {
+  const P = dinamica("det"), g = piGamma();
+  const nova = pi.pol.map((_, s) =>
+    qValor(P, pi.V, s, 1, g) >= qValor(P, pi.V, s, 0, g) ? 1 : 0);
+  const mudou = nova.some((a, s) => a !== pi.pol[s]);
+  pi.pol = nova; pi.i++;
+  $("pi-melhorar").disabled = true; $("pi-avaliar").disabled = mudou ? false : true;
+  $("pi-status").textContent = mudou ? "π mudou — avalie a nova política."
+    : "π não mudou: ponto fixo atingido. Esta política é ótima. ✓";
+  piRender();
+});
+function piReset() {
+  pi.pol = piPolAleatoria(); pi.V = new Array(N).fill(0); pi.i = 0; pi.hist = [];
+  $("pi-avaliar").disabled = false; $("pi-melhorar").disabled = true;
+  $("pi-status").textContent = "π₀ sorteada — comece avaliando.";
+  piRender();
+}
+$("pi-reset").addEventListener("click", piReset);
+$("pi-gamma").addEventListener("input", () => { $("pi-gamma-val").textContent = fmt(piGamma()); });
+
+/* ================= PAINEL 3: Monte Carlo ================= */
+const mc = { retornos: [], medias: [], banda: [] };
+const MC_G = 0.5, MC_H = 4;
+function mcPassei(s) { // passeio aleatório do slide
+  const u = Math.random();
+  if (s === 0) return u < 0.6 ? 0 : 1;
+  if (s === 6) return u < 0.6 ? 6 : 5;
+  return u < 0.4 ? s - 1 : (u < 0.8 ? s + 1 : s);
+}
+function mcEpisodio() {
+  let s = 3; const traj = [s]; let G = 0, pot = 1; const rs = [];
+  for (let t = 0; t < MC_H; t++) {
+    const r = recompensa(s); rs.push(r); G += pot * r; pot *= MC_G;
+    s = mcPassei(s); if (t < MC_H - 1) traj.push(s);
+  }
+  return { traj, rs, G };
+}
+// valor exato de s4 no passeio (H=4): DP finito no MRP
+function mcExato() {
+  const P = []; // MRP do passeio
+  for (let s = 0; s < N; s++) {
+    if (s === 0) P.push([[0, 0.6], [1, 0.4]]);
+    else if (s === 6) P.push([[6, 0.6], [5, 0.4]]);
+    else P.push([[s - 1, 0.4], [s + 1, 0.4], [s, 0.2]]);
+  }
+  let V = new Array(N).fill(0);
+  for (let k = 0; k < MC_H; k++) {
+    const nv = new Array(N).fill(0);
+    for (let s = 0; s < N; s++) {
+      let e = 0; for (const [sp, pr] of P[s]) e += pr * V[sp];
+      nv[s] = recompensa(s) + MC_G * e;
+    }
+    V = nv;
+  }
+  return V[3];
+}
+const V4_EXATO = mcExato();
+$("mc-exato").textContent = fmt(V4_EXATO, 3);
+
+function mcRegistrar(ep, mostrar) {
+  mc.retornos.push(ep.G);
+  const n = mc.retornos.length;
+  const media = mc.retornos.reduce((a, b) => a + b, 0) / n;
+  mc.medias.push([n, media]);
+  if (n >= 2) {
+    const var_ = mc.retornos.reduce((a, b) => a + (b - media) ** 2, 0) / (n - 1);
+    const meio = 1.96 * Math.sqrt(var_ / n);
+    mc.banda.push([n, media + meio, media - meio]);
+  }
+  if (mostrar) {
+    const sub = ["₁","₂","₃","₄","₅","₆","₇"];
+    $("mc-traj").textContent = ep.traj.map(s => "s" + sub[s]).join(" → ");
+    const conta = ep.rs.map((r, t) => `${["1","½","¼","⅛"][t]}·${r}`).join(" + ");
+    $("mc-conta").textContent = `G = ${conta} = ${fmt(ep.G, 3)}`;
+  }
+}
+function mcRender() {
+  const n = mc.retornos.length;
+  $("mc-n").textContent = n;
+  $("mc-media").textContent = n ? fmt(mc.medias[n - 1][1], 3) : "—";
+  // histograma
+  const cv = $("mc-hist"), ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height, mL = 44, mB = 30, mT = 12, mR = 12;
+  ctx.clearRect(0, 0, W, H);
+  if (!n) { ctx.fillStyle = "#5C677D"; ctx.font = "13px Fira Sans, sans-serif";
+    ctx.fillText("Sorteie episódios para preencher o histograma.", mL, H / 2); }
+  else {
+    const gmax = Math.max(1.3, ...mc.retornos), NB = 26;
+    const bins = new Array(NB).fill(0);
+    mc.retornos.forEach(g => bins[Math.min(NB - 1, Math.floor(g / gmax * NB))]++);
+    const bmax = Math.max(...bins);
+    ctx.fillStyle = "#18808D";
+    bins.forEach((c, i) => {
+      if (!c) return;
+      const x = mL + (W - mL - mR) * i / NB, w = (W - mL - mR) / NB - 2;
+      const h = (H - mT - mB) * c / bmax;
+      ctx.fillRect(x, H - mB - h, Math.max(2, w), h);
+    });
+    const X = g => mL + (W - mL - mR) * g / gmax;
+    ctx.strokeStyle = "#E8590C"; ctx.lineWidth = 2.4; ctx.beginPath();
+    ctx.moveTo(X(mc.medias[n - 1][1]), mT); ctx.lineTo(X(mc.medias[n - 1][1]), H - mB); ctx.stroke();
+    ctx.setLineDash([5, 4]); ctx.strokeStyle = "#2B9348"; ctx.beginPath();
+    ctx.moveTo(X(V4_EXATO), mT); ctx.lineTo(X(V4_EXATO), H - mB); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = "#5C677D"; ctx.font = "11px Fira Sans, sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "top";
+    for (let i = 0; i <= 4; i++) ctx.fillText(fmt(gmax * i / 4, 2), mL + (W - mL - mR) * i / 4, H - mB + 6);
+    ctx.fillText("retorno G", (mL + W - mR) / 2, H - 14);
+  }
+  grafLinha($("mc-media-canvas"),
+    [{ cor: "#E8590C", pts: mc.medias }],
+    { xLabel: "episódios n", refs: [{ y: V4_EXATO, cor: "#2B9348" }], banda: mc.banda.length > 3 ? mc.banda : null,
+      vazio: "A média acumulada aparecerá aqui." });
+}
+$("mc-um").addEventListener("click", () => { mcRegistrar(mcEpisodio(), true); mcRender(); });
+$("mc-cem").addEventListener("click", () => { for (let i = 0; i < 99; i++) mcRegistrar(mcEpisodio(), false);
+  mcRegistrar(mcEpisodio(), true); mcRender(); });
+$("mc-mil").addEventListener("click", () => { for (let i = 0; i < 999; i++) mcRegistrar(mcEpisodio(), false);
+  mcRegistrar(mcEpisodio(), true); mcRender(); });
+$("mc-reset").addEventListener("click", () => { mc.retornos = []; mc.medias = []; mc.banda = [];
+  $("mc-traj").textContent = "— clique em “1 episódio”"; $("mc-conta").textContent = ""; mcRender(); });
+
+/* ================= abas ================= */
+document.querySelectorAll("nav.abas button").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll("nav.abas button").forEach(x => { x.classList.remove("ativa"); x.setAttribute("aria-selected", "false"); });
+  document.querySelectorAll("section.painel").forEach(p => p.classList.remove("ativa"));
+  b.classList.add("ativa"); b.setAttribute("aria-selected", "true");
+  document.getElementById(b.dataset.alvo).classList.add("ativa");
+}));
+
+/* ================= inicialização ================= */
+viRender(); piReset(); mcRender();
+</script>
+</body>
+</html>

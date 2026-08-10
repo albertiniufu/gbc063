@@ -1,0 +1,402 @@
+%% ============================================================
+%%  handout1colRL.sty
+%%  Folha de estudo (handout) de COLUNA ÚNICA para o curso de
+%%  Aprendizagem por Reforço — pt-BR.
+%%
+%%  Irmão do handoutRL.sty (duas colunas) e companheiro do
+%%  beamerthemeAprendizadoRL.sty: mesma paleta, mesmas macros
+%%  matemáticas e MESMAS ASSINATURAS DE CAIXAS, de modo que
+%%  trechos possam ser copiados entre o deck e os handouts sem
+%%  edição nenhuma.
+%%
+%%  Este arquivo é autocontido: não depende do handoutRL.sty.
+%%
+%%  Compilar com XeLaTeX ou LuaLaTeX, DUAS vezes
+%%  (a numeração "página/total" depende do lastpage).
+%%
+%%  ---------------------------------------------------------
+%%  Uso mínimo:
+%%
+%%    \documentclass[a4paper, 11pt]{extarticle}
+%%    \usepackage{handout1colRL}
+%%    \usepackage{babel}
+%%    \babelprovide[import, main]{brazilian}
+%%
+%%    \disciplina{Aprendizagem por Reforço}
+%%    \rotulo{Folha de estudo}
+%%    \title{Aula 3 — Avaliação de política sem modelo}
+%%    \subtitulo{Subtítulo curto}
+%%    \author{Prof.\ Marcelo Keese Albertini \textbullet\ UFU}
+%%    \rodape{Aprendizagem por Reforço \textbullet\ Aula 3 \textbullet\ UFU}
+%%
+%%    \begin{document}
+%%    \cabecalho
+%%    \secao{Primeira seção} ...
+%%    \end{document}
+%%
+%%  Use 11pt. As margens foram calculadas para dar uma medida de
+%%  linha confortável nesse corpo (~75 caracteres).
+%%
+%%  ---------------------------------------------------------
+%%  Opção 'notas': abre uma margem lateral larga para anotações
+%%  do aluno, e habilita \aomargem{...} para notas laterais.
+%%
+%%    \usepackage[notas]{handout1colRL}
+%%    ... texto ... \aomargem{Compare com a aula 2.}
+%%
+%%  Sem a opção, \aomargem cai para uma nota no corpo do texto,
+%%  de modo que o mesmo fonte compila nos dois modos.
+%%
+%%  ---------------------------------------------------------
+%%  Compatibilidade: o ambiente \begin{colunas}...\end{colunas}
+%%  existe aqui como no-op. Assim, um handout escrito para o
+%%  handoutRL.sty (duas colunas) compila em coluna única apenas
+%%  trocando o nome do pacote no \usepackage.
+%% ============================================================
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{handout1colRL}[2026/08/09 Handout de coluna unica — Aprendizagem por Reforco]
+
+%% ------------------------------------------------------------
+%% 0. OPÇÕES
+%% ------------------------------------------------------------
+\newif\ifrl@notas
+\DeclareOption{notas}{\rl@notastrue}
+\DeclareOption{semnotas}{\rl@notasfalse}
+\ExecuteOptions{semnotas}
+\ProcessOptions\relax
+
+\RequirePackage{etoolbox}
+\RequirePackage[dvipsnames]{xcolor}
+\RequirePackage{fontspec}
+\RequirePackage{mathtools}
+\RequirePackage{amssymb}
+\RequirePackage{array}
+\RequirePackage{booktabs}
+\RequirePackage{tabularx}
+\RequirePackage{enumitem}
+\RequirePackage{tikz}
+\RequirePackage[most]{tcolorbox}
+\RequirePackage{fancyhdr}
+\RequirePackage{lastpage}
+\usetikzlibrary{arrows.meta, positioning, calc, fit, chains,
+                decorations.pathmorphing}
+
+%% ------------------------------------------------------------
+%% 1. GEOMETRIA — sempre uma coluna
+%%    Para afrouxar ou apertar, chame \geometry{...} no seu
+%%    preâmbulo DEPOIS de carregar este pacote.
+%% ------------------------------------------------------------
+\ifrl@notas
+  \RequirePackage[a4paper, top=1.7cm, bottom=1.8cm,
+                  left=2.1cm, right=5.6cm,
+                  marginparwidth=3.6cm, marginparsep=0.5cm]{geometry}
+\else
+  \RequirePackage[a4paper, top=1.7cm, bottom=1.8cm,
+                  left=2.7cm, right=2.7cm,
+                  marginparwidth=1.8cm, marginparsep=0.3cm]{geometry}
+\fi
+\onecolumn
+
+%% Compatibilidade com o handoutRL: o ambiente existe, mas não
+%% cria colunas. O argumento opcional é aceito e ignorado.
+\newenvironment{colunas}[1][1]{}{}
+
+%% ------------------------------------------------------------
+%% 2. PALETA (idêntica ao tema Beamer)
+%% ------------------------------------------------------------
+\providecolor{rlAzul}{HTML}{16324F}      % azul-profundo: cor primária
+\providecolor{rlAzulClaro}{HTML}{2E5F8A} % azul médio: teoremas
+\providecolor{rlTeal}{HTML}{18808D}      % teal: definições
+\providecolor{rlLaranja}{HTML}{E8590C}   % laranja: destaque / exercícios
+\providecolor{rlAmbar}{HTML}{F2A93B}     % âmbar: intuição
+\providecolor{rlVermelho}{HTML}{C1121F}  % alertas
+\providecolor{rlVerde}{HTML}{2B9348}     % respostas corretas
+\providecolor{rlCinza}{HTML}{5C677D}     % texto secundário
+\providecolor{rlFundo}{HTML}{FAFBFC}     % fundo de caixas
+\providecolor{rlFundoQuiz}{HTML}{FFF8EE} % fundo de perguntas
+\providecolor{rlLinha}{HTML}{D8E0E9}     % filetes
+
+%% ------------------------------------------------------------
+%% 3. TIPOGRAFIA
+%%    Fira Sans/Mono se instaladas; senão, TeX Gyre Heros.
+%%    A matemática permanece em Latin Modern, como no deck.
+%% ------------------------------------------------------------
+\IfFontExistsTF{Fira Sans}{%
+  \setsansfont{Fira Sans}[
+    ItalicFont     = Fira Sans Italic,
+    BoldFont       = Fira Sans SemiBold,
+    BoldItalicFont = Fira Sans SemiBold Italic]
+}{%
+  \setsansfont{TeX Gyre Heros}
+}
+\IfFontExistsTF{Fira Mono}{\setmonofont{Fira Mono}[Scale=0.88]}%
+  {\setmonofont{Latin Modern Mono}[Scale=0.9]}
+\renewcommand{\familydefault}{\sfdefault}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.42em}
+\linespread{1.04}
+\ifrl@notas\setlength{\emergencystretch}{2.5em}\else
+           \setlength{\emergencystretch}{1em}\fi
+
+%% ------------------------------------------------------------
+%% 4. LISTAS
+%% ------------------------------------------------------------
+\setlist[itemize]{leftmargin=1.15em, itemsep=0.14em, topsep=0.3em, parsep=0pt}
+\setlist[enumerate]{leftmargin=1.5em, itemsep=0.14em, topsep=0.3em, parsep=0pt}
+\setlist[description]{leftmargin=0pt, itemsep=0.14em, topsep=0.3em, parsep=0pt}
+\renewcommand{\labelitemi}{\raisebox{0.15ex}{\color{rlLaranja}\scriptsize$\blacktriangleright$}}
+\renewcommand{\labelitemii}{\raisebox{0.15ex}{\color{rlTeal}\scriptsize$\circ$}}
+
+%% ------------------------------------------------------------
+%% 5. TÍTULOS DE SEÇÃO
+%%    \secao{...}    título com filete laranja
+%%    \subsecao{...} título menor, sem filete
+%%    juntos         bloco indivisível (evita título órfão no pé
+%%                   da página)
+%% ------------------------------------------------------------
+\newcommand{\secao}[1]{%
+  \vspace{0.75em}
+  {\color{rlAzul}\large\bfseries #1}\\[0.15em]
+  {\color{rlLaranja}\rule{1.6em}{1.8pt}}%
+  {\color{rlAzul!22}\rule{\dimexpr\linewidth-1.6em\relax}{0.5pt}}
+  \vspace{-0.28em}
+}
+\newcommand{\subsecao}[1]{%
+  \vspace{0.5em}
+  {\color{rlAzulClaro}\bfseries #1}\par\vspace{0.1em}
+}
+\newenvironment{juntos}{\par\noindent\begin{minipage}{\linewidth}}%
+                       {\end{minipage}\par}
+
+%% ------------------------------------------------------------
+%% 6. CABEÇALHO E RODAPÉ
+%% ------------------------------------------------------------
+\newcommand{\rl@disciplina}{Aprendizagem por Reforço}
+\newcommand{\rl@rotulo}{Folha de estudo}
+\newcommand{\rl@subtitulo}{}
+\newcommand{\rl@creditos}{}
+\newcommand{\disciplina}[1]{\renewcommand{\rl@disciplina}{#1}}
+\newcommand{\rotulo}[1]{\renewcommand{\rl@rotulo}{#1}}
+\newcommand{\subtitulo}[1]{\renewcommand{\rl@subtitulo}{#1}}
+\newcommand{\creditos}[1]{\renewcommand{\rl@creditos}{#1}}
+
+%% No modo 'notas' a faixa do cabeçalho avança sobre a margem
+%% lateral, para não ficar espremida contra o texto.
+\newcommand{\cabecalho}{%
+  \ifrl@notas\noindent\makebox[\linewidth][l]{%
+    \begin{minipage}{\dimexpr\textwidth+\marginparsep+\marginparwidth\relax}%
+  \fi
+  \begin{tcolorbox}[enhanced, boxrule=0pt, frame hidden, arc=1.6mm,
+    colback=rlAzul, left=4mm, right=4mm, top=2.6mm, bottom=2.8mm,
+    before skip=0pt, after skip=3mm]
+    {\color{rlAmbar}\footnotesize\bfseries
+      \MakeUppercase{\rl@disciplina}%
+      \ifdefempty{\rl@rotulo}{}{\ \textbullet\ \MakeUppercase{\rl@rotulo}}}\\[0.35em]
+    {\color{white}\LARGE\bfseries\@title}%
+    \ifdefempty{\rl@subtitulo}{}{\\[0.3em]
+      {\color{white!80!rlAzul}\small\rl@subtitulo}}%
+    \ifdefempty{\@author}{}{\\[0.5em]
+      {\color{white!62!rlAzul}\footnotesize\@author}}%
+    \ifdefempty{\rl@creditos}{}{\\[0.15em]
+      {\color{white!62!rlAzul}\footnotesize\rl@creditos}}%
+  \end{tcolorbox}%
+  \ifrl@notas\end{minipage}}\par\fi
+}
+
+\newcommand{\rl@rodapeesq}{\rl@disciplina}
+\newcommand{\rodape}[1]{\renewcommand{\rl@rodapeesq}{#1}}
+\pagestyle{fancy}\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0.4pt}
+\renewcommand{\footrule}{{\color{rlLinha}\vskip-\footruleskip\vskip-0.4pt
+  \hrule width\headwidth height0.4pt\vskip\footruleskip}}
+\fancyfoot[L]{\footnotesize\color{rlCinza}\rl@rodapeesq}
+\fancyfoot[R]{\footnotesize\color{rlCinza}\thepage/\pageref{LastPage}}
+\ifrl@notas
+  \fancyheadoffset[R]{\dimexpr\marginparsep+\marginparwidth\relax}
+  \fancyfootoffset[R]{\dimexpr\marginparsep+\marginparwidth\relax}
+\fi
+
+%% ------------------------------------------------------------
+%% 7. CAIXAS TEMÁTICAS
+%%    Assinaturas idênticas às do tema Beamer e do handoutRL.
+%% ------------------------------------------------------------
+\tcbset{rlcaixa/.style={
+  enhanced, boxrule=0pt, frame hidden, arc=1.2mm,
+  left=2mm, right=2mm, top=1.6mm, bottom=1.7mm, boxsep=0.6mm,
+  before skip=2.6mm, after skip=2.6mm,
+  borderline west={2.2pt}{0pt}{#1},
+  colback=rlFundo,
+  fonttitle=\bfseries\footnotesize, coltitle=#1,
+  attach title to upper={\par\vspace{0.3ex}},
+  title after break={},
+}}
+
+% Definição formal — título vazio ⇒ escreve só "Definição"
+\newtcolorbox{defbox}[2][]{rlcaixa=rlTeal,
+  title={Definição\ifblank{#2}{}{ — #2}}, #1}
+% Teorema / Proposição — título livre
+\newtcolorbox{teobox}[2][]{rlcaixa=rlAzulClaro,
+  title={#2}, colback=rlAzulClaro!6, #1}
+% Algoritmo / pseudocódigo
+\newtcolorbox{algbox}[2][]{rlcaixa=rlAzul,
+  title={Algoritmo\ifblank{#2}{}{ — #2}}, colback=rlAzul!5, #1}
+% Intuição (sem argumento obrigatório)
+\newtcolorbox{ideiabox}[1][]{rlcaixa=rlAmbar,
+  title={Intuição}, colback=rlAmbar!10, coltitle=rlLaranja, #1}
+% Atenção / pegadinha (sem argumento obrigatório)
+\newtcolorbox{alertabox}[1][]{rlcaixa=rlVermelho,
+  title={Atenção}, colback=rlVermelho!5, #1}
+% Exercício
+\newtcolorbox{exbox}[2][]{rlcaixa=rlLaranja,
+  title={Exercício #2}, colback=rlLaranja!6, #1}
+% Resposta / gabarito
+\newtcolorbox{respbox}[1][]{rlcaixa=rlVerde,
+  title={Resposta}, colback=rlVerde!7, #1}
+% Pergunta de participação, com selo
+\newtcolorbox{quizbox}[2][]{enhanced, arc=1.6mm, boxrule=0.8pt,
+  colframe=rlAmbar!80!black, colback=rlFundoQuiz,
+  left=2mm, right=2mm, top=2.2mm, bottom=1.4mm,
+  fonttitle=\bfseries\footnotesize,
+  attach boxed title to top left={xshift=3mm, yshift=-2.2mm},
+  boxed title style={colback=rlLaranja, arc=0.8mm, boxrule=0pt,
+                     left=1.4mm, right=1.4mm, top=0.6mm, bottom=0.6mm},
+  coltitle=white,
+  title={Teste sua compreensão~~#2}, #1}
+
+% Nota discreta: pergunta deixada para o professor conduzir em aula
+\newcommand{\paradiscussao}{\vspace{-0.2em}
+  {\footnotesize\color{rlCinza}\itshape Pergunta para discussão conduzida em aula.}\par}
+% Alternativas de poll em linha
+\newcommand{\alternativas}[1]{%
+  {\small\color{rlCinza}\itshape Responda:\;}{\small\color{rlAzul}\bfseries #1}}
+% Nota de rodapé de bloco, em cinza pequeno
+\newcommand{\notinha}[1]{\par{\footnotesize\color{rlCinza}#1}\par}
+
+% Nota lateral. Com a opção 'notas', vai para a margem; sem ela,
+% cai para \notinha, de modo que o mesmo fonte compila nos dois modos.
+\ifrl@notas
+  \newcommand{\aomargem}[1]{%
+    \marginpar{\raggedright\footnotesize\color{rlCinza}%
+      \setlength{\parskip}{0.3em}#1}}
+\else
+  \newcommand{\aomargem}[1]{\notinha{#1}}
+\fi
+
+%% ------------------------------------------------------------
+%% 8. MACROS MATEMÁTICAS (notação do curso)
+%% ------------------------------------------------------------
+\providecommand{\E}{}\renewcommand{\E}{\mathbb{E}}
+\newcommand{\Prob}{\mathbb{P}}
+\providecommand{\R}{}\renewcommand{\R}{\mathbb{R}}
+\newcommand{\gS}{\mathcal{S}}                      % espaço de estados
+\newcommand{\gA}{\mathcal{A}}                      % espaço de ações
+\newcommand{\pol}{\pi}
+\newcommand{\polstar}{\pi^{*}}
+\newcommand{\Vpi}{V^{\pol}}
+\newcommand{\Qpi}{Q^{\pol}}
+\newcommand{\Vstar}{V^{*}}
+\newcommand{\tran}[2]{P(#1\mid #2)}                % P(s'|s) ou P(s'|s,a)
+\newcommand{\rec}{R}                               % recompensa
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclarePairedDelimiter{\abs}{\lvert}{\rvert}
+\DeclarePairedDelimiter{\norm}{\lVert}{\rVert}
+\newcommand{\norminf}[1]{\norm{#1}_{\infty}}
+\newcommand{\defeq}{\coloneqq}
+
+% Destaque colorido dentro de fórmula: \mdestaque{cor}{conteúdo}
+\newcommand{\mdestaque}[2]{%
+  \mathchoice{\colorbox{#1!14}{$\displaystyle #2$}}%
+             {\colorbox{#1!14}{$\textstyle #2$}}%
+             {\colorbox{#1!14}{$\scriptstyle #2$}}%
+             {\colorbox{#1!14}{$\scriptscriptstyle #2$}}}
+% Anotação sob um termo: \termo{expressão}{rótulo}
+\newcommand{\termo}[2]{\underbrace{#1}_{\substack{\text{\scriptsize\color{rlCinza}#2}}}}
+
+%% ------------------------------------------------------------
+%% 9. ESTILOS TIKZ (mesmos nomes do deck)
+%% ------------------------------------------------------------
+\tikzset{
+  estado/.style={circle, draw=rlAzul, very thick, fill=rlAzul!8,
+                 minimum size=7mm, inner sep=0pt, font=\scriptsize},
+  estado destacado/.style={estado, fill=rlLaranja!18, draw=rlLaranja},
+  estado terminal/.style={estado, double, double distance=0.9pt,
+                          fill=rlVerde!12, draw=rlVerde!70!black},
+  acaon/.style={circle, fill=rlAzul, minimum size=1.8mm, inner sep=0pt},
+  trans/.style={-{Stealth[length=2mm]}, thick, rlCinza},
+  trans destac/.style={trans, rlLaranja, very thick},
+  probl/.style={font=\tiny, fill=white, inner sep=1pt, text=rlCinza},
+  recomp/.style={font=\tiny\bfseries, text=rlVerde!70!black},
+}
+
+%% Cadeia do Mars Rover.
+%%   \marsrover{1,7}     destaca s1 e s7
+%%   \marsrover{}        sem destaque
+%%   \marsrover*{}       terminais em verde e rótulos de recompensa
+%%   \marsrover[yshift=1mm]{}   opções do tikzpicture
+%% Para encolher, use \scalebox — nunca `scale=`, que não reduz os nós.
+\NewDocumentCommand{\marsrover}{s O{} m}{%
+  \begin{tikzpicture}[node distance=3mm, #2]
+    \IfBooleanTF{#1}{\def\rl@ext{estado terminal}}{\def\rl@ext{estado}}
+    \foreach \i [count=\c] in {1,...,7}{%
+      \ifnum\c=1
+        \node[\rl@ext] (s\i) {$s_{\i}$};
+      \else
+        \pgfmathtruncatemacro{\prev}{\i-1}
+        \ifnum\c=7
+          \node[\rl@ext, right=of s\prev] (s\i) {$s_{\i}$};
+        \else
+          \node[estado, right=of s\prev] (s\i) {$s_{\i}$};
+        \fi
+      \fi}
+    \foreach \i in {#3}{\node[estado destacado] at (s\i) {$s_{\i}$};}
+    \IfBooleanT{#1}{%
+      \node[font=\tiny, color=rlVerde!60!black, above=0.5mm of s1] {$+1$};
+      \node[font=\tiny, color=rlVerde!60!black, above=0.5mm of s7] {$+10$};}
+  \end{tikzpicture}}
+
+%% Diagrama de backup de um passo
+\newcommand{\backupdiagrama}{%
+\begin{tikzpicture}[grow=down, level distance=9mm,
+    level 1/.style={sibling distance=22mm},
+    level 2/.style={sibling distance=10mm}]
+  \node[estado destacado] {$s$}
+    child {node[acaon] {}
+      child {node[estado] {$s'$} edge from parent[trans]}
+      child {node[estado] {$s'$} edge from parent[trans]}
+      edge from parent[trans destac] node[left, font=\tiny, color=rlLaranja] {$a_1$}}
+    child {node[acaon] {}
+      child {node[estado] {$s'$} edge from parent[trans]}
+      child {node[estado] {$s'$} edge from parent[trans]}
+      edge from parent[trans destac] node[right, font=\tiny, color=rlLaranja] {$a_2$}};
+\end{tikzpicture}}
+
+%% ------------------------------------------------------------
+%% 10. TABELAS
+%%    \begin{tabelaRL}{especificação} ... \end{tabelaRL}
+%%    Corpo em \footnotesize por padrão; o argumento opcional
+%%    troca o corpo: \begin{tabelaRL}[\scriptsize]{lccc}
+%%    Use \toprule / \midrule / \bottomrule do booktabs.
+%%
+%%    tabelaflex: mesma coisa, mas com colunas elásticas 'Y', que
+%%    se ajustam sozinhas à largura da página. Prefira esta quando
+%%    o mesmo fonte for compilado em larguras diferentes:
+%%      \begin{tabelaflex}{@{}p{0.27\linewidth}YYY@{}} ...
+%% ------------------------------------------------------------
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newenvironment{tabelaflex}[2][\footnotesize]
+  {#1\setlength{\tabcolsep}{5pt}%
+   \renewcommand{\arraystretch}{1.12}\tabularx{\linewidth}{#2}}
+  {\endtabularx\par}
+\newenvironment{tabelaRL}[2][\footnotesize]
+  {#1\setlength{\tabcolsep}{5pt}%
+   \renewcommand{\arraystretch}{1.12}\begin{tabular}{#2}}
+  {\end{tabular}\par}
+% Cabeçalhos de coluna já coloridos por método
+\newcommand{\colMC}{\textbf{\color{rlTeal}Monte Carlo}}
+\newcommand{\colTD}{\textbf{\color{rlLaranja}TD(0)}}
+\newcommand{\colEC}{\textbf{\color{rlAzulClaro}Equiv.\ de certeza}}
+
+\endinput

@@ -1,0 +1,630 @@
+%% ============================================================
+%%  Handout — Aula 2: Tomando boas decisões dado um modelo do mundo
+%%  Curso: Aprendizagem por Reforço — UFU
+%%  Prof. Marcelo Keese Albertini
+%%  Adaptado e expandido de CS234 (Stanford), Emma Brunskill
+%%  COMPILAR COM XeLaTeX (duas vezes)
+%% ============================================================
+\documentclass[11pt, a4paper]{article}
+
+\usepackage{handoutAprendizadoRL}
+\usepackage{babel}
+\babelprovide[import, main]{brazilian}
+
+\setaula{Aula 2 — Decisões com modelo}
+\setprof{Prof. Marcelo Keese Albertini}
+
+%% Macros locais (mesmas da apresentação)
+\newcommand{\Bop}{\mathcal{B}}
+\newcommand{\Bpol}{\mathcal{B}^{\pol}}
+\newcommand{\Rmax}{R_{\max}}
+
+\begin{document}
+
+\capa{Aula 2: Tomando sequências de boas decisões dado um modelo do mundo}
+     {Processos de decisão de Markov \textbullet\ Avaliação de política \textbullet\ Iteração de política e de valor}
+     {Prof. Marcelo Keese Albertini}
+     {Adaptado de Emma Brunskill, CS234: Reinforcement Learning, Stanford University \textbullet\ 2026}
+
+\paragraph{Contexto.} Esta é a única aula do curso em que o agente conhece \emph{tudo}
+sobre o mundo: a dinâmica $P$ e a recompensa $\rec$. O problema deixa de ser de
+aprendizagem e passa a ser de \textbf{planejamento} --- e é exatamente por isso que ela
+fornece o alicerce teórico de todo o resto. Dado o modelo $(\gS, \gA, P, \rec, \gamma)$,
+dois problemas nos ocupam:
+
+\begin{enumerate}
+  \item \textbf{Predição (avaliação de política):} qual é o valor de uma política dada?
+  \item \textbf{Controle:} qual é a melhor política possível?
+\end{enumerate}
+
+A pergunta que conduz a aula: \emph{é possível construir algoritmos que, a cada iteração
+adicional de computação, melhorem a política monotonicamente? Todos os algoritmos têm
+essa propriedade?} A resposta, como veremos, é ``sim, é possível --- mas não é o que
+acontece com todos''.
+
+%% ============================================================
+\section{Processos de recompensa de Markov}
+%% ============================================================
+
+\begin{defbox}{propriedade de Markov}
+O futuro é independente do passado dado o presente:
+$\Prob(s_{t+1} \mid s_t, a_t, s_{t-1}, a_{t-1}, \dots) = \Prob(s_{t+1} \mid s_t, a_t)$.
+O estado é uma \emph{estatística suficiente} da história.
+\end{defbox}
+
+Markov não é uma propriedade do mundo, e sim da \emph{representação de estado} que
+escolhemos: se a posição do rover não basta para prever o próximo passo, inclua a
+velocidade no estado --- e a propriedade volta a valer. A modelagem se organiza em uma
+hierarquia em que cada nível acrescenta exatamente um ingrediente:
+
+\begin{itemize}
+  \item \textbf{Processo de Markov} $(\gS, P)$: apenas aleatoriedade;
+  \item \textbf{Processo de recompensa de Markov} (MRP) $(\gS, P, \rec, \gamma)$:
+        acrescenta recompensa --- já é possível \emph{avaliar};
+  \item \textbf{Processo de decisão de Markov} (MDP) $(\gS, \gA, P, \rec, \gamma)$:
+        acrescenta ação --- agora há o que \emph{decidir}.
+\end{itemize}
+
+\begin{defbox}{horizonte, retorno e função valor}
+O \textbf{horizonte} $H$ é o número de passos de tempo por episódio (possivelmente
+infinito). O \textbf{retorno} é a soma descontada das recompensas a partir de $t$,
+\[
+  G_t = r_t + \gamma\, r_{t+1} + \gamma^2 r_{t+2} + \cdots + \gamma^{H-1} r_{t+H-1},
+\]
+e a \textbf{função valor de estado} é o retorno esperado partindo de $s$:
+$V(s) = \E[\, G_t \mid s_t = s\,]$.
+\end{defbox}
+
+\begin{ideiabox}
+$G_t$ é uma variável \emph{aleatória} --- muda a cada trajetória sorteada. $V(s)$ é um
+\emph{número}: a esperança já eliminou o acaso. Boa parte da aprendizagem por reforço
+consiste em estimar $V$ a partir de amostras de $G_t$.
+\end{ideiabox}
+
+\subsection{Por que descontar o futuro?}
+
+Há quatro razões, de naturezas distintas. \textbf{Matemática:} com recompensas limitadas,
+$\abs{r} \le \Rmax$, e $\gamma < 1$, a série geométrica converge e
+$\abs{G_t} \le \Rmax/(1-\gamma)$ --- sem isso, o valor pode divergir e comparar políticas
+perde o sentido. \textbf{Modelagem:} $\gamma$ pode ser lido como a probabilidade de o
+episódio \emph{continuar} a cada passo. \textbf{Econômica:} recompensa hoje vale mais do
+que amanhã. \textbf{Algorítmica:} é $\gamma<1$ que torna o operador de Bellman uma
+\emph{contração} --- a fonte de todas as garantias de convergência desta aula.
+
+Uma regra prática útil: o \emph{horizonte efetivo} de um problema descontado é da ordem
+de $1/(1-\gamma)$ passos ($\gamma=0{,}9 \Rightarrow{} \sim 10$ passos;
+$\gamma = 0{,}99 \Rightarrow{} \sim 100$).
+
+\begin{alertabox}
+$\gamma = 1$ só é seguro em horizonte finito, ou quando um estado terminal é atingido
+com probabilidade $1$ (tarefa episódica própria). Fora dessas condições, $V$ pode
+divergir.
+\end{alertabox}
+
+\subsection{Equação de Bellman e suas soluções}
+
+A propriedade de Markov permite quebrar o retorno em \emph{agora} $+$ \emph{depois}:
+\[
+  V(s) \;=\; \termo{\rec(s)}{recompensa imediata}
+  \;+\; \termo{\gamma \sum_{s' \in \gS} \tran{s'}{s}\, V(s')}{soma descontada do futuro}
+\]
+Todo o valor de uma trajetória infinita cabe em uma equação com um único passo de
+antecipação --- é o princípio de otimalidade de Bellman. Atenção: isso é um
+\emph{sistema} de $N = \abs{\gS}$ equações acopladas, uma por estado, e não uma fórmula
+fechada. Há duas maneiras clássicas de resolvê-lo.
+
+\paragraph{Solução analítica.} Empilhando os estados em vetores, $V, \rec \in \R^N$ e
+$P \in \R^{N\times N}$, a equação vira $V = \rec + \gamma P V$, donde
+\[
+  (I - \gamma P)\, V = \rec
+  \qquad\Longrightarrow\qquad
+  \mdestaque{rlLaranja}{V = (I - \gamma P)^{-1} \rec}
+\]
+
+\begin{teobox}{a inversa sempre existe se $\gamma < 1$}
+Como $\norminf{\gamma P} = \gamma < 1$, a série de Neumann converge e
+$(I - \gamma P)^{-1} = \sum_{k \ge 0} (\gamma P)^k$. O termo de índice $k$ tem leitura
+própria: é a contribuição das recompensas $k$ passos à frente.
+\end{teobox}
+
+O custo é uma inversão de matriz, $\Theta(N^3)$ --- viável apenas para $N$ moderado.
+
+\paragraph{Solução iterativa (programação dinâmica).}
+
+\begin{algbox}{avaliação iterativa de um MRP}
+Inicialize $V_0(s) = 0$ para todo $s$. Para $k = 1, 2, \dots$ até convergir
+(por exemplo, até $\norminf{V_k - V_{k-1}} \le \varepsilon$), atualize, para todo
+$s \in \gS$:
+\[
+  V_k(s) \leftarrow \rec(s) + \gamma \sum_{s' \in \gS} \tran{s'}{s}\, V_{k-1}(s')
+\]
+Custo por varredura: $O(\abs{\gS}^2)$.
+\end{algbox}
+
+\begin{ideiabox}
+$V_k(s)$ tem uma leitura própria: é o valor \emph{exato} de $s$ quando restam exatamente
+$k$ passos de episódio. E na comparação de custos --- analítico $\Theta(N^3)$ uma única
+vez \emph{versus} iterativo $O(N^2)$ por varredura --- o iterativo vence para $N$ grande.
+Mais importante: é ele que sobrevive à passagem para o caso sem modelo.
+\end{ideiabox}
+
+%% ============================================================
+\section{Processos de decisão de Markov e políticas}
+%% ============================================================
+
+\begin{defbox}{processo de decisão de Markov}
+Um MDP é a tupla $(\gS, \gA, P, \rec, \gamma)$, em que $\gS$ é um conjunto finito de
+estados de Markov; $\gA$ é um conjunto finito de ações; $P$ é o modelo de
+dinâmica/transição, um por ação, $\tran{s_{t+1}=s'}{s_t=s,\, a_t=a}$; $\rec$ é a função
+de recompensa, $\rec(s,a) = \E[\, r_t \mid s_t = s,\, a_t = a\,]$; e $\gamma \in [0,1]$
+é o fator de desconto. Em resumo: MDP $=$ MRP $+$ ações.
+\end{defbox}
+
+\begin{alertabox}
+A recompensa aparece na literatura em três formatos --- $\rec(s)$, $\rec(s,a)$ e
+$\rec(s,a,s')$. Neste curso usaremos predominantemente $\rec(s,a)$. Os três têm o mesmo
+poder expressivo (basta tomar esperanças), mas trocar de convenção no meio de uma
+dedução é uma fonte clássica de erro de sinal e de índice.
+\end{alertabox}
+
+\paragraph{Exemplo condutor: o \emph{Mars Rover}.} Sete estados ($s_1, \dots, s_7$,
+a posição do rover em uma linha), duas ações determinísticas ($a_1$: esquerda; $a_2$:
+direita; nas bordas, a ação que sairia do mapa mantém o rover parado) e recompensas
+$+1$ em $s_1$, $+10$ em $s_7$ e $0$ nos demais estados. Cada linha das matrizes
+$P(\cdot \mid \cdot, a_1)$ e $P(\cdot \mid \cdot, a_2)$ é uma distribuição sobre o
+próximo estado; por serem determinísticas, cada linha tem um único $1$.
+
+\begin{center}
+\begin{tikzpicture}[node distance=5.4mm]
+  \foreach \i [count=\c] in {1,...,7}{%
+    \ifnum\c=1 \node[estado] (s\i) {$s_{\i}$};
+    \else \pgfmathtruncatemacro{\prev}{\i-1}
+      \node[estado, right=of s\prev] (s\i) {$s_{\i}$};
+    \fi}
+  \node[estado destacado] at (s1) {$s_1$};
+  \node[estado destacado] at (s7) {$s_7$};
+  \foreach \i in {1,...,6}{%
+    \pgfmathtruncatemacro{\nxt}{\i+1}
+    \draw[trans destac] (s\i) to[bend left=40] (s\nxt);}
+  \foreach \i in {2,...,7}{%
+    \pgfmathtruncatemacro{\prv}{\i-1}
+    \draw[trans] (s\i) to[bend left=40] (s\prv);}
+  \node[font=\scriptsize\bfseries, color=rlLaranja, above=3.2mm of s4] {$a_2$: direita};
+  \node[font=\scriptsize\bfseries, color=rlCinza,   below=3.2mm of s4] {$a_1$: esquerda};
+  \node[recomp, above=3.2mm of s1] {$+1$};
+  \node[recomp, above=3.2mm of s7] {$+10$};
+\end{tikzpicture}
+\end{center}
+
+\begin{defbox}{política}
+Uma política especifica que ação tomar em cada estado. Na forma mais geral, é uma
+distribuição condicional: $\pol(a \mid s) = \Prob(a_t = a \mid s_t = s)$. Casos
+particulares: \textbf{determinística} ($\pol(s) = a$, massa concentrada em uma ação) e
+\textbf{estacionária} (independente de $t$).
+\end{defbox}
+
+Trabalhar com a forma estocástica desde o início não é preciosismo: ela permite
+exploração, é diferenciável nos parâmetros (o que habilitará os métodos de gradiente de
+política) e é a única forma ótima em jogos e em MDPs parcialmente observáveis. E uma
+distinção que evita confusões futuras: uma política \emph{não} é um plano. Um plano é
+uma sequência fixa de ações; uma política é uma \emph{função reativa} do estado --- ela
+responde ao que de fato aconteceu, e por isso é robusta à estocasticidade do ambiente.
+
+\subsection{A observação estrutural central: MDP + política = MRP}
+
+Fixar uma política elimina a decisão: sobram apenas aleatoriedade e recompensa. Um MDP
+com $\pol$ fixada é exatamente o MRP $(\gS, \rec^{\pol}, P^{\pol}, \gamma)$, com
+\[
+  \rec^{\pol}(s) = \sum_{a \in \gA} \pol(a \mid s)\, \rec(s,a),
+  \qquad
+  P^{\pol}(s' \mid s) = \sum_{a \in \gA} \pol(a \mid s)\, \tran{s'}{s,a}.
+\]
+
+\begin{ideiabox}
+Esta é a observação mais rentável da aula: \emph{tudo} que sabemos calcular para MRPs
+--- forma matricial, solução analítica $(I - \gamma P^{\pol})^{-1} \rec^{\pol}$,
+algoritmo iterativo --- aplica-se imediatamente à \emph{avaliação} de uma política em um
+MDP. O problema de predição não exige teoria nova. O que não vem de graça é o
+\emph{controle}: escolher $\pol$. É aí que o operador $\max$ entra em cena, e com ele a
+não linearidade.
+\end{ideiabox}
+
+%% ============================================================
+\section{Avaliação de política (predição)}
+%% ============================================================
+
+\begin{algbox}{avaliação iterativa de política}
+Inicialize $V_0^{\pol}(s) = 0$. Para $k = 1, 2, \dots$ até convergir, atualize, para
+todo $s \in \gS$:
+\[
+  V_k^{\pol}(s) \leftarrow \sum_{a \in \gA} \pol(a \mid s)
+  \Bigl[\, \rec(s,a) + \gamma \sum_{s' \in \gS} \tran{s'}{s,a}\, V_{k-1}^{\pol}(s') \,\Bigr]
+\]
+Este é o \emph{backup de Bellman para uma política específica}. Se $\pol$ é
+determinística, a soma externa desaparece:
+$V_k^{\pol}(s) \leftarrow \rec(s, \pol(s)) + \gamma \sum_{s'} \tran{s'}{s,\pol(s)}\, V_{k-1}^{\pol}(s')$.
+\end{algbox}
+
+Note o que \emph{não} há aqui: um $\max$. A política já foi fixada, o operador é
+\emph{linear} em $V$ --- e é isso que permite, alternativamente, resolver o sistema de
+forma fechada.
+
+\begin{exbox}{L2E1 --- uma iteração de avaliação no \emph{Mars Rover}}
+Suponha agora que $a_1$ seja \emph{estocástica}: $p(s_6 \mid s_6, a_1) = 0{,}5$ e
+$p(s_7 \mid s_6, a_1) = 0{,}5$ (e analogamente nos demais estados). Recompensa: para
+toda ação, $+1$ em $s_1$, $+10$ em $s_7$, $0$ nos demais. Seja $\pol(s) = a_1$ para todo
+$s$, com $V_k = [\,1\;\,0\;\,0\;\,0\;\,0\;\,0\;\,10\,]$, $k = 1$ e $\gamma = 0{,}5$.
+Calcule $V_{k+1}(s_6)$.
+\end{exbox}
+
+\paragraph{Resolução.} Aplicamos o backup para política determinística em um único
+estado. Como $p(\cdot \mid s_6, a_1)$ tem massa apenas em $s_6$ e $s_7$, somente dois
+termos são não nulos:
+\[
+  V_{k+1}(s_6)
+  = \underbrace{0}_{\rec(s_6, a_1)}
+  + \underbrace{0{,}5}_{\gamma} \cdot \bigl(\, 0{,}5 \cdot \underbrace{0}_{V_k(s_6)}
+  + 0{,}5 \cdot \underbrace{10}_{V_k(s_7)} \,\bigr)
+  = \mdestaque{rlVerde}{2{,}5}
+\]
+
+\begin{ideiabox}
+Repare no mecanismo: o valor \emph{difunde} para trás pelas transições. Na próxima
+varredura, $s_5$ também deixará de valer zero. Cada rodada propaga informação um passo
+--- por isso o número de iterações necessárias depende do ``diâmetro'' do MDP.
+\end{ideiabox}
+
+\begin{discbox}
+No \emph{Mars Rover} --- 7 estados, 2 ações --- quantas políticas \emph{determinísticas}
+existem? E a política ótima de um MDP (a de maior valor) é única?
+\smallskip
+
+\emph{Direção da resposta:} $2^7 = 128$; em geral, $\abs{\gA}^{\abs{\gS}}$, uma escolha
+independente por estado. E não: pode haver duas (ou infinitas) políticas com a mesma
+função valor máxima --- basta um empate no máximo de $Q$ em algum estado. O que é único
+é a \emph{função valor ótima} $\Vstar$, não o argumento que a atinge. Essa distinção
+reaparece o curso inteiro.
+\end{discbox}
+
+%% ============================================================
+\section{Controle por iteração de política}
+%% ============================================================
+
+O problema de controle pede $\polstar(s) = \argmax_{\pol} \Vpi(s)$. Para um MDP de
+horizonte infinito com $\gamma < 1$, a política ótima é \textbf{determinística}
+(aleatorizar não ajuda), \textbf{estacionária} (não depende de $t$) e
+\textbf{não necessariamente única} (pode haver empates); já a função valor ótima
+$\Vstar$ é única. Leia o $\argmax$ com cuidado: ele afirma que existe uma política que
+maximiza o valor em \emph{todos os estados ao mesmo tempo}. Em otimização multiobjetivo
+isso em geral não acontece; aqui acontece, por causa da estrutura de Bellman.
+
+Enumerar candidatas está fora de cogitação: há $\abs{\gA}^{\abs{\gS}}$ políticas
+determinísticas ($\abs{\gS}=100$ e $\abs{\gA}=4$ já dão $4^{100} \approx 10^{60}$). A
+iteração de política faz muito melhor: usa o valor da política atual para construir
+diretamente uma política melhor.
+
+\begin{defbox}{valor de estado-ação $Q$}
+\[
+  Q^{\pol}(s,a) = \rec(s,a) + \gamma \sum_{s' \in \gS} \tran{s'}{s,a}\, V^{\pol}(s')
+\]
+Leitura: ``tome a ação $a$ \emph{agora} e siga $\pol$ \emph{daí em diante}''. Vale a
+identidade $\Vpi(s) = \sum_a \pol(a \mid s)\, Q^{\pol}(s,a)$.
+\end{defbox}
+
+$V$ responde ``quão bom é este estado?''; $Q$ responde ``quão boa é esta \emph{ação}
+neste estado?'' --- que é a pergunta que se precisa responder para \emph{agir}. Daí o
+domínio de $Q$ nos algoritmos sem modelo.
+
+\begin{algbox}{Iteração de Política (PI)}
+$i \leftarrow 0$; inicialize $\pol_0(s)$ aleatoriamente. Enquanto $i = 0$ ou
+$\norm{\pol_i - \pol_{i-1}}_1 > 0$ (a norma $L_1$ só verifica se a política mudou em
+\emph{algum} estado):
+\begin{enumerate}
+  \item \textbf{Avaliação:} $V^{\pol_i} \leftarrow$ valor de $\pol_i$
+        (pela redução MDP${}+\pol{}=\,$MRP da Seção 2);
+  \item \textbf{Melhoria:} calcule $Q^{\pol_i}(s,a)$ para todos $s, a$ e tome a política
+        gulosa \(\;\pol_{i+1}(s) = \argmax_a Q^{\pol_i}(s,a)\); faça $i \leftarrow i+1$.
+\end{enumerate}
+\end{algbox}
+
+\begin{ideiabox}
+Nada garante \emph{a priori} que $\pol_{i+1}$ seja melhor: ela foi construída com
+$V^{\pol_i}$, o valor da política \emph{antiga}. Provar que a troca compensa é o teorema
+a seguir. E o esquema geral --- alternar avaliação e melhoria --- é a \emph{iteração de
+política generalizada}, esqueleto de quase todo algoritmo do curso, inclusive Q-learning
+e métodos ator-crítico.
+\end{ideiabox}
+
+\subsection{Melhoria monotônica}
+
+Escrevemos $V^{\pol_1} \ge V^{\pol_2}$ quando $V^{\pol_1}(s) \ge V^{\pol_2}(s)$ para
+\emph{todo} $s \in \gS$ (uma ordem parcial entre políticas).
+
+\begin{teobox}{Proposição --- melhoria monotônica}
+Seja $\pol_{i+1}$ a política obtida pelo passo de melhoria aplicado a $\pol_i$. Então
+$V^{\pol_{i+1}} \ge V^{\pol_i}$, com desigualdade \emph{estrita} em ao menos um estado
+se $\pol_i$ for subótima.
+\end{teobox}
+
+A intuição em duas frases. Para qualquer $s$, escolher a melhor ação é ao menos tão bom
+quanto seguir a política antiga:
+$\max_a Q^{\pol_i}(s,a) \ge Q^{\pol_i}(s, \pol_i(s)) = V^{\pol_i}(s)$. Isso mostra que
+tomar $\pol_{i+1}$ \emph{por um passo} e depois voltar a $\pol_i$ não piora nada --- mas
+a política proposta é seguir $\pol_{i+1}$ \emph{sempre}. O argumento de um passo não
+fecha a prova: é preciso aplicá-lo repetidamente, em um telescópio de desigualdades.
+
+\begin{provabox}
+\begin{align*}
+  V^{\pol_i}(s)
+    &\le \max_{a} Q^{\pol_i}(s,a)
+     = \max_{a} \Bigl[\, \rec(s,a) + \gamma \sum_{s'} \tran{s'}{s,a}\, V^{\pol_i}(s') \,\Bigr]
+     && \text{\color{rlCinza}(i) o máximo domina} \\
+    &= \rec(s, \pol_{i+1}(s)) + \gamma \sum_{s'} \tran{s'}{s,\pol_{i+1}(s)}\, V^{\pol_i}(s')
+     && \text{\color{rlCinza}(ii) definição de $\pol_{i+1}$} \\
+    &\le \rec(s, \pol_{i+1}(s)) + \gamma \sum_{s'} \tran{s'}{s,\pol_{i+1}(s)}
+      \Bigl[\, \max_{a'} Q^{\pol_i}(s',a') \,\Bigr]
+     && \text{\color{rlCinza}(iii) aplica (i) em $s'$}
+\end{align*}
+Expandindo o colchete com (ii) aplicado em $s'$, aparece mais um passo executado sob
+$\pol_{i+1}$, com a cauda ainda avaliada sob $\pol_i$:
+\[
+  \le \rec(s, \pol_{i+1}(s)) + \gamma \sum_{s'} \tran{s'}{s,\pol_{i+1}(s)}
+      \Bigl[\, \rec(s', \pol_{i+1}(s')) + \gamma \sum_{s''} \tran{s''}{s',\pol_{i+1}(s')}\,
+      V^{\pol_i}(s'') \,\Bigr] \le \cdots
+\]
+Repetindo indefinidamente, cada linha empurra a troca de política um passo adiante; o
+resíduo avaliado sob $\pol_i$ é multiplicado por $\gamma^k \to 0$ e desaparece no
+limite, restando exatamente a definição de $V^{\pol_{i+1}}(s)$. Logo
+$V^{\pol_i}(s) \le V^{\pol_{i+1}}(s)$ para todo $s$. \hfill $\blacksquare$
+\end{provabox}
+
+\begin{discbox}
+Duas perguntas sobre o comportamento de PI. (1) Se a política não muda em uma rodada,
+ela pode voltar a mudar depois? (2) Existe um número máximo de rodadas?
+\smallskip
+
+\emph{Direção da resposta:} (1) Não. Se $\pol_{i+1} = \pol_i$, então
+$Q^{\pol_{i+1}} = Q^{\pol_i}$ (mesma política, mesmo valor), logo
+$\pol_{i+2} = \argmax_a Q^{\pol_{i+1}} = \argmax_a Q^{\pol_i} = \pol_{i+1}$: ponto fixo
+--- e esse ponto fixo é ótimo. (2) Sim: $\abs{\gA}^{\abs{\gS}}$. Pela monotonia, cada
+política só aparece em uma rodada (a menos que já seja ótima). Na prática, PI converge
+em poucas dezenas de rodadas; Ye (2011) mostrou que, para $\gamma$ fixo, PI é
+\emph{fortemente polinomial} em $\abs{\gS}$ e $\abs{\gA}$.
+\end{discbox}
+
+%% ============================================================
+\section{Controle por iteração de valor}
+%% ============================================================
+
+A segunda estratégia de controle não mantém uma política: mantém o \emph{valor ótimo}
+de começar em cada estado supondo que restam $k$ passos de episódio --- e itera
+considerando episódios cada vez mais longos. São dois eixos de aproximação ortogonais:
+PI é exata no \emph{valor} e aproxima a \emph{política}; VI é exata na otimalidade local
+e aproxima o \emph{horizonte}. Ambas convergem para o mesmo par $(\Vstar, \polstar)$.
+
+\begin{defbox}{operador de backup de Bellman $\Bop$}
+Aplicado a uma função valor qualquer, devolve uma nova função valor sobre todos os
+estados, melhorando o valor quando há melhora possível:
+\[
+  \Bop V(s) = \max_{a} \Bigl[\, \rec(s,a) + \gamma \sum_{s' \in \gS} \tran{s'}{s,a}\, V(s') \,\Bigr]
+\]
+\end{defbox}
+
+A troca da \emph{soma ponderada por $\pol$} pelo \emph{$\max$ sobre ações} é o que
+distingue predição de controle --- e o que destrói a linearidade: com $\Bop$, a solução
+fechada por inversão de matriz deixa de existir.
+
+\begin{algbox}{Iteração de Valor (VI)}
+Inicialize $V_0(s) = 0$. Repita $V_{k+1} = \Bop V_k$ até convergir (por exemplo,
+$\norminf{V_{k+1} - V_k} \le \epsilon$). Ao final, extraia a política \emph{gulosa} em
+relação ao último valor:
+$\pol(s) = \argmax_a \bigl[\, \rec(s,a) + \gamma \sum_{s'} \tran{s'}{s,a}\, V_{k+1}(s') \,\bigr]$.
+\end{algbox}
+
+Na linguagem de operadores, as duas famílias se unificam. Definindo o backup para uma
+política fixa, $\Bpol V(s) = \rec^{\pol}(s) + \gamma \sum_{s'} P^{\pol}(s' \mid s) V(s')$,
+a avaliação de política é o cálculo do \emph{ponto fixo} de $\Bpol$
+($\Vpi = \Bpol \Bpol \cdots \Bpol V$), e a melhoria é um único backup com $\max$ seguido
+de $\argmax$. VI itera $\Bop$ (com $\max$) desde o início; PI itera $\Bpol$ (linear) até
+o ponto fixo e só então usa o $\max$ uma vez.
+
+\begin{alertabox}
+Em VI, os valores intermediários $V_k$ em geral \emph{não} correspondem ao valor de
+nenhuma política executável --- são valores ótimos de um problema truncado em $k$
+passos. Consequência: a qualidade das políticas gulosas extraídas ao longo do caminho
+pode oscilar antes de estabilizar. A monotonia rodada a rodada é uma garantia de PI, não
+de VI.
+\end{alertabox}
+
+\subsection{Por que VI converge: contração}
+
+\begin{defbox}{operador de contração}
+Seja $O$ um operador e $\norm{\cdot}$ uma norma. Se $\norm{OV - OV'} \le \norm{V - V'}$
+para todos $V, V'$, então $O$ é um operador de \emph{contração} (estrita, se a
+desigualdade vale com um fator $\gamma < 1$).
+\end{defbox}
+
+Imagem mental: um mapa que \emph{aproxima os pontos}. Aplicado repetidamente, todos os
+pontos colapsam em um único ponto fixo --- não importa de onde se parta.
+
+\begin{teobox}{o backup de Bellman é uma contração para $\gamma<1$}
+Na norma do supremo, $\norminf{V - V'} = \max_s \abs{V(s) - V'(s)}$, vale
+$\norminf{\Bop V - \Bop V'} \le \gamma\, \norminf{V - V'}$.
+\end{teobox}
+
+\begin{provabox}
+Para cada estado $s$, usando primeiro que a diferença de máximos é limitada pelo máximo
+das diferenças, $\abs{\max_a f(a) - \max_{a'} g(a')} \le \max_a \abs{f(a) - g(a)}$:
+\begin{align*}
+  \abs{\Bop V_k(s) - \Bop V_j(s)}
+    &\le \max_a \Bigl|\, \rec(s,a) + \gamma \sum_{s'} \tran{s'}{s,a}\, V_k(s')
+       - \rec(s,a) - \gamma \sum_{s'} \tran{s'}{s,a}\, V_j(s') \,\Bigr| \\
+    &= \max_a \, \gamma \Bigl|\, \sum_{s'} \tran{s'}{s,a} \bigl( V_k(s') - V_j(s') \bigr) \,\Bigr|
+     \;\le\; \max_a \, \gamma \sum_{s'} \tran{s'}{s,a}\, \norminf{V_k - V_j} \\
+    &= \gamma\, \norminf{V_k - V_j} \qquad \text{\color{rlCinza}(as probabilidades somam 1).}
+\end{align*}
+Tomando o máximo sobre $s$ obtém-se a contração. Note dois detalhes: a recompensa
+$\rec$ \emph{cancela} --- a contração não depende dela ---, e mesmo que todas as
+desigualdades fossem igualdades ainda haveria contração, desde que $\gamma<1$.
+\hfill $\blacksquare$
+\end{provabox}
+
+\begin{teobox}{consequências (ponto fixo de Banach)}
+Se $\gamma < 1$: (i) $\Bop$ tem um \emph{único} ponto fixo, que é $\Vstar$; (ii) VI
+converge a partir de \emph{qualquer} inicialização $V_0$; (iii) a convergência é
+geométrica, $\norminf{V_k - \Vstar} \le \gamma^k \norminf{V_0 - \Vstar}$. Além disso, se
+o critério de parada $\norminf{V_{k+1} - V_k} \le \epsilon$ foi atingido, então
+$\norminf{V_{k+1} - \Vstar} \le \gamma\epsilon/(1-\gamma)$, e a política gulosa extraída
+perde no máximo $2\gamma\epsilon/(1-\gamma)$ em valor.
+\end{teobox}
+
+Duas consequências práticas: a inicialização não afeta o destino, só o tempo de viagem
+(e uma boa inicialização acelera); e $\gamma$ perto de $1$ torna a convergência lenta
+--- o número de iterações cresce como $1/(1-\gamma)$.
+
+%% ============================================================
+\section{Horizonte finito e avaliação por simulação}
+%% ============================================================
+
+\subsection{VI em horizonte finito}
+
+Em horizonte finito, VI deixa de ser aproximação e vira \emph{o algoritmo exato}:
+$V_k$ e $\pol_k$ são o valor e a política ótimos \emph{quando restam $k$ decisões}.
+Basta rodar o laço de VI por exatamente $H$ iterações, guardando a cada passo também a
+política gulosa $\pol_{k+1}(s) = \argmax_a [\, \rec(s,a) + \gamma \sum_{s'} \tran{s'}{s,a} V_k(s') \,]$.
+Para agir no instante $t$, usa-se $\pol_{H-t}$ --- a política indexada por \emph{quantos
+passos restam}.
+
+\begin{discbox}
+Em tarefas de horizonte \emph{finito}, a política ótima é estacionária (independente do
+passo de tempo)?
+\smallskip
+
+\emph{Direção da resposta:} em geral, não --- a ação ótima depende de quanto tempo
+resta. No \emph{Mars Rover}, em $s_4$ com muitos passos restantes vale caminhar até o
+$+10$ em $s_7$; com um único passo restante, nenhuma direção alcança recompensa; com
+dois ou três, o $+1$ de $s_1$ e o $+10$ de $s_7$ competem de forma diferente a cada
+instante. A política ótima precisa ser indexada pelo tempo: $\pol_t^*(s)$.
+\end{discbox}
+
+\subsection{Avaliação por simulação (Monte Carlo)}
+
+Alternativa para estimar o valor de uma política: gere um grande número de
+\emph{episódios} seguindo-a, calcule o retorno de cada um e tire a \emph{média}.
+Desigualdades de concentração (como a de Hoeffding) limitam a rapidez com que a média se
+aproxima da esperança. Nenhuma suposição markoviana é necessária --- e, mais importante,
+nenhum \emph{modelo}: basta poder interagir. O preço é a variância: cada retorno é uma
+amostra ruidosa, e a precisão melhora apenas com $1/\sqrt{n}$ episódios.
+
+\paragraph{Exemplo numérico.} No \emph{Mars Rover} estocástico (passeio aleatório: de
+cada estado interior, prob.\ $0{,}4$ para cada vizinho e $0{,}2$ de ficar parado;
+$0{,}6$ de ficar parado nas bordas), com episódios de $H = 4$ passos a partir de $s_4$ e
+$\gamma = \tfrac12$:
+
+\begin{center}
+\begin{tabular}{@{}llc@{}}
+\toprule
+\textbf{Episódio} & \textbf{Retorno } $G = r_1 + \tfrac12 r_2 + \tfrac14 r_3 + \tfrac18 r_4$ & \textbf{Valor} \\
+\midrule
+$s_4, s_5, s_6, s_7$ & $0 + \tfrac12 \cdot 0 + \tfrac14 \cdot 0 + \tfrac18 \cdot 10$ & $1{,}25$ \\
+$s_4, s_4, s_5, s_4$ & $0 + \tfrac12 \cdot 0 + \tfrac14 \cdot 0 + \tfrac18 \cdot 0$  & $0$ \\
+$s_4, s_3, s_2, s_1$ & $0 + \tfrac12 \cdot 0 + \tfrac14 \cdot 0 + \tfrac18 \cdot 1$  & $0{,}125$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Três amostras, três respostas --- todas legítimas. $V(s_4)$ é a média dessa distribuição
+(o cálculo exato por programação dinâmica dá $V(s_4) \approx 0{,}088$); estimá-la bem
+exige muitos episódios. DP calcula a média sem nunca sortear; Monte Carlo sorteia sem
+nunca conhecer $P$. A Aula 3 vive exatamente nesse contraste.
+
+%% ============================================================
+\section{Síntese}
+%% ============================================================
+
+\subsection{Comparação dos métodos}
+
+\paragraph{Três formas de avaliar uma política.}
+
+\begin{center}
+\begin{tabular}{@{}p{3.2cm}p{3.6cm}cc@{}}
+\toprule
+\textbf{Método} & \textbf{Custo} & \textbf{Exige Markov?} & \textbf{Exige modelo?} \\
+\midrule
+Analítico $(I - \gamma P^{\pol})^{-1} \rec^{\pol}$ & $\Theta(N^3)$, uma vez & sim & sim \\
+Iterativo (DP) & $O(N^2)$ por varredura & sim & sim \\
+Simulação (Monte Carlo) & $O(\text{episódios} \times H)$ & \textbf{não} & não (só amostras) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Os dois algoritmos de controle.}
+
+\begin{center}
+\begin{tabular}{@{}p{4.0cm}p{4.5cm}p{4.5cm}@{}}
+\toprule
+ & \textbf{Iteração de valor} & \textbf{Iteração de política} \\
+\midrule
+O que mantém & valor ótimo p/ horizonte $k$ & política + seu valor $\infty$ \\
+Passo & $V_{k+1} = \Bop V_k$ & avaliar $\Bpol$; melhorar c/ $\max$ \\
+Custo por iteração & $O(\abs{\gS}^2 \abs{\gA})$ & avaliação $+$ $O(\abs{\gS}^2 \abs{\gA})$ \\
+N\textsuperscript{o} de iterações & muitas e baratas & poucas e caras \\
+Monotonia da política & não garantida & \textbf{garantida} \\
+Parente em RL moderno & Q\mbox{-}learning & gradiente de política \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{ideiabox}
+\emph{Iteração de política modificada}: no passo de avaliação, em vez de iterar $\Bpol$
+até o ponto fixo, aplique-o apenas $m$ vezes. Com $m = 1$ recupera-se VI; com
+$m = \infty$, PI. Quase tudo entre os dois extremos funciona --- e costuma ser mais
+rápido que ambos.
+\end{ideiabox}
+
+\subsection{Vocabulário}
+
+\textbf{Modelo}: representação matemática da dinâmica ($P$) e da recompensa ($\rec$).
+\textbf{Política}: função que mapeia estados em ações (ou distribuições sobre ações).
+\textbf{Função valor}: recompensas futuras esperadas a partir de um estado (e/ou ação),
+seguindo uma política específica. Estes três objetos organizam todo o campo: algoritmos
+baseados em modelo, em valor ou em política --- e suas combinações.
+
+\subsection{O que você deve saber ao final desta aula}
+
+\begin{itemize}
+  \item \textbf{Definir}: MP, MRP, MDP, operador de Bellman, contração, modelo, valor
+        $Q$, política.
+  \item \textbf{Implementar}: iteração de valor e iteração de política.
+  \item \textbf{Comparar}: prós e contras das abordagens de avaliação de política.
+  \item \textbf{Provar}: propriedades de contração e a melhoria monotônica.
+  \item \textbf{Criticar}: limitações das abordagens apresentadas e da hipótese de
+        Markov --- em particular, saber dizer quais métodos de avaliação exigem a
+        hipótese de Markov e quais não.
+\end{itemize}
+
+\subsection{Prática recomendada}
+
+\begin{exbox}{--- para consolidar fora de aula}
+\begin{enumerate}
+  \item Prove que a iteração de valor converge para uma solução \emph{única} em espaços
+        discretos de estados e ações com $\gamma < 1$.
+  \item A inicialização dos valores em VI afeta alguma coisa? O quê, exatamente --- e o
+        que ela \emph{não} afeta?
+  \item O valor da política extraída de VI a cada rodada é garantidamente monotônico
+        (se executada no problema real de horizonte infinito), como na iteração de
+        política? \emph{(Esta é a pergunta mais sutil da aula --- compare com a caixa
+        de atenção da Seção 5.)}
+  \item Implemente VI e PI para o \emph{Mars Rover} e meça: quantas iterações cada um
+        leva com $\gamma = 0{,}5$? E com $\gamma = 0{,}95$? O laboratório interativo da
+        aula permite conferir suas respostas.
+\end{enumerate}
+\end{exbox}
+
+\vspace{1em}
+\begin{center}
+{\color{rlCinza}\small\itshape Próxima aula: avaliação de política sem modelo ---
+Monte Carlo e diferenças temporais.}
+\end{center}
+
+\end{document}
