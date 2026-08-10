@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Laboratório — Busca em árvore Monte Carlo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --tinta:#0E2135; --tinta2:#16324F; --tinta3:#1D4066;
+  --laranja:#E8590C; --laranja-cl:#FF7A2E;
+  --teal:#1AA0AF; --ambar:#F2A93B; --verde:#3FBF63; --vermelho:#E0525E;
+  --cinza:#8CA3BC;   --papel:#F2F6FA;
+  --r:10px;
+  --mono:"Fira Code","SFMono-Regular",Consolas,monospace;
+  --sans:"Fira Sans","Helvetica Neue",Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:
+    radial-gradient(1200px 700px at 15% -10%, #1B3A5C 0%, transparent 60%),
+    radial-gradient(900px 600px at 100% 0%, #16324F 0%, transparent 55%),
+    var(--tinta);
+  color:var(--papel); font-family:var(--sans); font-size:15px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1120px;margin:0 auto;padding:26px 20px 56px}
+
+/* ---------- cabeçalho ---------- */
+.eyebrow{
+  font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ambar);
+  font-weight:600;margin:0 0 8px
+}
+h1{font-size:clamp(26px,4.2vw,40px);line-height:1.08;margin:0 0 8px;font-weight:700;letter-spacing:-.01em}
+h1 em{font-style:normal;color:var(--laranja-cl)}
+.lead{color:var(--cinza);max-width:60ch;margin:0 0 22px}
+
+/* ---------- abas ---------- */
+.abas{display:flex;gap:6px;border-bottom:1px solid rgba(255,255,255,.12);margin-bottom:22px}
+.aba{
+  appearance:none;background:none;border:0;border-bottom:2px solid transparent;
+  color:var(--cinza);font:600 14px var(--sans);padding:9px 14px;cursor:pointer;border-radius:6px 6px 0 0
+}
+.aba:hover{color:var(--papel)}
+.aba[aria-selected="true"]{color:var(--papel);border-bottom-color:var(--laranja)}
+.aba:focus-visible{outline:2px solid var(--ambar);outline-offset:2px}
+[hidden]{display:none !important}
+
+/* ---------- grade principal ---------- */
+.palco{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:26px;align-items:start}
+@media(max-width:900px){.palco{grid-template-columns:1fr}}
+
+/* ---------- barras de visita ---------- */
+.medidor{
+  display:grid;grid-template-columns:repeat(7,1fr);gap:6px;
+  align-items:end;height:82px;margin-bottom:6px;padding:0 10px
+}
+.barra{position:relative;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%}
+.barra .val{
+  font:600 11px var(--mono);color:var(--cinza);margin-bottom:3px;
+  font-variant-numeric:tabular-nums;transition:color .2s
+}
+.barra .haste{
+  width:100%;height:0;border-radius:3px 3px 0 0;
+  background:linear-gradient(180deg,var(--laranja-cl),var(--laranja));
+  transition:height .12s linear
+}
+.barra .base{width:100%;height:2px;border-radius:2px;background:rgba(255,255,255,.16)}
+@media(max-width:560px){
+  .medidor{height:56px}
+  .barra .val{font-size:10px}
+}
+.barra.alvo .haste{box-shadow:0 0 0 1.5px var(--ambar)}
+.barra.alvo .val{color:var(--ambar)}
+.barra.eleita .val{color:var(--laranja-cl)}
+
+/* ---------- tabuleiro ---------- */
+.tabuleiro{
+  position:relative;background:linear-gradient(180deg,var(--tinta3),var(--tinta2));
+  border-radius:14px;padding:10px;box-shadow:0 18px 40px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.08)
+}
+.grade{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.casa{aspect-ratio:1/1;border-radius:50%;background:rgba(6,18,31,.62);box-shadow:inset 0 2px 5px rgba(0,0,0,.5)}
+.casa.p1{background:radial-gradient(circle at 34% 30%,#3FC7D6,var(--teal));box-shadow:inset 0 -3px 7px rgba(0,0,0,.3)}
+.casa.p2{background:radial-gradient(circle at 34% 30%,#FF9552,var(--laranja));box-shadow:inset 0 -3px 7px rgba(0,0,0,.3)}
+.casa.nova{animation:cai .26s cubic-bezier(.3,1.4,.5,1)}
+.casa.vence{outline:3px solid var(--ambar);outline-offset:-3px}
+@keyframes cai{from{transform:translateY(-160%)}to{transform:none}}
+.casa.fantasma{background:rgba(26,160,175,.22);box-shadow:inset 0 0 0 2px rgba(26,160,175,.5)}
+.casa.lp{box-shadow:inset 0 0 0 2px rgba(242,169,59,.55)}
+
+.colunas{position:absolute;inset:10px;display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.coluna{appearance:none;background:none;border:0;border-radius:8px;cursor:pointer;padding:0}
+.coluna:disabled{cursor:default}
+.coluna:focus-visible{outline:2px solid var(--ambar);outline-offset:2px}
+.coluna:not(:disabled):hover{background:rgba(255,255,255,.05)}
+
+.placa{margin-top:12px;min-height:34px;font-size:14px;color:var(--cinza)}
+.ponto{
+  display:inline-block;width:10px;height:10px;border-radius:50%;
+  vertical-align:baseline;margin-right:4px
+}
+.ponto.p1{background:var(--teal)} .ponto.p2{background:var(--laranja)}
+.placa b{color:var(--papel);font-weight:600}
+.placa .ok{color:var(--verde)} .placa .aviso{color:var(--ambar)}
+
+/* ---------- painel ---------- */
+.painel{background:rgba(255,255,255,.038);border:1px solid rgba(255,255,255,.09);border-radius:var(--r);padding:16px}
+.palco .painel + .painel{margin-top:14px}
+.rotulo{
+  font:600 10.5px var(--sans);letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ambar);margin:0 0 12px
+}
+.campo{margin-bottom:14px}
+.campo:last-child{margin-bottom:0}
+.campo > label,.campo > .nome{
+  display:flex;justify-content:space-between;align-items:baseline;
+  font-size:13px;color:var(--cinza);margin-bottom:6px
+}
+.campo .num{font:600 13px var(--mono);color:var(--papel);font-variant-numeric:tabular-nums}
+
+input[type=range]{
+  -webkit-appearance:none;appearance:none;width:100%;height:22px;background:none;cursor:pointer
+}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:rgba(255,255,255,.16)}
+input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:rgba(255,255,255,.16)}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--laranja);
+  border:2px solid #fff2;margin-top:-6px
+}
+input[type=range]::-moz-range-thumb{width:15px;height:15px;border:2px solid #fff2;border-radius:50%;background:var(--laranja)}
+input[type=range]:focus-visible{outline:2px solid var(--ambar);outline-offset:3px}
+
+.seg{display:flex;gap:3px;background:rgba(0,0,0,.24);padding:3px;border-radius:8px}
+.seg button{
+  flex:1;appearance:none;background:none;border:0;border-radius:6px;padding:7px 4px;
+  color:var(--cinza);font:500 12.5px var(--sans);cursor:pointer;white-space:nowrap
+}
+.seg button[aria-pressed="true"]{background:var(--tinta3);color:var(--papel);box-shadow:0 1px 0 rgba(255,255,255,.08)}
+.seg button:focus-visible{outline:2px solid var(--ambar);outline-offset:1px}
+
+/* ---------- tabela da raiz ---------- */
+table.raiz{width:100%;border-collapse:collapse;font:500 12.5px var(--mono);font-variant-numeric:tabular-nums}
+table.raiz th{
+  font:600 10px var(--sans);letter-spacing:.09em;text-transform:uppercase;color:var(--cinza);
+  text-align:right;padding:0 0 6px;border-bottom:1px solid rgba(255,255,255,.12)
+}
+table.raiz th:first-child,table.raiz td:first-child{text-align:left}
+table.raiz td{padding:4px 0;text-align:right;color:#C9D8E6}
+table.raiz tr.eleita td{color:var(--laranja-cl)}
+table.raiz tr.alvo td:last-child{color:var(--ambar);font-weight:600}
+table.raiz .vazio td{color:var(--cinza);text-align:center;padding:14px 0;font-family:var(--sans)}
+
+.legenda{font-size:11.5px;color:var(--cinza);margin-top:10px;line-height:1.45}
+.legenda .sw{display:inline-block;width:8px;height:8px;border-radius:2px;vertical-align:middle;margin-right:4px}
+
+.botoes{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.bt{
+  appearance:none;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);
+  color:var(--papel);font:600 13px var(--sans);padding:10px;border-radius:8px;cursor:pointer
+}
+.bt:hover:not(:disabled){background:rgba(255,255,255,.1)}
+.bt:disabled{opacity:.4;cursor:default}
+.bt.forte{background:var(--laranja);border-color:var(--laranja);color:#fff}
+.bt.forte:hover:not(:disabled){background:var(--laranja-cl)}
+.bt:focus-visible{outline:2px solid var(--ambar);outline-offset:2px}
+.bt.larga{grid-column:1/-1}
+
+/* ---------- torneio ---------- */
+.duelo{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:760px){.duelo{grid-template-columns:1fr}}
+.presets{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+.preset{
+  appearance:none;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);
+  color:var(--papel);font:500 13px var(--sans);padding:9px 13px;border-radius:20px;cursor:pointer;text-align:left
+}
+.preset:hover{background:rgba(255,255,255,.1);border-color:var(--ambar)}
+.preset:focus-visible{outline:2px solid var(--ambar);outline-offset:2px}
+.preset b{font-weight:600;color:var(--ambar)}
+.trilha{height:6px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden;margin:14px 0 10px}
+.trilha i{display:block;height:100%;width:0;background:var(--ambar);transition:width .2s}
+.resultado{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:6px}
+.cartao{background:rgba(0,0,0,.2);border-radius:8px;padding:12px;text-align:center}
+.cartao .n{font:600 26px var(--mono);font-variant-numeric:tabular-nums;line-height:1.1}
+.cartao .l{font-size:11px;color:var(--cinza);margin-top:3px}
+.cartao.a .n{color:var(--laranja-cl)} .cartao.b .n{color:var(--teal)} .cartao.e .n{color:var(--cinza)}
+.balanca{display:flex;height:26px;border-radius:6px;overflow:hidden;margin-top:14px;font:600 11px var(--mono)}
+.balanca span{display:flex;align-items:center;justify-content:center;transition:width .3s;overflow:hidden}
+.balanca .a{background:var(--laranja)} .balanca .e{background:#476C8E} .balanca .b{background:var(--teal)}
+
+.nota{
+  border-left:2.5px solid var(--ambar);padding:2px 0 2px 12px;color:var(--cinza);
+  font-size:13px;margin-top:16px
+}
+.nota b{color:var(--papel);font-weight:600}
+.rodape{margin-top:34px;padding-top:16px;border-top:1px solid rgba(255,255,255,.1);font-size:12px;color:var(--cinza)}
+
+@media (prefers-reduced-motion: reduce){
+  *{animation-duration:.001ms !important;transition-duration:.001ms !important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<p class="eyebrow">Aula 14 · Aprendizagem por Reforço · Universidade Federal de Uberlândia</p>
+<h1>A busca <em>pensando em voz alta</em></h1>
+<p class="lead">Um Lig-4 movido pelos mesmos ingredientes do AlphaZero, com todos eles expostos.
+As barras acima do tabuleiro são as contagens de visita crescendo em tempo real; a tabela ao lado
+é a fórmula de seleção sendo avaliada jogada a jogada.</p>
+
+<div class="abas" role="tablist">
+  <button class="aba" role="tab" id="aba-jogar" aria-controls="pn-jogar" aria-selected="true">Jogar contra a busca</button>
+  <button class="aba" role="tab" id="aba-torneio" aria-controls="pn-torneio" aria-selected="false">Torneio</button>
+</div>
+
+<!-- =========================== JOGAR =========================== -->
+<section id="pn-jogar" role="tabpanel" aria-labelledby="aba-jogar">
+<div class="palco">
+
+  <div>
+    <div class="medidor" id="medidor" aria-hidden="true"></div>
+    <div class="tabuleiro">
+      <div class="grade" id="grade"></div>
+      <div class="colunas" id="colunas"></div>
+    </div>
+    <p class="placa" id="placa"></p>
+  </div>
+
+  <div>
+    <div class="painel">
+      <p class="rotulo">Como a máquina pensa</p>
+
+      <div class="campo">
+        <label for="sims"><span>Simulações por jogada</span> <span class="num" id="sims-v">400</span></label>
+        <input type="range" id="sims" min="0" max="8" step="1" value="4">
+      </div>
+
+      <div class="campo">
+        <span class="nome">Avaliador de folha</span>
+        <div class="seg" id="seg-aval" role="group" aria-label="Avaliador de folha">
+          <button data-v="aleatoria">rollout aleatória</button>
+          <button data-v="guiada" aria-pressed="true">rollout guiada</button>
+          <button data-v="heuristica">heurística</button>
+        </div>
+      </div>
+
+      <div class="campo">
+        <span class="nome">Regra de seleção</span>
+        <div class="seg" id="seg-regra" role="group" aria-label="Regra de seleção">
+          <button data-v="uct" aria-pressed="true">UCT</button>
+          <button data-v="puct">PUCT (com prior)</button>
+        </div>
+      </div>
+
+      <div class="campo">
+        <label for="cexp"><span>Constante de exploração <i>c</i></span> <span class="num" id="c-v">1,40</span></label>
+        <input type="range" id="cexp" min="0" max="40" step="1" value="14">
+      </div>
+    </div>
+
+    <div class="painel">
+      <p class="rotulo">Na raiz, agora</p>
+      <table class="raiz" id="tab-raiz"><tbody></tbody></table>
+      <p class="legenda" id="legenda"></p>
+    </div>
+
+    <div class="painel">
+      <div class="botoes">
+        <button class="bt" id="bt-analisar">Analisar posição</button>
+        <button class="bt" id="bt-desfazer">Desfazer jogada</button>
+        <button class="bt forte larga" id="bt-nova">Nova partida</button>
+        <button class="bt larga" id="bt-quem">Deixar a máquina começar</button>
+      </div>
+      <p class="legenda">Você joga de <span class="sw" style="background:var(--teal)"></span>ciano; a busca joga de
+      <span class="sw" style="background:var(--laranja)"></span>laranja. A máquina refaz a árvore do zero a cada jogada.</p>
+    </div>
+  </div>
+</div>
+
+<div class="nota">
+  <b>Para conduzir em aula.</b> Baixe as simulações para 20 e ganhe da máquina. Suba para 800 e tente de novo —
+  nada mudou na avaliação nem na regra, só o tempo de pensar. É a mesma alavanca que separa a rede crua do
+  AlphaGo Zero (3&nbsp;055 Elo) do sistema com busca (5&nbsp;185).
+</div>
+</section>
+
+<!-- ========================== TORNEIO ========================== -->
+<section id="pn-torneio" role="tabpanel" aria-labelledby="aba-torneio" hidden>
+  <div class="presets" id="presets">
+    <button class="preset" data-p="0"><b>Orçamento</b> · 400 × 100 simulações</button>
+    <button class="preset" data-p="1"><b>Avaliador</b> · heurística × rollout aleatória</button>
+    <button class="preset" data-p="2"><b>Regra</b> · PUCT × UCT com orçamento curto</button>
+  </div>
+
+  <div class="duelo">
+    <div class="painel">
+      <p class="rotulo" style="color:var(--laranja-cl)">Jogador A</p>
+      <div class="campo">
+        <label for="a-sims">Simulações <span class="num" id="a-sims-v">400</span></label>
+        <input type="range" id="a-sims" min="0" max="8" step="1" value="4">
+      </div>
+      <div class="campo">
+        <span class="nome">Avaliador</span>
+        <div class="seg" id="a-aval" role="group" aria-label="Avaliador de A">
+          <button data-v="aleatoria">aleatória</button>
+          <button data-v="guiada" aria-pressed="true">guiada</button>
+          <button data-v="heuristica">heurística</button>
+        </div>
+      </div>
+      <div class="campo">
+        <span class="nome">Regra</span>
+        <div class="seg" id="a-regra" role="group" aria-label="Regra de A">
+          <button data-v="uct" aria-pressed="true">UCT</button><button data-v="puct">PUCT</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="painel">
+      <p class="rotulo" style="color:var(--teal)">Jogador B</p>
+      <div class="campo">
+        <label for="b-sims">Simulações <span class="num" id="b-sims-v">100</span></label>
+        <input type="range" id="b-sims" min="0" max="8" step="1" value="2">
+      </div>
+      <div class="campo">
+        <span class="nome">Avaliador</span>
+        <div class="seg" id="b-aval" role="group" aria-label="Avaliador de B">
+          <button data-v="aleatoria">aleatória</button>
+          <button data-v="guiada" aria-pressed="true">guiada</button>
+          <button data-v="heuristica">heurística</button>
+        </div>
+      </div>
+      <div class="campo">
+        <span class="nome">Regra</span>
+        <div class="seg" id="b-regra" role="group" aria-label="Regra de B">
+          <button data-v="uct" aria-pressed="true">UCT</button><button data-v="puct">PUCT</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="painel" style="margin-top:14px">
+    <div class="campo">
+      <label for="npart">Partidas <span class="num" id="npart-v">30</span></label>
+      <input type="range" id="npart" min="10" max="60" step="10" value="30">
+    </div>
+    <div class="botoes">
+      <button class="bt forte" id="bt-rodar">Rodar torneio</button>
+      <button class="bt" id="bt-parar" disabled>Parar</button>
+    </div>
+    <div class="trilha"><i id="prog"></i></div>
+    <p class="legenda" id="t-status">As cores dos dois lados são alternadas a cada partida, e as duas primeiras
+    jogadas de cada partida são sorteadas — sem isso, configurações determinísticas repetiriam a mesma partida
+    trinta vezes.</p>
+
+    <div class="resultado">
+      <div class="cartao a"><div class="n" id="r-a">0</div><div class="l">vitórias de A</div></div>
+      <div class="cartao e"><div class="n" id="r-e">0</div><div class="l">empates</div></div>
+      <div class="cartao b"><div class="n" id="r-b">0</div><div class="l">vitórias de B</div></div>
+    </div>
+    <div class="balanca" id="balanca"><span class="a" style="width:0"></span><span class="e" style="width:100%"></span><span class="b" style="width:0"></span></div>
+    <p class="legenda" id="r-elo">Rode o torneio para estimar a diferença de força em pontos de Elo.</p>
+  </div>
+
+  <div class="nota">
+    <b>O que procurar.</b> Nos três presets, a diferença entre os lados é de um único ingrediente. O primeiro
+    isola o orçamento de busca; o segundo, o avaliador de folha; o terceiro, a regra de seleção. Compare a
+    magnitude do &Delta;&nbsp;Elo entre eles — é a evidência empírica de qual alavanca pesa mais, feita na sua
+    frente e não citada de um artigo.
+  </div>
+</section>
+
+<p class="rodape">Material da Aula 14 · Prof. Marcelo Keese Albertini · Universidade Federal de Uberlândia ·
+adaptado de <i>CS234: Reinforcement Learning</i>, Emma Brunskill, Stanford University.</p>
+</div>
+
+<script>
+"use strict";
+/* ============================================================
+   1. Lig-4
+   ============================================================ */
+const COLS=7, ROWS=6, NC=COLS*ROWS;
+const novoEstado=()=>({cells:new Int8Array(NC),alturas:new Int8Array(COLS),vez:1,jogadas:0});
+const clonar=s=>({cells:Int8Array.from(s.cells),alturas:Int8Array.from(s.alturas),vez:s.vez,jogadas:s.jogadas});
+function legais(s){const m=[];for(let c=0;c<COLS;c++)if(s.alturas[c]<ROWS)m.push(c);return m;}
+function soltar(s,c){const r=s.alturas[c];s.cells[r*COLS+c]=s.vez;s.alturas[c]=r+1;s.vez=3-s.vez;s.jogadas++;return r;}
+function desfazer(s,c){const r=s.alturas[c]-1;s.cells[r*COLS+c]=0;s.alturas[c]=r;s.vez=3-s.vez;s.jogadas--;}
+const DIRS=[[0,1],[1,0],[1,1],[1,-1]];
+function linhaVitoriosa(cells,r,c,p){
+  for(const [dr,dc] of DIRS){
+    const cel=[[r,c]];
+    for(const sg of [1,-1]){
+      let rr=r+sg*dr, cc=c+sg*dc;
+      while(rr>=0&&rr<ROWS&&cc>=0&&cc<COLS&&cells[rr*COLS+cc]===p){cel.push([rr,cc]);rr+=sg*dr;cc+=sg*dc;}
+    }
+    if(cel.length>=4) return cel;
+  }
+  return null;
+}
+const venceu=(cells,r,c,p)=>linhaVitoriosa(cells,r,c,p)!==null;
+function venceAgora(s,c){
+  if(s.alturas[c]>=ROWS)return false;
+  const p=s.vez,r=s.alturas[c];
+  s.cells[r*COLS+c]=p; const w=venceu(s.cells,r,c,p); s.cells[r*COLS+c]=0; return w;
+}
+
+/* ============================================================
+   2. Avaliadores de folha
+   ============================================================ */
+const JANELAS=(()=>{const J=[];
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)for(const [dr,dc] of DIRS){
+    const rr=r+3*dr, cc=c+3*dc;
+    if(rr<0||rr>=ROWS||cc<0||cc>=COLS)continue;
+    J.push([r*COLS+c,(r+dr)*COLS+(c+dc),(r+2*dr)*COLS+(c+2*dc),rr*COLS+cc]);
+  } return J;})();
+const PESO=[0,1,6,40];
+function escoreEstatico(cells,p){
+  const o=3-p; let s=0;
+  for(let k=0;k<JANELAS.length;k++){
+    const J=JANELAS[k]; let a=0,b=0;
+    for(let i=0;i<4;i++){const v=cells[J[i]]; if(v===p)a++; else if(v===o)b++;}
+    if(a&&b)continue;
+    if(a)s+=PESO[a]; else if(b)s-=PESO[b];
+  }
+  for(let r=0;r<ROWS;r++){const v=cells[r*COLS+3]; if(v===p)s+=3; else if(v===o)s-=3;}
+  return s;
+}
+function rolloutAleatoria(s){
+  const st=clonar(s);
+  for(;;){
+    const m=legais(st); if(!m.length)return 0;
+    const c=m[(Math.random()*m.length)|0], p=st.vez, r=soltar(st,c);
+    if(venceu(st.cells,r,c,p))return p;
+  }
+}
+function rolloutGuiada(s){
+  const st=clonar(s);
+  for(;;){
+    const m=legais(st); if(!m.length)return 0;
+    let e=-1;
+    for(const c of m) if(venceAgora(st,c)){e=c;break;}
+    if(e<0){ st.vez=3-st.vez; for(const c of m) if(venceAgora(st,c)){e=c;break;} st.vez=3-st.vez; }
+    if(e<0)e=m[(Math.random()*m.length)|0];
+    const p=st.vez, r=soltar(st,e);
+    if(venceu(st.cells,r,e,p))return p;
+  }
+}
+function avaliar(s,modo){
+  if(modo==='heuristica')return Math.tanh(escoreEstatico(s.cells,s.vez)/40);
+  const v=(modo==='guiada')?rolloutGuiada(s):rolloutAleatoria(s);
+  return v===0?0:(v===s.vez?1:-1);
+}
+function priors(s,ms){
+  const bruto=ms.map(c=>{
+    if(venceAgora(s,c))return 60;
+    const p=s.vez; soltar(s,c); const e=escoreEstatico(s.cells,p); desfazer(s,c); return e;
+  });
+  const mx=Math.max(...bruto), ex=bruto.map(x=>Math.exp((x-mx)/12));
+  const z=ex.reduce((a,b)=>a+b,0);
+  return ex.map(x=>x/z);
+}
+
+/* ============================================================
+   3. MCTS — UCT e PUCT
+   ============================================================ */
+const noNovo=m=>({mov:m,N:0,W:0,P:1,filhos:null,fim:-1});
+function bonus(cfg,f,Np){
+  if(cfg.regra==='puct') return cfg.c*f.P*Math.sqrt(Np>0?Np:1)/(1+f.N);
+  return f.N? cfg.c*Math.sqrt(Math.log(Np>1?Np:1)/f.N) : Infinity;
+}
+function simular(raizEstado,cfg,st,n){
+  const raiz=st.raiz;
+  for(let it=0;it<n;it++){
+    const s=clonar(raizEstado), caminho=[raiz];
+    let no=raiz, v=0;
+    for(;;){
+      if(no.fim>=0){ v = no.fim===0?0:(no.fim===s.vez?1:-1); break; }
+      if(no.filhos===null){
+        const ms=legais(s);
+        if(!ms.length){ no.fim=0; v=0; break; }
+        const P = cfg.regra==='puct' ? priors(s,ms) : ms.map(()=>1/ms.length);
+        no.filhos = ms.map((c,i)=>{const f=noNovo(c); f.P=P[i]; return f;});
+        v=avaliar(s,cfg.avaliador); break;
+      }
+      let melhor=null, mv=-Infinity;
+      for(const f of no.filhos){
+        const sc = (f.N===0 && cfg.regra==='uct') ? 1e6+Math.random() : (f.N?f.W/f.N:0)+bonus(cfg,f,no.N);
+        if(sc>mv){mv=sc;melhor=f;}
+      }
+      const p=s.vez, r=soltar(s,melhor.mov);
+      caminho.push(melhor); no=melhor;
+      if(venceu(s.cells,r,melhor.mov,p)){ no.fim=p; v=-1; break; }
+      if(s.jogadas===NC){ no.fim=0; v=0; break; }
+    }
+    for(let i=caminho.length-1;i>=0;i--){ const n2=caminho[i]; n2.N++; v=-v; n2.W+=v; }
+    st.feitas++;
+  }
+  return st;
+}
+function estatisticas(st,cfg){
+  const raiz=st.raiz;
+  if(!raiz.filhos)return [];
+  return raiz.filhos.map(f=>{
+    const q=f.N?f.W/f.N:0, u=bonus(cfg,f,raiz.N);
+    return {col:f.mov,N:f.N,P:f.P,Q:q,U:u,S:q+u};
+  });
+}
+function maisVisitada(st){
+  const f=st.raiz.filhos; if(!f||!f.length)return -1;
+  let b=f[0]; for(const x of f) if(x.N>b.N)b=x; return b.mov;
+}
+function linhaPrincipal(st,max=5){
+  const lp=[]; let no=st.raiz;
+  while(no.filhos&&lp.length<max){
+    let b=null; for(const x of no.filhos) if(x.N>0&&(!b||x.N>b.N))b=x;
+    if(!b)break; lp.push(b.mov); no=b;
+  } return lp;
+}
+
+/* ============================================================
+   4. Interface — jogar
+   ============================================================ */
+const SIMS=[20,50,100,200,400,800,1200,1600,2000];
+const NOME_AVAL={aleatoria:'rollout aleatória',guiada:'rollout guiada',heuristica:'heurística'};
+const $=id=>document.getElementById(id);
+const grade=$('grade'), colunas=$('colunas'), medidor=$('medidor');
+const menosMovimento=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+let S=novoEstado(), historico=[], humano=1, fim=null, pensando=false, ultimaLP=[];
+let cfg={sims:400,avaliador:'guiada',regra:'uct',c:1.4};
+
+// monta o tabuleiro
+const casas=[];
+for(let r=ROWS-1;r>=0;r--)for(let c=0;c<COLS;c++){
+  const d=document.createElement('div'); d.className='casa'; grade.appendChild(d); casas[r*COLS+c]=d;
+}
+const barras=[];
+for(let c=0;c<COLS;c++){
+  const b=document.createElement('div'); b.className='barra';
+  b.innerHTML='<span class="val"></span><span class="haste"></span><span class="base"></span>';
+  medidor.appendChild(b); barras.push(b);
+  const bt=document.createElement('button'); bt.className='coluna';
+  bt.setAttribute('aria-label','Jogar na coluna '+(c+1));
+  bt.addEventListener('click',()=>jogadaHumana(c));
+  bt.addEventListener('mouseenter',()=>fantasma(c,true));
+  bt.addEventListener('mouseleave',()=>fantasma(c,false));
+  bt.addEventListener('focus',()=>fantasma(c,true));
+  bt.addEventListener('blur',()=>fantasma(c,false));
+  colunas.appendChild(bt);
+}
+function fantasma(c,on){
+  if(fim||pensando||S.vez!==humano)return;
+  const r=S.alturas[c]; if(r>=ROWS)return;
+  casas[r*COLS+c].classList.toggle('fantasma',on);
+}
+function desenhar(nova){
+  for(let i=0;i<NC;i++){
+    const d=casas[i], v=S.cells[i];
+    d.className='casa'+(v?(' p'+v):'');
+  }
+  if(nova!=null && !menosMovimento) casas[nova].classList.add('nova');
+  if(fim&&fim.linha) for(const [r,c] of fim.linha) casas[r*COLS+c].classList.add('vence');
+  const trava = !!fim || pensando || S.vez!==humano;
+  [...colunas.children].forEach((b,c)=>{ b.disabled = trava || S.alturas[c]>=ROWS; });
+  $('bt-desfazer').disabled = pensando || historico.length===0;
+  $('bt-analisar').disabled = pensando || !!fim;
+  $('bt-quem').disabled = pensando;
+}
+function placa(html){ $('placa').innerHTML=html; }
+function nomeJogador(p){
+  const eu = p===humano;
+  return `<span class="ponto p${p}"></span><b>${eu?'você':'a busca'}</b>`;
+}
+function atualizarPlaca(){
+  if(fim){
+    if(fim.vencedor===0) placa('<span class="aviso">Empate.</span> O tabuleiro encheu.');
+    else if(fim.vencedor===humano) placa('<span class="ok">Você venceu.</span> Suba as simulações e tente de novo.');
+    else placa(`${nomeJogador(fim.vencedor)} venceu com ${cfg.sims} simulações por jogada.`);
+    return;
+  }
+  if(pensando) placa(`<span class="aviso">Pensando…</span> ${cfg.sims} simulações · ${NOME_AVAL[cfg.avaliador]} · ${cfg.regra.toUpperCase()}`);
+  else if(S.vez===humano) placa(`Sua vez. ${nomeJogador(humano)} escolhe a coluna.`);
+  else placa('Vez da busca.');
+}
+function checarFim(r,c,p){
+  const L=linhaVitoriosa(S.cells,r,c,p);
+  if(L){ fim={vencedor:p,linha:L}; return true; }
+  if(S.jogadas===NC){ fim={vencedor:0,linha:null}; return true; }
+  return false;
+}
+function jogadaHumana(c){
+  if(fim||pensando||S.vez!==humano||S.alturas[c]>=ROWS)return;
+  historico.push(c);
+  const p=S.vez, r=soltar(S,c);
+  ultimaLP=[]; limparMedidor();
+  checarFim(r,c,p);
+  desenhar(r*COLS+c); atualizarPlaca();
+  if(!fim) setTimeout(()=>pensarEJogar(),menosMovimento?0:170);
+}
+function limparMedidor(){
+  barras.forEach(b=>{ b.classList.remove('alvo','eleita');
+    b.querySelector('.haste').style.height='0'; b.querySelector('.val').textContent=''; });
+  $('tab-raiz').tBodies[0].innerHTML='<tr class="vazio"><td colspan="6">Nenhuma busca em andamento.</td></tr>';
+  $('legenda').textContent='';
+}
+
+/* --- executa a busca em pedaços, para dar de ver --- */
+function buscarAnimado(estadoBase,aoFim){
+  pensando=true; desenhar(); atualizarPlaca();
+  const st={raiz:noNovo(-1),feitas:0};
+  const alvo=cfg.sims, t0=performance.now();
+  const duracao = menosMovimento?0:Math.min(1400,300+alvo*0.9);
+  function passo(){
+    const decorrido=performance.now()-t0;
+    const deveria = duracao? Math.min(alvo,Math.ceil(alvo*decorrido/duracao)) : alvo;
+    const falta = Math.max(0,Math.min(alvo,Math.max(deveria,st.feitas+1))-st.feitas);
+    if(falta>0) simular(estadoBase,cfg,st,falta);
+    pintarBusca(st);
+    if(st.feitas<alvo){ requestAnimationFrame(passo); }
+    else { pensando=false; aoFim(st,Math.round(performance.now()-t0)); }
+  }
+  requestAnimationFrame(passo);
+}
+function alturaBarra(){ return medidor.clientHeight>70 ? 62 : 36; }
+function pintarBusca(st){
+  const es=estatisticas(st,cfg);
+  const mapa=new Map(es.map(e=>[e.col,e]));
+  const maxN=Math.max(1,...es.map(e=>e.N));
+  let elei=-1,mn=-1, alvo=-1,ms=-Infinity;
+  for(const e of es){ if(e.N>mn){mn=e.N;elei=e.col;} if(e.S>ms&&isFinite(e.S)){ms=e.S;alvo=e.col;} }
+  if(es.some(e=>!isFinite(e.S))) alvo=es.find(e=>!isFinite(e.S)).col;
+  for(let c=0;c<COLS;c++){
+    const b=barras[c], e=mapa.get(c);
+    const h=e? Math.round(alturaBarra()*e.N/maxN) : 0;
+    b.querySelector('.haste').style.height=h+'px';
+    b.querySelector('.val').textContent=e? e.N : '';
+    b.classList.toggle('eleita',c===elei);
+    b.classList.toggle('alvo',c===alvo);
+  }
+  tabela(es,elei,alvo,st);
+}
+function fmt(x,n=2){ return (isFinite(x)?x:0).toFixed(n).replace('.',','); }
+function tabela(es,elei,alvo,st){
+  const puct=cfg.regra==='puct';
+  const tot=Math.max(1,st.raiz.N);
+  let h='<tr><th>col</th><th>N</th>'+(puct?'<th>P</th>':'')+'<th>Q</th><th>U</th><th>Q+U</th></tr>';
+  for(const e of es.slice().sort((a,b)=>a.col-b.col)){
+    const cls=(e.col===elei?'eleita ':'')+(e.col===alvo?'alvo':'');
+    h+=`<tr class="${cls}"><td>${e.col+1}</td><td>${e.N}</td>`
+      +(puct?`<td>${fmt(e.P,2)}</td>`:'')
+      +`<td>${fmt(e.Q,2)}</td><td>${isFinite(e.U)?fmt(e.U,2):'—'}</td><td>${isFinite(e.S)?fmt(e.S,2):'—'}</td></tr>`;
+  }
+  $('tab-raiz').tBodies[0].innerHTML=h;
+  $('legenda').innerHTML=
+    `<span class="sw" style="background:var(--laranja-cl)"></span>mais visitada — é o que será jogado. `
+   +`<span class="sw" style="background:var(--ambar)"></span>maior Q+U — é o que será simulado a seguir.`;
+}
+function pensarEJogar(){
+  const base=clonar(S);
+  buscarAnimado(base,(st,ms)=>{
+    const c=maisVisitada(st);
+    ultimaLP=linhaPrincipal(st);
+    if(c<0){ desenhar(); atualizarPlaca(); return; }
+    historico.push(c);
+    const p=S.vez, r=soltar(S,c);
+    checarFim(r,c,p);
+    desenhar(r*COLS+c);
+    if(fim) atualizarPlaca();
+    else{
+      const lp=ultimaLP.map(x=>x+1).join(' → ');
+      placa(`A busca jogou na <b>coluna ${c+1}</b> após ${st.feitas} simulações (${ms}&nbsp;ms).`
+           +(lp?` Linha principal: <b>${lp}</b>.`:''));
+    }
+  });
+}
+function analisar(){
+  if(fim||pensando)return;
+  const base=clonar(S);
+  buscarAnimado(base,(st,ms)=>{
+    const c=maisVisitada(st);
+    desenhar();
+    placa(`Análise para quem está na vez: <b>coluna ${c+1}</b>, com ${st.feitas} simulações (${ms}&nbsp;ms). Nada foi jogado.`);
+  });
+}
+function novaPartida(){
+  S=novoEstado(); historico=[]; fim=null; ultimaLP=[]; limparMedidor();
+  desenhar(); atualizarPlaca();
+  if(humano===2) setTimeout(()=>pensarEJogar(),260);
+}
+function desfazerJogada(){
+  if(pensando||!historico.length)return;
+  fim=null;
+  const quantas = (S.vez===humano || historico.length===1) ? Math.min(2,historico.length) : 1;
+  for(let k=0;k<quantas;k++) desfazer(S,historico.pop());
+  ultimaLP=[]; limparMedidor(); desenhar(); atualizarPlaca();
+}
+
+/* --- controles --- */
+function segmentado(id,inicial,aoMudar){
+  const el=$(id);
+  el.addEventListener('click',ev=>{
+    const b=ev.target.closest('button'); if(!b)return;
+    [...el.children].forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+    aoMudar(b.dataset.v);
+  });
+  [...el.children].forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.v===inicial)));
+}
+$('sims').addEventListener('input',e=>{
+  cfg.sims=SIMS[+e.target.value]; $('sims-v').textContent=cfg.sims;
+});
+$('cexp').addEventListener('input',e=>{
+  cfg.c=+e.target.value/10; $('c-v').textContent=fmt(cfg.c,2);
+});
+segmentado('seg-aval','guiada',v=>{cfg.avaliador=v; atualizarPlaca();});
+segmentado('seg-regra','uct',v=>{
+  cfg.regra=v;
+  const padrao = v==='puct'?15:14;
+  $('cexp').value=padrao; cfg.c=padrao/10; $('c-v').textContent=fmt(cfg.c,2);
+  limparMedidor(); atualizarPlaca();
+});
+$('bt-nova').addEventListener('click',novaPartida);
+$('bt-desfazer').addEventListener('click',desfazerJogada);
+$('bt-analisar').addEventListener('click',analisar);
+$('bt-quem').addEventListener('click',()=>{
+  humano = humano===1?2:1;
+  $('bt-quem').textContent = humano===1?'Deixar a máquina começar':'Voltar a começar você';
+  novaPartida();
+});
+
+/* ============================================================
+   5. Interface — torneio
+   ============================================================ */
+const cfgA={sims:400,avaliador:'guiada',regra:'uct',c:1.4};
+const cfgB={sims:100,avaliador:'guiada',regra:'uct',c:1.4};
+let rodando=false, parar=false;
+
+function ligarLado(pref,alvo){
+  $(pref+'-sims').addEventListener('input',e=>{
+    alvo.sims=SIMS[+e.target.value]; $(pref+'-sims-v').textContent=alvo.sims;
+  });
+  segmentado(pref+'-aval','guiada',v=>alvo.avaliador=v);
+  segmentado(pref+'-regra','uct',v=>{alvo.regra=v; alvo.c = v==='puct'?1.5:1.4;});
+}
+ligarLado('a',cfgA); ligarLado('b',cfgB);
+$('npart').addEventListener('input',e=>$('npart-v').textContent=e.target.value);
+
+function aplicar(pref,alvo,c){
+  Object.assign(alvo,c);
+  $(pref+'-sims').value=SIMS.indexOf(c.sims); $(pref+'-sims-v').textContent=c.sims;
+  [...$(pref+'-aval').children].forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.v===c.avaliador)));
+  [...$(pref+'-regra').children].forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.v===c.regra)));
+}
+const PRESETS=[
+  [{sims:400,avaliador:'guiada',regra:'uct',c:1.4},{sims:100,avaliador:'guiada',regra:'uct',c:1.4}],
+  [{sims:100,avaliador:'heuristica',regra:'uct',c:1.4},{sims:100,avaliador:'aleatoria',regra:'uct',c:1.4}],
+  [{sims:50,avaliador:'guiada',regra:'puct',c:1.5},{sims:50,avaliador:'guiada',regra:'uct',c:1.4}]
+];
+$('presets').addEventListener('click',ev=>{
+  const b=ev.target.closest('button'); if(!b||rodando)return;
+  const [a,bb]=PRESETS[+b.dataset.p];
+  aplicar('a',cfgA,a); aplicar('b',cfgB,bb);
+  $('t-status').textContent='Configuração carregada. Rode o torneio para ver o resultado.';
+});
+
+function jogadaAutomatica(s,c){
+  const st={raiz:noNovo(-1),feitas:0};
+  simular(s,c,st,c.sims);
+  return maisVisitada(st);
+}
+function iniciarPartida(cA,cB,aberturas){
+  const P={s:novoEstado(),cA,cB,resultado:null};
+  for(let k=0;k<aberturas;k++){
+    const m=legais(P.s), c=m[(Math.random()*m.length)|0];
+    const p=P.s.vez, r=soltar(P.s,c);
+    if(venceu(P.s.cells,r,c,p)){P.resultado=p;break;}
+  }
+  return P;
+}
+function passoPartida(P){
+  if(P.resultado!==null)return P.resultado;
+  const m=legais(P.s);
+  if(!m.length){P.resultado=0;return 0;}
+  const cfgV=(P.s.vez===1?P.cA:P.cB);
+  const col=jogadaAutomatica(P.s,cfgV);
+  const p=P.s.vez, r=soltar(P.s,col);
+  if(venceu(P.s.cells,r,col,p)){P.resultado=p;return p;}
+  return null;
+}
+function elo(p){ if(p<=0)return null; if(p>=1)return null; return -400*Math.log10(1/p-1); }
+function pintarResultado(v,d,e,n){
+  $('r-a').textContent=v; $('r-b').textContent=d; $('r-e').textContent=e;
+  const t=Math.max(1,v+d+e);
+  const bl=$('balanca').children;
+  bl[0].style.width=(100*v/t)+'%'; bl[1].style.width=(100*e/t)+'%'; bl[2].style.width=(100*d/t)+'%';
+  bl[0].textContent=v?v:''; bl[1].textContent=e?e:''; bl[2].textContent=d?d:'';
+  const p=(v+0.5*e)/t, E=elo(p);
+  const jogadas=v+d+e;
+  $('r-elo').innerHTML = jogadas<n
+    ? `Parcial: ${jogadas} de ${n} partidas. Taxa de A: <b>${fmt(100*p,1)}%</b>.`
+    : `A pontuou <b>${fmt(100*p,1)}%</b> em ${n} partidas — `
+      +(E===null
+        ? `um lado venceu todas, então a estimativa de Elo diverge. Aumente as partidas ou aproxime as configurações.`
+        : `uma diferença estimada de <b>${E>0?'+':''}${E.toFixed(0)} pontos de Elo</b> a favor de ${E>=0?'A':'B'}.`);
+}
+$('bt-rodar').addEventListener('click',()=>{
+  if(rodando)return;
+  rodando=true; parar=false;
+  $('bt-rodar').disabled=true; $('bt-parar').disabled=false;
+  const n=+$('npart').value;
+  let i=0,v=0,d=0,e=0,aComeca=true,P=null;
+  const t0=performance.now();
+  pintarResultado(0,0,0,n);
+  $('t-status').textContent='Jogando… os dois lados rodam a busca completa a cada jogada.';
+  function tique(){
+    if(parar||i>=n){
+      rodando=false; $('bt-rodar').disabled=false; $('bt-parar').disabled=true;
+      const seg=((performance.now()-t0)/1000).toFixed(1).replace('.',',');
+      $('t-status').textContent = (parar?'Torneio interrompido':'Torneio concluído')+' em '+seg+' s.';
+      return;
+    }
+    if(P===null){ aComeca = i%2===0; P = iniciarPartida(aComeca?cfgA:cfgB, aComeca?cfgB:cfgA, 2); }
+    const r = passoPartida(P);
+    if(r!==null){
+      if(r===0)e++;
+      else if((aComeca&&r===1)||(!aComeca&&r===2))v++;
+      else d++;
+      i++; P=null;
+      $('prog').style.width=(100*i/n)+'%';
+      pintarResultado(v,d,e,n);
+    }
+    setTimeout(tique,0);
+  }
+  setTimeout(tique,0);
+});
+$('bt-parar').addEventListener('click',()=>{parar=true;});
+
+/* ============================================================
+   6. Abas
+   ============================================================ */
+const abas=[['aba-jogar','pn-jogar'],['aba-torneio','pn-torneio']];
+abas.forEach(([a,p])=>{
+  $(a).addEventListener('click',()=>{
+    abas.forEach(([a2,p2])=>{
+      const on=a2===a;
+      $(a2).setAttribute('aria-selected',String(on));
+      $(p2).hidden=!on;
+    });
+  });
+});
+
+document.addEventListener('keydown',ev=>{
+  if(ev.target.matches('input,button,[contenteditable]'))return;
+  if($('pn-jogar').hidden)return;
+  const k=+ev.key;
+  if(k>=1&&k<=7){ ev.preventDefault(); jogadaHumana(k-1); }
+});
+
+/* ---------- início ---------- */
+limparMedidor(); desenhar(); atualizarPlaca();
+</script>
+</body>
+</html>

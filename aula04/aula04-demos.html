@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aula 4 — Caderno de demonstrações</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Mono:wght@400;500;700&family=Fira+Sans+Condensed:wght@600;700&family=Fira+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#FAFBFC; --ink:#16324F; --ink2:#2E5F8A; --teal:#18808D; --grey:#5C677D;
+  --line:rgba(22,50,79,.14); --orange:#E8590C; --amber:#F2A93B; --red:#C1121F; --green:#2B9348;
+  --sans:"Fira Sans","Segoe UI",system-ui,sans-serif;
+  --cond:"Fira Sans Condensed","Fira Sans",system-ui,sans-serif;
+  --mono:"Fira Mono","SFMono-Regular",Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:64px}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px 60px}
+
+/* nav */
+nav{position:sticky;top:0;z-index:20;background:rgba(250,251,252,.94);backdrop-filter:blur(6px);border-bottom:1px solid var(--line)}
+nav .inner{max-width:1180px;margin:0 auto;padding:9px 20px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+nav .brand{font-family:var(--cond);font-weight:700;font-size:14px;letter-spacing:.02em;margin-right:12px;white-space:nowrap}
+nav a{font-family:var(--cond);font-weight:600;font-size:12px;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--grey);text-decoration:none;padding:5px 9px;border-radius:4px;border:1px solid transparent}
+nav a:hover{color:var(--ink);border-color:var(--line);background:#fff}
+nav a .n{color:var(--orange);margin-right:5px}
+
+/* cabeçalho */
+header{padding:36px 0 6px}
+.eyebrow{font-family:var(--cond);font-weight:600;letter-spacing:.09em;text-transform:uppercase;font-size:12px;color:var(--orange);margin:0 0 6px}
+h1{font-family:var(--cond);font-weight:700;font-size:clamp(30px,5vw,44px);line-height:1.03;margin:0;letter-spacing:-.01em}
+.rule{display:flex;align-items:center;margin:14px 0}
+.rule i{height:3px;width:34px;background:var(--orange);border-radius:2px}
+.rule b{height:1px;flex:1;background:var(--line)}
+.lead{max-width:64ch;color:var(--grey);margin:0}
+.lead em{color:var(--ink);font-style:normal;font-weight:600}
+
+/* seções */
+section.demo{margin-top:46px;border-top:1px solid var(--line);padding-top:26px}
+.dhead{display:flex;gap:14px;align-items:baseline;flex-wrap:wrap}
+.dnum{font-family:var(--cond);font-weight:700;font-size:34px;color:rgba(22,50,79,.18);line-height:1}
+h2{font-family:var(--cond);font-weight:700;font-size:25px;margin:0;letter-spacing:-.005em}
+.claim{margin:10px 0 0;padding:9px 0 9px 13px;border-left:2.5px solid var(--amber);max-width:74ch}
+.claim strong{font-weight:600}
+.sub{color:var(--grey);max-width:74ch;margin:12px 0 0}
+
+/* controles */
+.console{margin:18px 0;border:1px solid var(--line);border-radius:6px;background:#fff;padding:13px 15px;
+  display:flex;flex-wrap:wrap;gap:16px 24px;align-items:flex-end}
+.knob{display:flex;flex-direction:column;gap:5px;min-width:126px}
+.knob>label{font-family:var(--cond);font-weight:600;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--grey);display:flex;justify-content:space-between;gap:10px}
+.knob>label span{font-family:var(--mono);font-weight:500;color:var(--ink);text-transform:none;letter-spacing:0}
+input[type=range]{width:100%;accent-color:var(--ink2);height:18px;margin:0}
+input[type=number]{font-family:var(--mono);font-size:13px;width:64px;padding:3px 5px;border:1px solid var(--line);border-radius:3px;color:var(--ink)}
+select{font-family:var(--sans);font-size:13px;padding:4px 6px;border:1px solid var(--line);border-radius:3px;background:#fff;color:var(--ink)}
+.buttons{display:flex;gap:7px;flex-wrap:wrap;margin-left:auto}
+button{font-family:var(--cond);font-weight:600;font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;
+  padding:7px 13px;border-radius:4px;cursor:pointer;border:1px solid var(--ink);background:#fff;color:var(--ink);
+  transition:background .12s,color .12s,border-color .12s}
+button:hover{background:var(--ink);color:#fff}
+button.primary{background:var(--orange);border-color:var(--orange);color:#fff}
+button.primary:hover{background:#c9490a;border-color:#c9490a}
+button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+
+/* interruptores de três estados */
+.switches{display:flex;gap:10px;flex-wrap:wrap}
+.sw{border:1px solid var(--line);border-radius:5px;overflow:hidden;background:#fff}
+.sw .lab{font-family:var(--cond);font-weight:600;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--grey);padding:5px 9px 3px}
+.sw .opts{display:flex}
+.sw button{border:0;border-radius:0;border-top:1px solid var(--line);border-right:1px solid var(--line);
+  font-size:12px;padding:6px 11px;text-transform:none;letter-spacing:0;font-family:var(--sans);font-weight:400}
+.sw button:last-child{border-right:0}
+.sw button[aria-pressed=true]{background:var(--ink);color:#fff;font-weight:600}
+.sw.hot button[aria-pressed=true]{background:var(--red);color:#fff}
+
+/* painéis */
+.panelrow{display:grid;gap:18px}
+.panel{border:1px solid var(--line);border-radius:6px;background:#fff;padding:14px 16px}
+.ptitle{font-family:var(--cond);font-weight:700;font-size:15px;margin:0 0 8px}
+canvas{display:block;width:100%}
+.readout{font-family:var(--mono);font-size:12.5px;color:var(--grey);line-height:1.7}
+.readout b{color:var(--ink);font-weight:500}
+.m{font-family:var(--mono);font-size:.94em;color:var(--ink);white-space:nowrap}
+.big{font-family:var(--mono);font-size:26px;font-weight:500;letter-spacing:-.01em}
+.legend{display:flex;gap:15px;flex-wrap:wrap;font-family:var(--mono);font-size:12px;color:var(--grey)}
+.legend i{display:inline-block;width:15px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px}
+.verdict{margin-top:10px;font-family:var(--cond);font-weight:700;font-size:15px}
+.verdict.bad{color:var(--red)} .verdict.ok{color:var(--green)}
+.tt{font-family:var(--mono);font-size:12px;border-collapse:collapse;width:100%}
+.tt th,.tt td{text-align:left;padding:3px 8px 3px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+.tt th{font-family:var(--cond);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--grey);font-weight:600}
+.tt td.d{color:var(--red);font-weight:700}
+.tt td.c{color:var(--green)}
+
+/* demo 3 — episódios */
+.eps{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:13px}
+.eps th{font-family:var(--cond);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--grey);
+  font-weight:600;text-align:left;padding:0 8px 5px 0;border-bottom:1px solid var(--line)}
+.eps td{padding:4px 8px 4px 0;border-bottom:1px solid rgba(22,50,79,.07)}
+.eps input[type=number]{width:58px}
+.eps .rm{border:0;background:none;color:var(--grey);font-size:15px;padding:0 5px;cursor:pointer;text-transform:none}
+.eps .rm:hover{color:var(--red);background:none}
+tr.usedMC{background:rgba(46,95,138,.07)}
+td.usedTD{background:rgba(232,89,12,.10)}
+.tagline{font-family:var(--cond);font-weight:600;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--grey);margin:14px 0 4px}
+
+/* demo 4 — grades */
+.grids{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.gwrap{text-align:center}
+.gwrap h4{font-family:var(--cond);font-weight:700;font-size:14px;margin:0 0 2px}
+.gwrap .cap{font-family:var(--mono);font-size:11.5px;color:var(--grey);margin:0 0 8px}
+.gcanvas{border:1px solid var(--line);border-radius:4px;cursor:crosshair;aspect-ratio:1/1}
+
+footer{margin-top:44px;padding-top:14px;border-top:1px solid var(--line);font-size:12.5px;color:var(--grey)}
+
+@media (max-width:900px){
+  .grids{grid-template-columns:1fr}
+  .buttons{margin-left:0;width:100%}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+
+<nav><div class="inner">
+  <span class="brand">Aula 4 · demonstrações</span>
+  <a href="#triade"><span class="n">01</span>Tríade mortal</a>
+  <a href="#maxbias"><span class="n">02</span>Viés de maximização</a>
+  <a href="#ab"><span class="n">03</span>Exemplo A–B</a>
+  <a href="#pegada"><span class="n">04</span>Pegada da atualização</a>
+</div></nav>
+
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Aprendizagem por Reforço · Universidade Federal de Uberlândia</p>
+  <h1>Quatro coisas que só se veem rodando</h1>
+  <div class="rule"><i></i><b></b></div>
+  <p class="lead">Cada demonstração ataca uma afirmação da Aula 4 que, no slide, o aluno precisa aceitar sem verificar. Todas rodam em segundos e têm <em>um controle que muda a conclusão</em>.</p>
+</header>
+
+<!-- ============================== 01 ============================== -->
+<section class="demo" id="triade">
+  <div class="dhead"><span class="dnum">01</span><h2>A tríade mortal, uma combinação por vez</h2></div>
+  <div class="claim"><strong>A afirmação a testar:</strong> aproximação de função, <em>bootstrapping</em> e aprendizado <em>off-policy</em> são seguros dois a dois; os três juntos, não. São oito combinações — exatamente uma explode.</div>
+  <p class="sub">O MDP é o contraexemplo de <strong>Baird</strong> (Sutton &amp; Barto, 2018, Exemplo 11.1): sete estados, recompensa zero em toda transição, logo o valor verdadeiro é zero em todo lugar. A ação <em>tracejada</em> leva a um dos seis estados de cima, uniformemente; a <em>sólida</em> leva ao sétimo. A política de comportamento toma a tracejada em 6 de 7 vezes.</p>
+
+  <div class="console">
+    <div class="switches">
+      <div class="sw" id="sw-rep"><div class="lab">Representação</div><div class="opts">
+        <button data-v="tab">tabular</button><button data-v="lin">linear (8 pesos)</button></div></div>
+      <div class="sw" id="sw-tgt"><div class="lab">Alvo</div><div class="opts">
+        <button data-v="mc">retorno completo</button><button data-v="td">bootstrapping</button></div></div>
+      <div class="sw" id="sw-pol"><div class="lab">Política</div><div class="opts">
+        <button data-v="on">on-policy</button><button data-v="off">off-policy</button></div></div>
+    </div>
+    <div class="knob" style="min-width:150px">
+      <label for="b-alpha">α <span id="b-alphaV">0,010</span></label>
+      <input type="range" id="b-alpha" min="0.001" max="0.05" step="0.001" value="0.01">
+    </div>
+    <div class="buttons">
+      <button id="b-run" class="primary">Rodar 12 000 passos</button>
+      <button id="b-clear">Limpar traços</button>
+    </div>
+  </div>
+
+  <div class="panelrow" style="grid-template-columns:1.55fr 1fr">
+    <div class="panel">
+      <p class="ptitle">Norma dos pesos ‖w‖ — escala logarítmica</p>
+      <canvas id="b-chart" height="230"></canvas>
+      <div class="legend" style="margin-top:6px">
+        <span><i style="background:#C1121F"></i>execução atual</span>
+        <span><i style="background:#5C677D;opacity:.4"></i>execuções anteriores</span>
+        <span><i style="background:#2B9348"></i>‖w‖ inicial</span>
+      </div>
+      <div class="verdict" id="b-verdict">Escolha uma combinação e rode.</div>
+    </div>
+    <div class="panel">
+      <p class="ptitle">O MDP de Baird</p>
+      <svg viewBox="0 0 260 190" style="width:100%;height:auto" aria-label="MDP em estrela de sete estados">
+        <g id="b-svg-states"></g>
+      </svg>
+      <p class="ptitle" style="margin-top:14px">Tabela-verdade</p>
+      <table class="tt"><thead><tr><th>rep.</th><th>alvo</th><th>polít.</th><th>‖w‖ final</th></tr></thead>
+      <tbody id="b-table"><tr><td colspan="4" style="color:var(--grey)">nenhuma execução ainda</td></tr></tbody></table>
+    </div>
+  </div>
+  <p class="sub"><strong>Como conduzir:</strong> comece com os três em vermelho e mostre a curva subindo em linha reta numa escala log — os pesos passam de 10<sup>12</sup> em pouco mais de dez mil passos. Depois desligue <em>um</em> interruptor qualquer, à escolha da turma, e rode de novo. Repita até fechar as oito linhas da tabela.</p>
+  <p class="sub" style="font-size:13.5px">Uma honestidade necessária: como toda recompensa é zero, o retorno é exatamente zero e o alvo do Monte Carlo não depende de estimativa nenhuma. É essa <em>independência</em> que estabiliza, não o valor.</p>
+</section>
+
+<!-- ============================== 02 ============================== -->
+<section class="demo" id="maxbias">
+  <div class="dhead"><span class="dnum">02</span><h2>O viés de maximização vira curva</h2></div>
+  <div class="claim"><strong>A afirmação a testar:</strong> <span class="m">𝔼[max<sub>a</sub> Q̂(s,a)] ≥ max<sub>a</sub> 𝔼[Q̂(s,a)]</span> não é uma sutileza teórica — ela faz o Q-learning preferir sistematicamente a ação pior.</div>
+  <p class="sub">MDP de dois estados (Sutton &amp; Barto, Exemplo 6.7). De <strong>A</strong>, ir à <em>direita</em> termina com recompensa 0. Ir à <em>esquerda</em> leva a <strong>B</strong>, de onde partem várias ações que terminam com recompensa sorteada de <span class="m">𝒩(−0,1 ; 1)</span>. Ir à esquerda é pior em média — e mesmo assim é o que o Q-learning faz.</p>
+
+  <div class="console">
+    <div class="knob"><label for="m-actions">ações em B <span id="m-actionsV">10</span></label>
+      <input type="range" id="m-actions" min="2" max="50" step="1" value="10"></div>
+    <div class="knob"><label for="m-eps">ε <span id="m-epsV">0,10</span></label>
+      <input type="range" id="m-eps" min="0.02" max="0.4" step="0.01" value="0.1"></div>
+    <div class="knob"><label for="m-alpha">α <span id="m-alphaV">0,10</span></label>
+      <input type="range" id="m-alpha" min="0.02" max="0.5" step="0.01" value="0.1"></div>
+    <div class="knob"><label for="m-runs">execuções <span id="m-runsV">300</span></label>
+      <input type="range" id="m-runs" min="50" max="1000" step="50" value="300"></div>
+    <div class="buttons"><button id="m-run" class="primary">Rodar</button></div>
+  </div>
+
+  <div class="panelrow" style="grid-template-columns:1.55fr 1fr">
+    <div class="panel">
+      <p class="ptitle">Frequência com que o agente escolhe <em>esquerda</em> em A</p>
+      <canvas id="m-chart" height="230"></canvas>
+      <div class="legend" style="margin-top:6px">
+        <span><i style="background:#E8590C"></i>Q-learning</span>
+        <span><i style="background:#2E5F8A"></i>Double Q-learning</span>
+        <span><i style="background:#5C677D;opacity:.5"></i>piso do ε-guloso (ótimo)</span>
+      </div>
+    </div>
+    <div class="panel">
+      <p class="ptitle">Ao fim do treino</p>
+      <div class="readout" id="m-read">Ainda não executado.</div>
+      <p class="ptitle" style="margin-top:16px">A correção</p>
+      <p class="readout" style="line-height:1.65">O Double Q-learning mantém <b>duas</b> tabelas. Uma <b>escolhe</b> a ação:<br>
+      &nbsp;&nbsp;<span class="m">a★ = arg max<sub>a</sub> Q₁(s′,a)</span><br>
+      a outra a <b>avalia</b>:<br>
+      &nbsp;&nbsp;<span class="m">alvo = r + γ·Q₂(s′, a★)</span><br>
+      Como o ruído das duas é independente, a ação que teve sorte em Q₁ não recebe também um valor inflado em Q₂.</p>
+    </div>
+  </div>
+  <p class="sub"><strong>Como conduzir:</strong> rode com 10 ações e deixe a turma explicar a curva laranja antes de revelar a azul. Depois arraste “ações em B” para 50: o viés cresce com <span class="m">|𝒜|</span>, exatamente como prevê a desigualdade. É a ponte natural para o Double DQN, no fim da aula.</p>
+</section>
+
+<!-- ============================== 03 ============================== -->
+<section class="demo" id="ab">
+  <div class="dhead"><span class="dnum">03</span><h2>O exemplo A–B, editável</h2></div>
+  <div class="claim"><strong>A afirmação a testar:</strong> MC e TD, sobre <em>os mesmos dados</em> e rodados até a convergência, chegam a respostas diferentes — porque respondem a perguntas diferentes.</div>
+  <p class="sub">Edite os episódios e veja as duas estimativas se moverem. O realce mostra <span style="background:rgba(46,95,138,.14);padding:1px 4px;border-radius:2px">quais linhas o Monte Carlo usou</span> para calcular <span class="m">V(A)</span> e <span style="background:rgba(232,89,12,.16);padding:1px 4px;border-radius:2px">quais recompensas o TD usou</span> ao estimar o modelo de <span class="m">B</span>.</p>
+
+  <div class="console">
+    <div class="knob"><label for="a-gamma">γ <span id="a-gammaV">1,00</span></label>
+      <input type="range" id="a-gamma" min="0" max="1" step="0.01" value="1"></div>
+    <div class="buttons">
+      <button id="a-addA">+ episódio de A</button>
+      <button id="a-addB">+ episódio de B</button>
+      <button id="a-reset">Voltar ao original</button>
+    </div>
+  </div>
+
+  <div class="panelrow" style="grid-template-columns:1.15fr 1fr">
+    <div class="panel">
+      <p class="ptitle">Episódios observados</p>
+      <table class="eps"><thead><tr>
+        <th>início</th><th>r (A→B)</th><th>r (B→fim)</th><th>vezes</th><th></th>
+      </tr></thead><tbody id="a-body"></tbody></table>
+      <p class="readout" style="margin-top:10px" id="a-counts"></p>
+    </div>
+    <div class="panel">
+      <p class="ptitle">Estimativas em lote</p>
+      <div class="readout" style="line-height:2.1" id="a-vals"></div>
+      <p class="ptitle" style="margin-top:14px">MDP de máxima verossimilhança</p>
+      <svg viewBox="0 0 300 78" style="width:100%;height:auto" id="a-svg" aria-label="Cadeia A para B para terminal"></svg>
+      <p class="readout" style="margin-top:8px" id="a-why"></p>
+    </div>
+  </div>
+  <p class="sub"><strong>Como conduzir:</strong> acrescente um episódio <code>B, 1</code> e mostre que só o TD move <span class="m">V(A)</span> — o Monte Carlo nem toma conhecimento, porque nenhum retorno novo partindo de A foi observado. Depois leve γ a 0 e as duas respostas se encontram em 0.</p>
+</section>
+
+<!-- ============================== 04 ============================== -->
+<section class="demo" id="pegada">
+  <div class="dhead"><span class="dnum">04</span><h2>A pegada de uma única atualização</h2></div>
+  <div class="claim"><strong>A afirmação a testar:</strong> generalização não é uma metáfora — é o formato geométrico de <span class="m">∇<sub>w</sub> V̂(s;w)</span>. A mesma atualização, em três representações, muda um número, uma vizinhança ou uma região inteira.</div>
+  <p class="sub">Clique em qualquer ponto: a mesma atualização <span class="m">Δw = α(alvo − w<sup>⊤</sup>x(s))·x(s)</span> é aplicada às três representações simultaneamente. A cor mostra <span class="m">V̂</span> acumulado; o círculo marca o último clique. O passo é normalizado por <span class="m">‖x(s)‖²</span>, de modo que o valor no ponto clicado sobe igualmente nas três — a única diferença é o <em>alcance</em>.</p>
+
+  <div class="console">
+    <div class="sw" id="sw-target"><div class="lab">Alvo do clique</div><div class="opts">
+      <button data-v="1">+1</button><button data-v="-1">−1</button></div></div>
+    <div class="knob"><label for="p-alpha">α <span id="p-alphaV">0,50</span></label>
+      <input type="range" id="p-alpha" min="0.05" max="1" step="0.05" value="0.5"></div>
+    <div class="knob"><label for="p-sigma">largura da RBF <span id="p-sigmaV">0,09</span></label>
+      <input type="range" id="p-sigma" min="0.03" max="0.25" step="0.01" value="0.09"></div>
+    <div class="buttons"><button id="p-reset">Zerar pesos</button></div>
+  </div>
+
+  <div class="grids">
+    <div class="gwrap"><h4>Tabular (one-hot)</h4><p class="cap">400 parâmetros · 1 ativo</p>
+      <canvas class="gcanvas" id="g-tab" width="240" height="240"></canvas></div>
+    <div class="gwrap"><h4>Tile coding</h4><p class="cap">196 parâmetros · 4 ativos</p>
+      <canvas class="gcanvas" id="g-tile" width="240" height="240"></canvas></div>
+    <div class="gwrap"><h4>RBF</h4><p class="cap">64 parâmetros · todos ativos</p>
+      <canvas class="gcanvas" id="g-rbf" width="240" height="240"></canvas></div>
+  </div>
+  <p class="sub"><strong>Como conduzir:</strong> um clique só já separa as três. Depois peça um clique <em>+1</em> e, logo ao lado, um clique <em>−1</em>: o tabular atende aos dois pedidos sem conflito, enquanto RBF e tiles se anulam parcialmente. É a interferência entre estados — o preço da generalização, e o motivo pelo qual a aproximação de função pode estragar o que a tabela não estragava.</p>
+</section>
+
+<footer>
+  Caderno de demonstrações da Aula 4 · Aprendizagem por Reforço · Prof. Marcelo Keese Albertini, Universidade Federal de Uberlândia.
+  Baseado em Sutton &amp; Barto (2018), exemplos 6.4, 6.7 e 11.1, e em CS234 (Emma Brunskill, Stanford).
+</footer>
+</div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const fmt = (x,d=2) => (Math.abs(x)<5e-9?0:x).toFixed(d).replace(".",",");
+const C = {ink:"#16324F", ink2:"#2E5F8A", grey:"#5C677D", orange:"#E8590C",
+           red:"#C1121F", green:"#2B9348", amber:"#F2A93B", teal:"#18808D"};
+
+/* ---------- utilidades de gráfico ---------- */
+function prepCanvas(cv){
+  const dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth, H = cv.clientHeight || cv.height;
+  cv.width = W*dpr; cv.height = H*dpr;
+  const g = cv.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H);
+  return {g, W, H};
+}
+function axes(g, W, H, pad, ticks, xLabels){
+  g.font = '11px "Fira Mono", monospace'; g.strokeStyle = "rgba(22,50,79,.10)"; g.lineWidth = 1;
+  g.fillStyle = C.grey; g.textAlign = "right"; g.textBaseline = "middle";
+  for (const t of ticks){
+    g.beginPath(); g.moveTo(pad.l, t.y); g.lineTo(W-pad.r, t.y); g.stroke();
+    g.fillText(t.label, pad.l-7, t.y);
+  }
+  g.textAlign = "center"; g.textBaseline = "top";
+  for (const x of xLabels) g.fillText(x.label, x.x, H-pad.b+5);
+}
+function polyline(g, pts, color, width){
+  if (pts.length < 2) return;
+  g.strokeStyle = color; g.lineWidth = width; g.lineJoin = "round"; g.beginPath();
+  pts.forEach((p,i)=> i ? g.lineTo(p[0],p[1]) : g.moveTo(p[0],p[1]));
+  g.stroke();
+}
+function bindRange(id, fmtFn, onChange){
+  const inp = $(id), out = $(id+"V");
+  const upd = () => { const v = parseFloat(inp.value); out.textContent = fmtFn(v); onChange && onChange(v); };
+  inp.addEventListener("input", upd); upd();
+  return () => parseFloat(inp.value);
+}
+function bindSwitch(id, initial, onChange){
+  const root = $(id), btns = [...root.querySelectorAll("button")];
+  let val = initial;
+  const paint = () => btns.forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === val)));
+  btns.forEach(b => b.addEventListener("click", () => { val = b.dataset.v; paint(); onChange && onChange(val); }));
+  paint();
+  return { get: () => val, root };
+}
+/* normal padrão (Box–Muller) */
+function gauss(){
+  let u = 0, v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  return Math.sqrt(-2*Math.log(u)) * Math.cos(2*Math.PI*v);
+}
+
+/* ==================================================================
+   01 — TRÍADE MORTAL (contraexemplo de Baird)
+   ================================================================== */
+(function(){
+  const GAMMA = 0.99, NSTEPS = 12000, SAMPLE = 40;
+  const swRep = bindSwitch("sw-rep", "lin", refreshHot);
+  const swTgt = bindSwitch("sw-tgt", "td", refreshHot);
+  const swPol = bindSwitch("sw-pol", "off", refreshHot);
+  const getAlpha = bindRange("b-alpha", v => fmt(v,3));
+  let traces = [], current = null, rows = [];
+
+  function refreshHot(){
+    const hot = swRep.get()==="lin" && swTgt.get()==="td" && swPol.get()==="off";
+    for (const s of [swRep.root, swTgt.root, swPol.root]) s.classList.toggle("hot", hot);
+  }
+  refreshHot();
+
+  /* representações */
+  function nWeights(rep){ return rep === "lin" ? 8 : 7; }
+  function initW(rep){
+    return rep === "lin" ? [1,1,1,1,1,1,10,1] : [1,1,1,1,1,1,10];
+  }
+  function vhat(w, s, rep){
+    if (rep === "tab") return w[s];
+    return s < 6 ? 2*w[s] + w[7] : w[6] + 2*w[7];
+  }
+  /* gradiente esparso: lista de [índice, valor] */
+  function grad(s, rep){
+    if (rep === "tab") return [[s,1]];
+    return s < 6 ? [[s,2],[7,1]] : [[6,1],[7,2]];
+  }
+  function norm(w){ let t = 0; for (const x of w) t += x*x; return Math.sqrt(t); }
+
+  function run(){
+    const rep = swRep.get(), tgt = swTgt.get(), pol = swPol.get(), alpha = getAlpha();
+    const w = initW(rep);
+    let s = (Math.random()*7)|0;
+    const series = [norm(w)];
+    let blew = false;
+    for (let t = 1; t <= NSTEPS; t++){
+      const solid = Math.random() < 1/7;            // política de comportamento
+      const sp = solid ? 6 : (Math.random()*6)|0;   // recompensa sempre 0
+      const rho = (pol === "off") ? (solid ? 7 : 0) : 1;
+      if (rho !== 0){
+        const v = vhat(w, s, rep);
+        const target = (tgt === "td") ? (0 + GAMMA*vhat(w, sp, rep)) : 0;  // retorno verdadeiro = 0
+        const delta = target - v;
+        for (const [i, gi] of grad(s, rep)) w[i] += alpha * rho * delta * gi;
+      }
+      s = sp;
+      if (t % SAMPLE === 0){
+        const n = norm(w);
+        series.push(n);
+        if (!isFinite(n) || n > 1e30){ blew = true; break; }
+      }
+    }
+    const finalN = series[series.length-1];
+    current = { series, rep, tgt, pol, blew: blew || finalN > 1e6 };
+    traces.push(series);
+    if (traces.length > 8) traces.shift();
+    rows.push({rep, tgt, pol, n: finalN, bad: current.blew});
+    if (rows.length > 8) rows.shift();
+    draw(); table(); verdict();
+  }
+
+  function draw(){
+    const cv = $("b-chart"); const {g, W, H} = prepCanvas(cv);
+    const pad = {l:52, r:12, t:10, b:24};
+    let peak = 10;
+    for (const s of traces) for (const v of s) if (isFinite(v) && v > peak) peak = v;
+    const LO = -3, HI = Math.max(3, Math.ceil(Math.log10(peak)) + 1);   // expoentes de 10
+    const Y = n => { const e = Math.log10(Math.max(n, 1e-3));
+      return pad.t + (1 - (Math.min(HI, Math.max(LO, e)) - LO)/(HI-LO)) * (H-pad.t-pad.b); };
+    const X = (i,len) => pad.l + (i/Math.max(1,len-1))*(W-pad.l-pad.r);
+    const ticks = [];
+    const stepE = Math.max(1, Math.ceil((HI-LO)/6));
+    for (let e = LO; e <= HI; e += stepE) ticks.push({y: Y(Math.pow(10,e)), label: "1e"+e});
+    axes(g, W, H, pad, ticks, [{x:pad.l, label:"0"}, {x:W-pad.r, label:String(NSTEPS)},
+                               {x:(pad.l+W-pad.r)/2, label:"passos"}]);
+    g.save(); g.strokeStyle = "rgba(43,147,72,.55)"; g.setLineDash([4,4]);
+    g.beginPath(); g.moveTo(pad.l, Y(norm(initW(swRep.get())))); g.lineTo(W-pad.r, Y(norm(initW(swRep.get())))); g.stroke(); g.restore();
+    traces.forEach((s,k) => {
+      if (s === (current && current.series)) return;
+      polyline(g, s.map((v,i)=>[X(i,s.length), Y(v)]), "rgba(92,103,125,.32)", 1.4);
+    });
+    if (current) polyline(g, current.series.map((v,i)=>[X(i,current.series.length), Y(v)]),
+                          current.blew ? C.red : C.green, 2.2);
+  }
+
+  const NAMES = {tab:"tabular", lin:"linear", mc:"retorno", td:"bootstrap", on:"on-policy", off:"off-policy"};
+  function table(){
+    $("b-table").innerHTML = rows.length ? rows.map(r =>
+      `<tr><td>${NAMES[r.rep]}</td><td>${NAMES[r.tgt]}</td><td>${NAMES[r.pol]}</td>` +
+      `<td class="${r.bad?"d":"c"}">${r.n > 1e6 ? r.n.toExponential(1).replace(".",",") : fmt(r.n,2)}</td></tr>`
+    ).join("") : '<tr><td colspan="4" style="color:var(--grey)">nenhuma execução ainda</td></tr>';
+  }
+  function verdict(){
+    const el = $("b-verdict");
+    if (!current) return;
+    el.className = "verdict " + (current.blew ? "bad" : "ok");
+    el.textContent = current.blew
+      ? "Divergiu — os pesos crescem sem limite, e o valor verdadeiro é zero em todo estado."
+      : "Estável — ‖w‖ permanece limitada.";
+  }
+
+  /* diagrama do MDP */
+  (function svg(){
+    const host = $("b-svg-states");
+    let out = "";
+    const up = [];
+    for (let i = 0; i < 6; i++){ const x = 25 + i*42; up.push([x, 40]); }
+    for (const [x,y] of up){
+      out += `<circle cx="${x}" cy="${y}" r="15" fill="rgba(22,50,79,.07)" stroke="${C.ink}" stroke-width="2"/>`;
+    }
+    out += `<circle cx="130" cy="150" r="17" fill="rgba(232,89,12,.14)" stroke="${C.orange}" stroke-width="2.4"/>`;
+    out += `<text x="130" y="155" text-anchor="middle" font-size="12" font-family="Fira Mono, monospace" fill="${C.ink}">s₇</text>`;
+    for (const [x,y] of up){
+      out += `<line x1="${x}" y1="${y+15}" x2="128" y2="134" stroke="${C.orange}" stroke-width="1.6" opacity=".85"/>`;
+    }
+    out += `<path d="M 130 133 C 195 120, 235 90, 232 58" fill="none" stroke="${C.grey}" stroke-width="1.6" stroke-dasharray="4 3"/>`;
+    out += `<text x="196" y="112" font-size="10" font-family="Fira Sans, sans-serif" fill="${C.grey}">tracejada (6/7)</text>`;
+    out += `<text x="150" y="98" font-size="10" font-family="Fira Sans, sans-serif" fill="${C.orange}">sólida (1/7)</text>`;
+    out += `<text x="130" y="182" text-anchor="middle" font-size="10" font-family="Fira Sans, sans-serif" fill="${C.grey}">recompensa 0 em toda transição · v(s) = 0</text>`;
+    host.innerHTML = out;
+  })();
+
+  $("b-run").addEventListener("click", run);
+  $("b-clear").addEventListener("click", () => { traces = []; rows = []; current = null;
+    $("b-verdict").textContent = "Escolha uma combinação e rode."; $("b-verdict").className = "verdict";
+    draw(); table(); });
+  window.addEventListener("resize", draw);
+  draw(); table();
+})();
+
+/* ==================================================================
+   02 — VIÉS DE MAXIMIZAÇÃO
+   ================================================================== */
+(function(){
+  const EPISODES = 300;
+  const getNA = bindRange("m-actions", v => String(v|0));
+  const getEps = bindRange("m-eps", v => fmt(v,2));
+  const getAl = bindRange("m-alpha", v => fmt(v,2));
+  const getRuns = bindRange("m-runs", v => String(v|0));
+  let curves = null, floorPct = 0.05;
+
+  /* estados: 0 = A, 1 = B. De A: ação 0 = esquerda (vai a B), 1 = direita (fim).
+     De B: nB ações, todas terminam com recompensa N(-0.1, 1). */
+  /* desempate aleatório: sem ele, o episódio 1 seria sempre \"esquerda\" por artefato de índice */
+  function argmax(q, n){
+    let bv = q[0], ties = [0];
+    for (let i = 1; i < n; i++){
+      if (q[i] > bv){ bv = q[i]; ties = [i]; }
+      else if (q[i] === bv) ties.push(i);
+    }
+    return ties.length === 1 ? ties[0] : ties[(Math.random()*ties.length)|0];
+  }
+  function epsGreedy(q, n, eps){
+    if (Math.random() < eps) return (Math.random()*n)|0;
+    return argmax(q, n);
+  }
+
+  function simulate(double, nB, eps, alpha, runs){
+    const left = new Float64Array(EPISODES);
+    let qAleft = 0;
+    for (let r = 0; r < runs; r++){
+      const QA = new Float64Array(2), QB = new Float64Array(nB);
+      const QA2 = new Float64Array(2), QB2 = new Float64Array(nB);
+      for (let e = 0; e < EPISODES; e++){
+        const selA = double ? [QA[0]+QA2[0], QA[1]+QA2[1]] : QA;
+        const a = epsGreedy(selA, 2, eps);
+        if (a === 0) left[e]++;
+        if (a === 1){                                   // direita: termina, r = 0
+          if (!double) QA[1] += alpha*(0 - QA[1]);
+          else if (Math.random() < 0.5) QA[1] += alpha*(0 - QA[1]);
+          else QA2[1] += alpha*(0 - QA2[1]);
+          continue;
+        }
+        /* esquerda: A -> B com r = 0, depois uma ação em B termina */
+        const selB = double ? Array.from({length:nB}, (_,i)=>QB[i]+QB2[i]) : QB;
+        const b = epsGreedy(selB, nB, eps);
+        const rew = -0.1 + gauss();
+        if (!double){
+          QB[b] += alpha*(rew - QB[b]);
+          let mx = QB[0]; for (let i=1;i<nB;i++) if (QB[i]>mx) mx = QB[i];
+          QA[0] += alpha*(0 + mx - QA[0]);
+        } else {
+          if (Math.random() < 0.5){
+            QB[b] += alpha*(rew - QB[b]);
+            const st = argmax(QB, nB);
+            QA[0] += alpha*(0 + QB2[st] - QA[0]);
+          } else {
+            QB2[b] += alpha*(rew - QB2[b]);
+            const st = argmax(QB2, nB);
+            QA2[0] += alpha*(0 + QB[st] - QA2[0]);
+          }
+        }
+      }
+      qAleft += double ? (QA[0]+QA2[0])/2 : QA[0];
+    }
+    for (let e = 0; e < EPISODES; e++) left[e] /= runs;
+    return { left, qA: qAleft/runs };
+  }
+
+  function run(){
+    const nB = getNA()|0, eps = getEps(), alpha = getAl(), runs = getRuns()|0;
+    floorPct = eps/2;
+    const q = simulate(false, nB, eps, alpha, runs);
+    const d = simulate(true,  nB, eps, alpha, runs);
+    curves = {q, d};
+    draw();
+    const tail = a => { let s = 0; for (let i = EPISODES-50; i < EPISODES; i++) s += a[i]; return s/50; };
+    $("m-read").innerHTML =
+      `<b>Q-learning</b><br>&nbsp;&nbsp;esquerda nos 10 primeiros episódios: <b>${fmt(100*avg(q.left,0,10),1)}%</b><br>` +
+      `&nbsp;&nbsp;esquerda nos 50 últimos: <b>${fmt(100*tail(q.left),1)}%</b><br>` +
+      `&nbsp;&nbsp;Q(A, esquerda) final: <b>${fmt(q.qA,3)}</b><br><br>` +
+      `<b>Double Q-learning</b><br>&nbsp;&nbsp;esquerda nos 10 primeiros: <b>${fmt(100*avg(d.left,0,10),1)}%</b><br>` +
+      `&nbsp;&nbsp;esquerda nos 50 últimos: <b>${fmt(100*tail(d.left),1)}%</b><br>` +
+      `&nbsp;&nbsp;Q(A, esquerda) final: <b>${fmt(d.qA,3)}</b><br><br>` +
+      `<span style="color:var(--grey)">valor verdadeiro de Q(A, esquerda) = −0,1 · piso do ε-guloso = ${fmt(100*floorPct,1)}%</span>`;
+  }
+  function avg(a,i,j){ let s = 0; for (let k = i; k < j; k++) s += a[k]; return s/(j-i); }
+
+  function draw(){
+    const cv = $("m-chart"); const {g, W, H} = prepCanvas(cv);
+    const pad = {l:44, r:12, t:10, b:24};
+    const Y = v => pad.t + (1 - Math.min(1, Math.max(0, v))) * (H-pad.t-pad.b);
+    const X = i => pad.l + (i/(EPISODES-1))*(W-pad.l-pad.r);
+    const ticks = [0,0.25,0.5,0.75,1].map(v => ({y:Y(v), label:(v*100)+"%"}));
+    axes(g, W, H, pad, ticks, [{x:pad.l,label:"1"},{x:W-pad.r,label:String(EPISODES)},
+                               {x:(pad.l+W-pad.r)/2,label:"episódios"}]);
+    g.save(); g.strokeStyle = "rgba(92,103,125,.6)"; g.setLineDash([4,4]);
+    g.beginPath(); g.moveTo(pad.l, Y(floorPct)); g.lineTo(W-pad.r, Y(floorPct)); g.stroke(); g.restore();
+    if (!curves){
+      g.fillStyle = C.grey; g.font = '12px "Fira Sans", sans-serif'; g.textAlign = "center";
+      g.fillText("Clique em Rodar.", W/2, H/2); return;
+    }
+    polyline(g, [...curves.q.left].map((v,i)=>[X(i),Y(v)]), C.orange, 2);
+    polyline(g, [...curves.d.left].map((v,i)=>[X(i),Y(v)]), C.ink2, 2);
+  }
+  $("m-run").addEventListener("click", run);
+  window.addEventListener("resize", draw);
+  draw();
+})();
+
+/* ==================================================================
+   03 — EXEMPLO A–B EDITÁVEL
+   ================================================================== */
+(function(){
+  const ORIGINAL = () => ([
+    {from:"A", r1:0, r2:0, n:1},
+    {from:"B", r1:0, r2:1, n:6},
+    {from:"B", r1:0, r2:0, n:1}
+  ]);
+  let eps = ORIGINAL();
+  const getGamma = bindRange("a-gamma", v => fmt(v,2), () => render());
+
+  function compute(){
+    const g = getGamma();
+    let nA = 0, sumR1 = 0, sumMC = 0, nB = 0, sumRB = 0;
+    for (const e of eps){
+      if (e.from === "A"){ nA += e.n; sumR1 += e.n*e.r1; sumMC += e.n*(e.r1 + g*e.r2); }
+      nB += e.n; sumRB += e.n*e.r2;                    // toda visita a B, inclusive dentro dos episódios de A
+    }
+    const Rb = nB ? sumRB/nB : null;                    // R̂(B)
+    const Ra = nA ? sumR1/nA : null;                    // R̂(A)
+    return {
+      nA, nB,
+      vB: Rb,
+      mcA: nA ? sumMC/nA : null,
+      tdA: (Ra === null || Rb === null) ? null : Ra + g*Rb,
+      Ra, Rb, g
+    };
+  }
+
+  function render(){
+    const body = $("a-body");
+    body.innerHTML = eps.map((e,i) => {
+      const isA = e.from === "A";
+      return `<tr class="${isA?"usedMC":""}">
+        <td><select data-i="${i}" data-k="from">
+            <option value="A"${isA?" selected":""}>A</option>
+            <option value="B"${isA?"":" selected"}>B</option></select></td>
+        <td>${isA ? `<input type="number" step="0.5" value="${e.r1}" data-i="${i}" data-k="r1">` : '<span style="color:var(--grey)">—</span>'}</td>
+        <td class="usedTD"><input type="number" step="0.5" value="${e.r2}" data-i="${i}" data-k="r2"></td>
+        <td><input type="number" min="1" step="1" value="${e.n}" data-i="${i}" data-k="n" style="width:52px"></td>
+        <td><button class="rm" data-rm="${i}" title="remover">×</button></td>
+      </tr>`;
+    }).join("");
+
+    const r = compute();
+    $("a-counts").innerHTML =
+      `episódios que começam em A: <b>${r.nA}</b> &nbsp;·&nbsp; visitas totais a B: <b>${r.nB}</b>`;
+
+    const show = v => v === null ? "—" : fmt(v,3);
+    $("a-vals").innerHTML =
+      `<span style="color:var(--grey)">V(B), igual nos dois métodos</span><br>` +
+      `<span class="big">${show(r.vB)}</span><br><br>` +
+      `<span style="color:${C.ink2}">V<sub>MC</sub>(A)</span> &nbsp;&nbsp;` +
+      `<span class="big" style="color:${C.ink2}">${show(r.mcA)}</span><br>` +
+      `<span style="color:${C.orange}">V<sub>TD</sub>(A)</span> &nbsp;&nbsp;` +
+      `<span class="big" style="color:${C.orange}">${show(r.tdA)}</span>`;
+
+    $("a-why").innerHTML = (r.mcA === null || r.tdA === null)
+      ? "Faltam episódios que comecem em A para o Monte Carlo estimar V(A)."
+      : (Math.abs(r.mcA - r.tdA) < 1e-9
+          ? "As duas respostas coincidem: as recompensas observadas em B dentro dos episódios de A são representativas de todas as visitas a B."
+          : `TD usa R̂(B) = ${fmt(r.Rb,3)}, calculado sobre <b>todas</b> as ${r.nB} visitas a B; ` +
+            `MC usa apenas as ${r.nA} trajetórias que de fato partiram de A.`);
+
+    /* diagrama */
+    const lbl = v => v === null ? "?" : fmt(v,2);
+    $("a-svg").innerHTML =
+      `<circle cx="34" cy="39" r="17" fill="rgba(232,89,12,.14)" stroke="${C.orange}" stroke-width="2.2"/>
+       <text x="34" y="44" text-anchor="middle" font-size="13" font-family="Fira Mono, monospace">A</text>
+       <circle cx="150" cy="39" r="17" fill="rgba(22,50,79,.07)" stroke="${C.ink}" stroke-width="2.2"/>
+       <text x="150" y="44" text-anchor="middle" font-size="13" font-family="Fira Mono, monospace">B</text>
+       <circle cx="266" cy="39" r="17" fill="rgba(43,147,72,.12)" stroke="${C.green}" stroke-width="2.2"/>
+       <circle cx="266" cy="39" r="13" fill="none" stroke="${C.green}" stroke-width="1.2"/>
+       <line x1="53" y1="39" x2="130" y2="39" stroke="${C.grey}" stroke-width="1.6" marker-end="url(#ah)"/>
+       <line x1="169" y1="39" x2="246" y2="39" stroke="${C.grey}" stroke-width="1.6" marker-end="url(#ah)"/>
+       <defs><marker id="ah" markerWidth="7" markerHeight="7" refX="6" refY="3.2" orient="auto">
+         <path d="M0,0 L7,3.2 L0,6.4 z" fill="${C.grey}"/></marker></defs>
+       <text x="91" y="28" text-anchor="middle" font-size="10.5" font-family="Fira Mono, monospace" fill="${C.grey}">R̂(A)=${lbl(r.Ra)}</text>
+       <text x="207" y="28" text-anchor="middle" font-size="10.5" font-family="Fira Mono, monospace" fill="${C.orange}">R̂(B)=${lbl(r.Rb)}</text>
+       <text x="91" y="66" text-anchor="middle" font-size="10" font-family="Fira Sans" fill="${C.grey}">P̂ = 1,0</text>
+       <text x="207" y="66" text-anchor="middle" font-size="10" font-family="Fira Sans" fill="${C.grey}">P̂ = 1,0</text>`;
+  }
+
+  $("a-body").addEventListener("input", e => {
+    const t = e.target, i = +t.dataset.i, k = t.dataset.k;
+    if (i === undefined || !k) return;
+    if (k === "from") eps[i].from = t.value;
+    else if (k === "n") eps[i].n = Math.max(1, Math.round(+t.value || 1));
+    else eps[i][k] = (+t.value) || 0;
+    render();
+  });
+  $("a-body").addEventListener("click", e => {
+    const i = e.target.dataset.rm;
+    if (i === undefined) return;
+    if (eps.length > 1){ eps.splice(+i, 1); render(); }
+  });
+  $("a-addA").addEventListener("click", () => { eps.push({from:"A", r1:0, r2:0, n:1}); render(); });
+  $("a-addB").addEventListener("click", () => { eps.push({from:"B", r1:0, r2:1, n:1}); render(); });
+  $("a-reset").addEventListener("click", () => { eps = ORIGINAL(); $("a-gamma").value = 1;
+    $("a-gammaV").textContent = fmt(1,2); render(); });
+  render();
+})();
+
+/* ==================================================================
+   04 — PEGADA DA ATUALIZAÇÃO
+   ================================================================== */
+(function(){
+  const N = 20;                     // grade N x N
+  const TILINGS = 4, TILES = 7;     // 4 x 49 = 196
+  const RBFN = 8;                   // 8 x 8 = 64 centros
+  const getAlpha = bindRange("p-alpha", v => fmt(v,2));
+  const getSigma = bindRange("p-sigma", v => fmt(v,2), () => { resetAll(); });
+  const swT = bindSwitch("sw-target", "1");
+
+  const W = { tab: new Float64Array(N*N), tile: new Float64Array(TILINGS*TILES*TILES),
+              rbf: new Float64Array(RBFN*RBFN) };
+  let lastClick = null;
+
+  const centers = [];
+  for (let i = 0; i < RBFN; i++) for (let j = 0; j < RBFN; j++)
+    centers.push([(i+0.5)/RBFN, (j+0.5)/RBFN]);
+
+  function feats(kind, x, y){
+    if (kind === "tab"){
+      const i = Math.min(N-1, Math.floor(x*N)), j = Math.min(N-1, Math.floor(y*N));
+      return [[j*N+i, 1]];
+    }
+    if (kind === "tile"){
+      const out = [];
+      for (let t = 0; t < TILINGS; t++){
+        const off = t/(TILINGS*TILES);
+        const i = Math.min(TILES-1, Math.max(0, Math.floor((x+off)*TILES)));
+        const j = Math.min(TILES-1, Math.max(0, Math.floor((y+off)*TILES)));
+        out.push([t*TILES*TILES + j*TILES + i, 1]);
+      }
+      return out;
+    }
+    const s = getSigma(), out = [];
+    for (let k = 0; k < centers.length; k++){
+      const dx = x-centers[k][0], dy = y-centers[k][1];
+      const v = Math.exp(-(dx*dx+dy*dy)/(2*s*s));
+      if (v > 1e-4) out.push([k, v]);
+    }
+    return out;
+  }
+  function value(kind, x, y){
+    let v = 0;
+    for (const [i, f] of feats(kind, x, y)) v += W[kind][i]*f;
+    return v;
+  }
+  function update(x, y, target){
+    const alpha = getAlpha();
+    for (const kind of ["tab","tile","rbf"]){
+      const f = feats(kind, x, y);
+      let v = 0, sq = 0;
+      for (const [i,fi] of f){ v += W[kind][i]*fi; sq += fi*fi; }
+      /* passo normalizado por ‖x(s)‖²: o valor no ponto clicado sobe o mesmo
+         nas três representações, isolando o alcance como única diferença */
+      const d = alpha*(target - v)/Math.max(sq, 1e-9);
+      for (const [i,fi] of f) W[kind][i] += d*fi;
+    }
+  }
+  function resetAll(){
+    for (const k of ["tab","tile","rbf"]) W[k].fill(0);
+    lastClick = null; drawAll();
+  }
+
+  const CANV = { tab: $("g-tab"), tile: $("g-tile"), rbf: $("g-rbf") };
+  function drawAll(){
+    /* escala comum às três, para que sejam comparáveis */
+    let mx = 1e-6;
+    const vals = {};
+    for (const kind of ["tab","tile","rbf"]){
+      const a = new Float64Array(N*N);
+      for (let j = 0; j < N; j++) for (let i = 0; i < N; i++){
+        const v = value(kind, (i+0.5)/N, (j+0.5)/N);
+        a[j*N+i] = v; if (Math.abs(v) > mx) mx = Math.abs(v);
+      }
+      vals[kind] = a;
+    }
+    for (const kind of ["tab","tile","rbf"]) drawGrid(CANV[kind], vals[kind], mx);
+  }
+  function color(t){                 /* t em [-1,1]: azul ← branco → laranja */
+    const a = t < 0
+      ? [ [255,255,255], [46,95,138], -t ]
+      : [ [255,255,255], [232,89,12], t ];
+    const [c0, c1, k] = a;
+    const m = Math.pow(Math.min(1,k), 0.75);
+    return `rgb(${Math.round(c0[0]+(c1[0]-c0[0])*m)},${Math.round(c0[1]+(c1[1]-c0[1])*m)},${Math.round(c0[2]+(c1[2]-c0[2])*m)})`;
+  }
+  function drawGrid(cv, a, mx){
+    const g = cv.getContext("2d"), S = cv.width/N;
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++){
+      g.fillStyle = color(a[j*N+i]/mx);
+      g.fillRect(i*S, j*S, S+0.5, S+0.5);
+    }
+    g.strokeStyle = "rgba(22,50,79,.06)"; g.lineWidth = 1;
+    for (let i = 1; i < N; i++){
+      g.beginPath(); g.moveTo(i*S,0); g.lineTo(i*S,cv.height); g.stroke();
+      g.beginPath(); g.moveTo(0,i*S); g.lineTo(cv.width,i*S); g.stroke();
+    }
+    if (lastClick){
+      g.strokeStyle = "rgba(22,50,79,.85)"; g.lineWidth = 2;
+      g.beginPath(); g.arc(lastClick[0]*cv.width, lastClick[1]*cv.height, S*0.55, 0, 2*Math.PI); g.stroke();
+    }
+  }
+  for (const kind of ["tab","tile","rbf"]){
+    CANV[kind].addEventListener("click", ev => {
+      const r = ev.currentTarget.getBoundingClientRect();
+      const x = Math.min(0.999, Math.max(0, (ev.clientX-r.left)/r.width));
+      const y = Math.min(0.999, Math.max(0, (ev.clientY-r.top)/r.height));
+      lastClick = [x,y];
+      update(x, y, parseFloat(swT.get()));
+      drawAll();
+    });
+  }
+  $("p-reset").addEventListener("click", resetAll);
+  drawAll();
+})();
+</script>
+</body>
+</html>

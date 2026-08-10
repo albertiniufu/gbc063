@@ -1,0 +1,4 @@
+
+
+# todo
+Simulador breakout

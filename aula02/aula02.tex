@@ -386,8 +386,7 @@
   \end{defbox}
   \begin{alertabox}
     A recompensa aparece na literatura como $\rec(s)$, $\rec(s,a)$ ou $\rec(s,a,s')$.
-    Usaremos \alert{$\rec(s,a)$}. As três têm o mesmo poder expressivo, mas trocar de
-    convenção no meio de uma dedução é fonte clássica de erro.
+    Usaremos \alert{$\rec(s,a)$}. 
   \end{alertabox}
 \end{frame}
 
@@ -503,7 +502,7 @@
 \end{frame}
 
 %% ------------------------------------------------------------
-\begin{frame}{Exercício L2E1 --- uma iteração de avaliação}
+\begin{frame}{Exercício --- uma iteração de avaliação}
   \begin{center}\scalebox{0.78}{\marsroverdet}\end{center}
   \vspace{-0.3em}
   \begin{exbox}{--- \emph{Mars Rover}}
@@ -521,7 +520,7 @@
 \end{frame}
 
 %% ------------------------------------------------------------
-\begin{frame}{Exercício L2E1 --- resolução}
+\begin{frame}{Exercício --- resolução}
   Aplicamos o backup para política determinística, em um único estado:
   \[
     V_{k+1}(s_6) = \rec(s_6, \pol(s_6))
@@ -609,11 +608,6 @@
 %% ============================================================
 
 \begin{frame}{O problema de controle}
-  \vspace{-0.9em}
-  \[
-    \polstar(s) = \argmax_{\pol} \Vpi(s)
-  \]
-  \vspace{-1.2em}
   \begin{columns}[T]
     \begin{column}{0.52\textwidth}
       {\small Para um MDP de horizonte infinito com $\gamma<1$, a política ótima é:
@@ -626,11 +620,11 @@
       Já a \alert{função valor ótima} $\Vstar$ é única.}
     \end{column}
     \begin{column}{0.46\textwidth}
-      \begin{alertabox}
-        Leia o $\argmax$ com cuidado: ele afirma que existe uma política que maximiza
-        o valor em \alert{todos os estados ao mesmo tempo}. Em otimização multiobjetivo
-        isso em geral não existe; aqui existe, pela estrutura de Bellman.
-      \end{alertabox}
+  \vspace{+1.9em}
+  \[
+    \polstar(s) = \argmax_{\pol} \Vpi(s)
+  \]
+  \vspace{-1.2em}
     \end{column}
   \end{columns}
   \vspace{-0.2em}
@@ -1226,8 +1220,7 @@
   \end{columns}
   \vspace{0.4em}
   \begin{alertabox}
-    Pergunta de despedida, para levar à Aula 3: dos três métodos de avaliação vistos
-    (analítico, programação dinâmica, simulação), quais exigem a hipótese de Markov?
+    Dos três métodos de avaliação vistos (analítico, programação dinâmica, simulação), quais exigem a hipótese de Markov?
   \end{alertabox}
 \end{frame}
 

@@ -5,6 +5,15 @@ guidelines/*
 professor/
 docs/
 
+#latex
+*.aux
+*.log
+*.toc
+*.snm
+*.nav
+*.out
+*.xopp
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
