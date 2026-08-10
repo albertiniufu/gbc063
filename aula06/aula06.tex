@@ -1,0 +1,1224 @@
+%% ============================================================
+%%  Aula 6 — Gradientes de política II: variância, confiança e PPO
+%%  Adaptação em pt-BR do CS234 (Stanford, Emma Brunskill), Lecture 6
+%%  Seção de gradientes avançados baseada nos slides de Joshua Achiam
+%%  Compilar: latexmk -xelatex aula06.tex   (duas passadas)
+%% ============================================================
+\documentclass[aspectratio=169, 11pt]{beamer}
+
+\usetheme{AprendizadoRL}      % ANTES do babel — fontspec precisa vir primeiro
+\usepackage{babel}
+\babelprovide[import, main]{brazilian}
+\usepackage{booktabs}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepgfplotslibrary{fillbetween}
+
+\title[Aula 6 — Gradientes de política II]{Aula 6: Gradientes de política II\\ variância, confiança e PPO}
+\subtitle[Aprendizagem por Reforço]{Linha de base \textbullet\ Ator--crítico \textbullet\ Limites de desempenho \textbullet\ PPO}
+\author[Prof. Marcelo K. Albertini]{Prof. Marcelo Keese Albertini \\
+  \footnotesize Universidade Federal de Uberlândia \\
+  \footnotesize adaptado de Emma Brunskill, CS234 (Stanford); seção avançada de Joshua Achiam}
+\institute{Universidade Federal de Uberlândia}
+\date{2026}
+
+% ---- Nota discreta: perguntas ficam para o professor conduzir em aula
+\newcommand{\paradiscussao}{\smallskip
+  {\footnotesize\color{rlCinza}\itshape Pergunta para discussão conduzida em aula.}}
+
+% ---- Macros locais da aula
+\newcommand{\Adv}{A}
+\newcommand{\Ahat}{\hat{A}}
+\newcommand{\ghat}{\hat{g}}
+\newcommand{\polnovo}{\pol'}
+\newcommand{\dpol}{d^{\pol}}
+\newcommand{\dpolnovo}{d^{\pol'}}
+\newcommand{\KLd}[2]{D_{\mathrm{KL}}\!\left(#1\,\|\,#2\right)}
+\DeclareMathOperator{\clipop}{clip}
+\newcommand{\Lsub}[1]{L_{#1}}
+\newcommand{\Var}{\operatorname{Var}}
+
+% O estilo `caixa` existe no .sty do handout, mas não no tema Beamer.
+\tikzset{caixa/.style={draw, thick, rounded corners=2.5pt, align=center,
+                       font=\scriptsize, inner sep=3pt}}
+
+\begin{document}
+
+\begin{frame}[plain, noframenumbering]\titlepage\end{frame}
+
+%% ============================================================
+\begin{frame}{Onde estamos}
+  \framesubtitle{Três aulas sobre busca direta no espaço de políticas}
+
+  \begin{columns}[T]
+    \begin{column}{0.32\textwidth}
+      \begin{block}{Aula 5 --- feito}
+        \small Razão de verossimilhança, teorema do gradiente de política,
+        REINFORCE.
+      \end{block}
+    \end{column}
+    \begin{column}{0.32\textwidth}
+      \begin{block}{Aula 6 --- hoje}
+        \small REINFORCE \emph{funciona}, mas mal. Domar a variância; dar
+        passos que não destroem a política.
+      \end{block}
+    \end{column}
+    \begin{column}{0.32\textwidth}
+      \begin{block}{Aula 7 --- a seguir}
+        \small GAE, teoria de melhoria monotônica e aprendizagem por
+        imitação.
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vfill
+  \begin{ideiabox}
+    A Aula 5 respondeu \emph{para onde} andar. Hoje: \alert{com que precisão}
+    conhecemos essa direção, e \alert{que passo} podemos dar sem cair.
+  \end{ideiabox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Plano de hoje}
+  \begin{enumerate}
+    \item \textbf{Linha de base} --- por que subtrair $b(s)$ do retorno não
+          muda o gradiente esperado, mas encolhe a variância; e qual é a
+          melhor escolha de $b$.
+    \item \textbf{Alvos alternativos ao retorno de Monte Carlo} --- de
+          $G_t$ ao crítico: ator--crítico e a função vantagem.
+    \item \textbf{Problemas estruturais do gradiente de política} ---
+          eficiência amostral, colapso de desempenho, e distância no espaço de
+          \emph{parâmetros} versus no espaço de \emph{políticas}.
+    \item \textbf{Limites de desempenho relativo} --- lema da diferença de
+          desempenho, a aproximação $\Lsub{\pol}(\polnovo)$ e a divergência KL.
+    \item \textbf{PPO} --- penalidade KL adaptativa e objetivo recortado.
+  \end{enumerate}
+
+  \vfill
+  {\footnotesize\color{rlCinza}Os itens 3--5 seguem os slides de gradientes de
+  política avançados de Joshua Achiam.}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Retomando a Aula 5}
+  \begin{quizbox}{}
+    Selecione tudo o que é verdadeiro a respeito de gradientes de política:
+    \begin{enumerate}\setlength{\itemsep}{0ex}\footnotesize
+      \item $\nabla_\theta V(\theta) = \E_{\pol_\theta}\!\left[\nabla_\theta \log \pol_\theta(s,a)\, Q^{\pol_\theta}(s,a)\right]$
+      \item $\theta$ é \emph{sempre} incrementado na direção de $\nabla_\theta \ln \pol(s_t, a_t, \theta)$
+      \item Pares $(s,a)$ com $Q$ estimado maior têm, em média, sua probabilidade aumentada
+      \item Há garantia de convergência ao ótimo global da classe de políticas
+    \end{enumerate}
+    \paradiscussao
+  \end{quizbox}
+
+  \pause
+  \begin{respbox}
+    \textbf{1 e 3.} O item 2 é falso: a direção é a do escore
+    \emph{multiplicado} por $Q$, e se inverte quando o retorno é negativo. O
+    item 4 é falso: só há garantia de \alert{ótimo local}.
+  \end{respbox}
+\end{frame}
+
+%% ============================================================
+\section{Reduzindo a variância: a linha de base}
+
+\begin{frame}{REINFORCE: o ponto de partida}
+  \begin{algbox}{REINFORCE (gradiente de política de Monte Carlo)}
+    \small
+    Inicialize $\theta$ arbitrariamente\\
+    \textbf{para cada} episódio $\{s_1, a_1, r_2, \dots, s_{T-1}, a_{T-1}, r_T\} \sim \pol_\theta$ \textbf{faça}\\
+    \hspace*{1.2em}\textbf{para} $t = 1$ até $T-1$ \textbf{faça}\\
+    \hspace*{2.4em}$\theta \leftarrow \theta + \alpha \nabla_\theta \log \pol_\theta(s_t, a_t)\, G_t$\\
+    \hspace*{1.2em}\textbf{fim}\\
+    \textbf{fim} \qquad \textbf{retorne} $\theta$
+  \end{algbox}
+
+  \pause
+  \vspace{-0.6em}
+  {\small Na forma de estimador com $m$ trajetórias:}
+  \vspace{-0.4em}
+  \[\textstyle
+    \nabla_\theta V(\theta) \;\approx\; \frac{1}{m}\sum_{i=1}^{m}
+      \rec(\tau^{(i)}) \sum_{t=0}^{T-1} \nabla_\theta \log \pol_\theta\!\left(a_t^{(i)} \mid s_t^{(i)}\right)
+  \]
+  \vspace{-1.1em}
+
+  \pause
+  \begin{alertabox}
+    \textbf{Não-viesado, porém muito ruidoso.} Estar \emph{certo em média} não
+    é consolo se a variância é tão alta que o passo aponta para a direção
+    errada na maioria dos lotes.
+  \end{alertabox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{De onde vem a variância?}
+  \framesubtitle{Três fontes distintas, com três remédios distintos}
+
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      \begin{enumerate}\small\setlength{\itemsep}{0.5em}
+        \item \textbf{Amostragem da trajetória.} $\tau$ é sorteada; o mesmo
+              $\theta$ produz retornos diferentes a cada execução.
+        \item \textbf{Escala e deslocamento do retorno.} Se todos os retornos
+              valem $\approx 100$, todo o gradiente empurra ``para cima'', e o
+              sinal útil é a \emph{diferença} entre eles.
+        \item \textbf{Crédito temporal.} $\rec(\tau)$ multiplica o escore de
+              \alert{todas} as ações, inclusive as posteriores à recompensa
+              --- ruído puro.
+      \end{enumerate}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{defbox}{Os três consertos}
+        \small
+        \begin{itemize}\setlength{\itemsep}{0.25ex}
+          \item \textbf{Estrutura temporal:} troque $\rec(\tau)$ por $G_t$
+                (só o futuro conta) --- visto na Aula 5.
+          \item \textbf{Linha de base:} subtraia $b(s_t)$ --- \emph{hoje}.
+          \item \textbf{Alvos alternativos:} troque $G_t$ por um crítico
+                --- \emph{hoje}.
+        \end{itemize}
+      \end{defbox}
+      \begin{ideiabox}
+        Os dois primeiros são \alert{gratuitos}: reduzem variância sem viés. O
+        terceiro troca viés por variância deliberadamente.
+      \end{ideiabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{A linha de base}
+  \begin{defbox}{Gradiente de política com linha de base}
+    \[
+      \nabla_\theta \E_\tau[\rec] = \E_\tau\!\left[
+        \sum_{t=0}^{T-1} \nabla_\theta \log \pol(a_t \mid s_t; \theta)
+        \left(\sum_{t'=t}^{T-1} r_{t'} - \mdestaque{rlLaranja}{b(s_t)}\right)
+      \right]
+    \]
+  \end{defbox}
+
+  \vspace{-0.2em}
+  \begin{itemize}\small
+    \item Para \alert{qualquer} $b$ que dependa só do estado, e não da ação, o
+          estimador continua não-viesado.
+    \item Escolha quase ótima: o retorno esperado,
+          $b(s_t) \approx \E[r_t + \cdots + r_{T-1}]$.
+  \end{itemize}
+
+  \begin{ideiabox}
+    \textbf{Leitura.} Aumente a log-probabilidade de $a_t$ na proporção em que
+    o retorno foi \emph{melhor do que o esperado} naquele estado. Sem linha de
+    base, uma ação medíocre num estado excelente é reforçada tanto quanto uma
+    excelente.
+  \end{ideiabox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Por que isso importa: um exemplo de três ações}
+  \framesubtitle{Mesmo estado, três ações, retornos 98, 101 e 104}
+
+  \begin{columns}[T]
+    \begin{column}{0.49\textwidth}
+      \centering
+      {\footnotesize\color{rlCinza}\bfseries Sem linha de base --- pesos $G_t$}\\[0.2em]
+      \begin{tikzpicture}[scale=0.55]
+        \draw[rlCinza!40] (0,-0.25) -- (0,3.1);
+        \foreach \i/\g/\lab/\ac in {0/2.45/98/1, 1/2.53/101/2, 2/2.60/104/3}{
+          \draw[trans destac, line width=2pt] (\i*1.35+0.55,0) -- (\i*1.35+0.55,\g);
+          \node[font=\scriptsize, color=rlCinza] at (\i*1.35+0.55,-0.35) {$a_{\ac}$};
+          \node[font=\scriptsize, color=rlLaranja] at (\i*1.35+0.55,\g+0.28) {\lab};}
+        \draw[rlCinza!40] (0,0) -- (4.3,0);
+      \end{tikzpicture}\\[0.4em]
+      {\scriptsize Reforço quase igual para as três: o sinal ($\pm 3$) está
+      afogado no nível ($\approx 100$).}
+    \end{column}
+    \begin{column}{0.49\textwidth}
+      \centering
+      {\footnotesize\color{rlCinza}\bfseries Com $b(s)=101$ --- pesos $G_t - b(s)$}\\[0.2em]
+      \begin{tikzpicture}[scale=0.55]
+        \draw[rlCinza!40] (0,-1.6) -- (0,1.6);
+        \draw[rlCinza!40] (0,0) -- (4.3,0);
+        \draw[trans, rlVermelho, line width=2pt] (0.55,0) -- (0.55,-1.35);
+        \node[font=\scriptsize, color=rlVermelho] at (0.55,-1.62) {$-3$};
+        \node[font=\scriptsize, color=rlCinza] at (1.9,0.3) {$0$};
+        \fill[rlCinza] (1.9,0) circle (1.6pt);
+        \draw[trans destac, line width=2pt] (3.25,0) -- (3.25,1.35);
+        \node[font=\scriptsize, color=rlLaranja] at (3.25,1.62) {$+3$};
+        \node[font=\scriptsize, color=rlCinza] at (0.55,0.3) {$a_1$};
+        \node[font=\scriptsize, color=rlCinza] at (3.25,-0.3) {$a_3$};
+        \node[font=\scriptsize, color=rlCinza] at (1.9,-0.3) {$a_2$};
+      \end{tikzpicture}\\[0.4em]
+      {\scriptsize $a_1$ é \emph{desencorajada}, $a_3$ encorajada. A média do
+      passo é a mesma; o ruído é muito menor.}
+    \end{column}
+  \end{columns}
+
+  \vspace{0.4em}
+  \begin{ideiabox}
+    O \alert{gradiente esperado é idêntico} nos dois painéis. Muda quantas
+    trajetórias são necessárias para a média amostral chegar perto dele.
+  \end{ideiabox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{A linha de base não introduz viés}
+  \framesubtitle{Basta mostrar que o termo extra tem esperança nula}
+
+  \vspace{-0.3em}
+  {\footnotesize
+  \begin{align*}
+    \E_\tau&\left[\nabla_\theta \log \pol(a_t \mid s_t;\theta)\, b(s_t)\right] \\[0.1em]
+    &= \E_{s_{0:t},\, a_{0:(t-1)}}\Big[\E_{s_{(t+1):T},\, a_{t:(T-1)}}
+        \left[\nabla_\theta \log \pol(a_t \mid s_t;\theta)\, b(s_t)\right]\Big]
+        &&\text{\scriptsize(quebra da esperança)}\\
+    &= \E_{s_{0:t},\, a_{0:(t-1)}}\Big[b(s_t)\,\E_{a_t}
+        \left[\nabla_\theta \log \pol(a_t \mid s_t;\theta)\right]\Big]
+        &&\text{\scriptsize($b$ sai da esperança interna)}\\
+    &= \E_{s_{0:t},\, a_{0:(t-1)}}\left[b(s_t)\sum_a \pol_\theta(a \mid s_t)
+        \frac{\nabla_\theta \pol(a \mid s_t;\theta)}{\pol_\theta(a \mid s_t)}\right]
+        &&\text{\scriptsize(razão de verossimilhança, ao contrário)}\\
+    &= \E_{s_{0:t},\, a_{0:(t-1)}}\left[b(s_t)\, \nabla_\theta \sum_a \pol(a \mid s_t;\theta)\right]
+      \;=\; \E_{s_{0:t},\, a_{0:(t-1)}}\left[b(s_t)\, \nabla_\theta 1\right] \;=\; 0
+        &&\text{\scriptsize(normalização)}
+  \end{align*}}
+
+  \vspace{-1.2em}
+  \begin{ideiabox}
+    Tudo se apoia em um fato só: $\sum_a \pol(a\mid s;\theta) = 1$
+    \alert{para todo $\theta$}, logo o gradiente dessa constante é nulo. É por
+    isso que $b$ \emph{não pode} depender de $a$.
+  \end{ideiabox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Por que a linha de base reduz a variância}
+  \vspace{-0.4em}
+  {\small
+  A variância se decompõe aproximadamente por passo de tempo; concentre-se em um
+  termo. Como a esperança \alert{não depende de $b$} (acabamos de provar),
+  minimizar a variância é minimizar só o momento de segunda ordem:
+  \vspace{-0.3em}
+  \[
+    \argmin_b\; \E_{s\sim\dpol}\E_{a\sim\pol,\,G}\!\left[
+      \left(\nabla_\theta \log \pol(a \mid s;\theta)\right)^2
+      \left(G_t(s) - b(s)\right)^2\right]
+  \]}
+  \vspace{-1.2em}
+
+  \pause
+  \begin{teobox}{Linha de base de variância mínima}
+    {\small
+    É um problema de \alert{mínimos quadrados ponderados}. Derivando e igualando a zero:
+    \vspace{-0.3em}
+    \[
+      b^\star(s) =
+      \frac{\E\!\left[\left(\nabla_\theta \log \pol(a\mid s;\theta)\right)^2 G_t(s)\right]}
+           {\E\!\left[\left(\nabla_\theta \log \pol(a\mid s;\theta)\right)^2\right]}
+      \;\approx\; \E\!\left[G_t(s)\right] = \Vpi(s)
+    \]
+    \vspace{-1.1em}
+    \par\smallskip
+    Isto é: a média dos retornos \emph{ponderada pelo quadrado do escore}.
+    Ignorando essa ponderação, sobra a média simples --- a \alert{função valor
+    de estado}.}
+  \end{teobox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Algoritmo de gradiente de política ``baunilha''}
+  \begin{algbox}{Gradiente de política com linha de base aprendida}
+    \small
+    Inicialize o parâmetro da política $\theta$ e a linha de base $b$\\[0.25em]
+    \textbf{para} iteração $= 1, 2, \dots$ \textbf{faça}\\
+    \hspace*{1.2em} Colete um conjunto de trajetórias executando a política atual\\
+    \hspace*{1.2em} Em cada passo $t$ de cada $\tau^i$: retorno
+                    $G_t^i = \sum_{t'\ge t} r_{t'}^i$ e vantagem
+                    $\Ahat_t^i = G_t^i - b(s_t^i)$\\
+    \hspace*{1.2em} Reajuste a linha de base minimizando
+                    $\sum_i \sum_t \left(b(s_t^i) - G_t^i\right)^2$\\
+    \hspace*{1.2em} Atualize a política com $\ghat$, soma de termos
+                    $\nabla_\theta \log \pol(a_t \mid s_t, \theta)\,\Ahat_t$
+                    {\color{rlCinza}(via SGD ou Adam)}\\
+    \textbf{fim}
+  \end{algbox}
+
+  \vspace{-0.2em}
+  \begin{ideiabox}
+    Já é um método de \alert{dois modelos} --- um para a política, outro para o
+    valor: estamos a um passo do ator--crítico. Note que $b$ é ajustada com a
+    \emph{mesma} amostra que gera o gradiente; prático, mas correlaciona os dois.
+  \end{ideiabox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Que outras linhas de base existem?}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \begin{defbox}{Funções valor como linha de base}
+        \small
+        Função valor de estado--ação:
+        \[ \Qpi(s,a) = \E_\pol\!\left[r_0 + \gamma r_1 + \gamma^2 r_2 + \cdots \mid s_0=s,\, a_0=a\right] \]
+        Função valor de estado --- a linha de base natural:
+        \[ \Vpi(s) = \E_\pol\!\left[r_0 + \gamma r_1 + \cdots \mid s_0=s\right]
+                   = \E_{a\sim\pol}\!\left[\Qpi(s,a)\right] \]
+      \end{defbox}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      {\small Outras escolhas usadas na prática:}
+      \begin{itemize}\small\setlength{\itemsep}{0.3ex}
+        \item \textbf{Média do lote:} $b = \frac{1}{N}\sum G_t$. Constante, trivial, e já ajuda muito.
+        \item \textbf{Regressão sobre atributos:} $b(s) = w^\top x(s)$.
+        \item \textbf{Rede neural} treinada por regressão sobre $G_t$ --- o \emph{crítico}.
+      \end{itemize}
+      \vspace{0.3em}
+      \begin{alertabox}
+        \small Normalizar as vantagens do lote
+        ($\Ahat \leftarrow (\Ahat - \bar{\Ahat})/\sigma_{\Ahat}$) é padrão em
+        implementações --- e \emph{introduz} um viés pequeno.
+      \end{alertabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\section{Alvos alternativos: do retorno ao crítico}
+
+\begin{frame}{Escolhendo o alvo}
+  \framesubtitle{$G_t$ é uma estimativa de $\Vpi(s_t)$ obtida de uma única execução}
+
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      \begin{itemize}\small
+        \item $G_t^i$ é não-viesado para $\Vpi(s_t)$ --- mas é uma amostra
+              \emph{única} de uma soma de muitas variáveis aleatórias.
+        \item Reduza a variância \alert{introduzindo viés}, via
+              \emph{bootstrapping} e aproximação de função.
+        \item É o mesmo dilema de TD versus MC (Aula 3), agora aplicado ao
+              alvo do gradiente de política.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{defbox}{Métodos ator--crítico}
+        \small
+        Mantêm representações explícitas \alert{da política} (o ator) e
+        \alert{da função valor} (o crítico), e atualizam as duas.
+        A estimativa de $V$ ou $Q$ é feita pelo crítico.
+      \end{defbox}
+      \begin{ideiabox}
+        \small
+        O ator age; o crítico julga. A3C
+        {\color{rlCinza}(Mnih et al., ICML 2016)} popularizou a receita.
+      \end{ideiabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{O laço ator--crítico}
+  \centering
+  \begin{tikzpicture}[node distance=8mm, scale=0.86, every node/.style={transform shape}]
+    \node[caixa, draw=rlLaranja, fill=rlLaranja!10, minimum width=26mm, minimum height=11mm,
+          font=\small, align=center] (ator) at (0,1.6)
+          {\textbf{Ator} \\[-0.2em] {\scriptsize política $\pol_\theta(a\mid s)$}};
+    \node[caixa, draw=rlTeal, fill=rlTeal!10, minimum width=26mm, minimum height=11mm,
+          font=\small, align=center] (critico) at (0,-1.6)
+          {\textbf{Crítico} \\[-0.2em] {\scriptsize valor $V_w(s)$}};
+    \node[caixa, draw=rlAzul, fill=rlAzul!8, minimum width=26mm, minimum height=11mm,
+          font=\small, align=center] (amb) at (6.4,0)
+          {\textbf{Ambiente} \\[-0.2em] {\scriptsize $P(s'\mid s,a)$, $\rec$}};
+
+    \draw[trans destac] (ator.east) to[bend left=12]
+      node[above, font=\scriptsize, pos=0.45] {ação $a_t$} (amb.north west);
+    \draw[trans, rlAzulClaro] (amb.south west) to[bend left=12]
+      node[below, font=\scriptsize, pos=0.55] {$s_{t+1},\; r_t$} (critico.east);
+    \draw[trans, rlTeal, very thick] (critico.north) -- node[right, font=\scriptsize, align=left]
+      {vantagem \\[-0.2em] $\Ahat_t = r_t + \gamma V_w(s_{t+1}) - V_w(s_t)$} (ator.south);
+    \draw[trans, rlCinza, dashed] (amb.north) to[out=100, in=20, looseness=0.75]
+      node[above, font=\scriptsize, pos=0.55] {estado $s_t$} (ator.north east);
+  \end{tikzpicture}
+
+  \vspace{0.3em}
+  \begin{alertabox}
+    O crítico transforma um retorno \emph{observado até o fim do episódio} em
+    um sinal disponível \alert{no passo seguinte} --- mas, se ele está errado,
+    o ator otimiza a coisa errada. Os dois aprendem ao mesmo tempo, e a
+    estabilidade dessa dança é assunto de metade da literatura da área.
+  \end{alertabox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Do retorno à vantagem}
+  \vspace{-0.3em}\small
+  Partindo da forma com linha de base:
+  \[
+    \nabla_\theta \E_\tau[\rec] = \E_\tau\!\left[\sum_{t=0}^{T-1}
+      \nabla_\theta \log \pol(a_t\mid s_t;\theta)\left(\sum_{t'=t}^{T-1} r_{t'} - b(s_t)\right)\right]
+  \]
+  \pause\vspace{-0.5em}
+  Trocando o retorno amostral por um crítico $Q(s_t,a_t;w)$:
+  \vspace{-0.3em}
+  \[
+    \nabla_\theta \E_\tau[\rec] \approx \E_\tau\!\left[\sum_{t=0}^{T-1}
+      \nabla_\theta \log \pol(a_t\mid s_t;\theta)\left(Q(s_t,a_t;w) - b(s_t)\right)\right]
+  \]
+  \pause\vspace{-0.5em}
+  E com a linha de base sendo uma estimativa de $V$, a expressão colapsa na
+  \alert{função vantagem}:
+  \vspace{-0.3em}
+  \[
+    \nabla_\theta \E_\tau[\rec] \approx \E_\tau\!\left[\sum_{t=0}^{T-1}
+      \nabla_\theta \log \pol(a_t\mid s_t;\theta)\,
+      \mdestaque{rlLaranja}{\Ahat^{\pol}(s_t,a_t)}\right]
+  \]
+
+  \vspace{-0.5em}
+  \begin{defbox}{Função vantagem}
+    \small $\Adv^{\pol}(s,a) = \Qpi(s,a) - \Vpi(s)$: quanto $a$ é melhor do que
+    a ação \emph{média} de $\pol$ em $s$. Note que
+    $\E_{a\sim\pol}[\Adv^{\pol}(s,a)] = 0$ para todo $s$.
+  \end{defbox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{O catálogo de alvos}
+  \framesubtitle{Todos dão o mesmo gradiente esperado --- exceto os que não dão}
+  \vspace{-0.3em}
+  \centering\footnotesize
+  \begin{tabular}{@{}llcc@{}}
+    \toprule
+    \textbf{Peso do escore} & \textbf{Nome} & \textbf{Viés} & \textbf{Variância} \\
+    \midrule
+    $\rec(\tau)$ & retorno total da trajetória & nenhum & altíssima \\
+    $G_t = \sum_{t'\ge t} r_{t'}$ & retorno futuro (estrutura temporal) & nenhum & muito alta \\[-0.1em]
+    $G_t - b(s_t)$ & retorno com linha de base & nenhum & alta \\
+    $G_t - V_w(s_t)$ & vantagem de Monte Carlo & pequeno$^\dagger$ & média \\
+    $\delta_t = r_t + \gamma V_w(s_{t+1}) - V_w(s_t)$ & erro de TD & maior & baixa \\
+    $\Ahat_t^{\mathrm{GAE}(\gamma,\lambda)}$ & vantagem generalizada & ajustável & ajustável \\
+    \bottomrule
+  \end{tabular}
+
+  \smallskip
+  {\scriptsize $^\dagger$ o viés vem apenas do erro de aproximação de $V_w$;
+  se $V_w = \Vpi$, não há viés.}
+
+  \begin{ideiabox}
+    Descer nesta tabela é caminhar do \emph{Monte Carlo} para o \emph{TD}. A
+    última linha interpola entre as duas com um só parâmetro $\lambda$ ---
+    assunto da próxima aula.
+  \end{ideiabox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Teste de compreensão --- linha de base e vantagem}
+  \begin{quizbox}{}
+    Trocamos o peso $G_t - b(s_t)$ por
+    $\delta_t = r_t + \gamma V_w(s_{t+1}) - V_w(s_t)$.
+    \begin{enumerate}\setlength{\itemsep}{0ex}\footnotesize
+      \item A troca preserva a ausência de viés do estimador.
+      \item A troca reduz a variância.
+      \item Se $V_w = \Vpi$, então $\E[\delta_t \mid s_t, a_t] = \Adv^{\pol}(s_t,a_t)$.
+      \item Uma linha de base $b(s,a)$ também manteria o estimador não-viesado.
+    \end{enumerate}
+    \paradiscussao
+  \end{quizbox}
+  \vspace{-0.5em}
+
+  \pause
+  \begin{respbox}
+    \textbf{2 e 3.} O item 1 é falso: há viés assim que $V_w \ne \Vpi$ --- é o
+    preço que pagamos. O item 4 é falso: a prova de não-viés exige tirar $b$
+    de dentro de $\sum_a$.
+  \end{respbox}
+\end{frame}
+
+%% ============================================================
+\section{Os problemas do gradiente de política}
+
+\begin{frame}{O problema de otimização, revisado}
+  Os algoritmos de gradiente de política tentam resolver
+  \[
+    \max_\theta\; J(\pol_\theta) \defeq \E_{\tau\sim\pol_\theta}\!\left[\sum_{t=0}^{\infty}\gamma^t r_t\right]
+  \]
+  por subida de gradiente estocástica em $\theta$, usando
+  \[
+    g = \nabla_\theta J(\pol_\theta) = \E_{\tau\sim\pol_\theta}\!\left[
+      \sum_{t=0}^{\infty}\gamma^t \nabla_\theta \log \pol_\theta(a_t\mid s_t)\,
+      \Adv^{\pol_\theta}(s_t,a_t)\right]
+  \]
+
+  \pause
+  \vspace{-0.4em}
+  \begin{alertabox}
+    \textbf{Três limitações estruturais:} \textbf{(1)} a eficiência amostral é
+    ruim; \textbf{(2)} distância no \emph{espaço de parâmetros} $\ne$ distância
+    no \emph{espaço de políticas}; \textbf{(3)} como consequência de (2),
+    acertar o tamanho do passo é difícil --- e errar pode ser catastrófico.
+  \end{alertabox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Limitação 1 --- eficiência amostral}
+  \begin{columns}[T]
+    \begin{column}{0.54\textwidth}
+      \begin{itemize}
+        \item Cada lote de dados é \alert{descartado imediatamente} após um
+              único passo de gradiente.
+        \item Por quê? O gradiente de política é uma esperança
+              \emph{sob a política atual} --- é \textbf{on-policy} por
+              construção. Assim que $\theta$ muda, os dados envelhecem.
+      \end{itemize}
+
+      \medskip
+      {\small Duas maneiras de obter uma estimativa não-viesada:}
+      \begin{itemize}\small\setlength{\itemsep}{0.2ex}
+        \item Amostrar trajetórias da própria política e formar a média
+              amostral --- \emph{mais estável}.
+        \item Usar trajetórias de outras políticas --- \emph{menos estável}.
+      \end{itemize}
+      \vspace{-0.4em}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{ideiabox}
+        \textbf{Oportunidade.} Reaproveitar dados antigos para dar
+        \alert{vários} passos de gradiente antes de coletar novamente.
+      \end{ideiabox}
+      \begin{alertabox}
+        \textbf{Desafio.} \emph{Quantos} passos podemos dar antes que os
+        dados deixem de descrever a política que estamos otimizando?
+      \end{alertabox}
+      {\scriptsize\color{rlCinza}É a pergunta que o PPO responde no fim da aula.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Limitação 2 --- o tamanho do passo}
+  \framesubtitle{$\theta_{k+1} = \theta_k + \alpha_k \ghat_k$: um passo ruim pode ser irrecuperável}
+
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[
+      width=10.8cm, height=3.9cm,
+      axis lines=left, xlabel={\scriptsize parâmetros da política $\theta$},
+      ylabel={\scriptsize desempenho $J(\pol_\theta)$},
+      xlabel style={font=\scriptsize, color=rlCinza},
+      ylabel style={font=\scriptsize, color=rlCinza},
+      xtick=\empty, ytick=\empty,
+      axis line style={rlCinza!60},
+      domain=0:5.2, samples=220, clip=false, ymin=-4.6, ymax=3.8]
+      \addplot[rlAzul, very thick, smooth]
+        {3*exp(-(x-1.9)^2/0.75) - 4.2*exp(-(x-3.55)^2/0.16)};
+      % ponto atual
+      \fill[rlCinza] (axis cs:1.05,1.14) circle (2.4pt);
+      \node[font=\scriptsize, color=rlCinza, anchor=east] at (axis cs:0.95,1.35) {$\theta_k$};
+      % passo bom
+      \draw[trans destac, line width=1.4pt] (axis cs:1.05,1.6) to[bend left=22] (axis cs:1.85,3.2);
+      \node[font=\scriptsize, color=rlLaranja, anchor=south] at (axis cs:1.5,3.25) {passo adequado};
+      % passo ruim
+      \draw[trans, rlVermelho, line width=1.4pt] (axis cs:1.15,1.0) to[bend right=16] (axis cs:3.5,-3.7);
+      \node[font=\scriptsize, color=rlVermelho, anchor=west] at (axis cs:3.62,-3.3) {colapso de desempenho};
+    \end{axis}
+  \end{tikzpicture}
+
+  \vspace{-0.2em}
+  \begin{alertabox}
+    \textbf{Grande demais:} colapso --- e o colapso é \emph{auto-reforçado},
+    porque a política ruim coleta dados ruins. \textbf{Pequeno demais:}
+    progresso lento. E o tamanho ``certo'' \alert{muda com $\theta$}: nenhuma
+    constante serve para a corrida inteira. Normalizar vantagens e usar Adam
+    ajuda --- mas resolve?
+  \end{alertabox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Limitação 3 --- o problema é mais do que o passo}
+  \framesubtitle{Considere $\pol_\theta(a{=}1) = \sigma(\theta)$, \; $\pol_\theta(a{=}2) = 1-\sigma(\theta)$}
+
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[
+      width=10.2cm, height=3.5cm,
+      axis lines=left, xlabel={\scriptsize parâmetro $\theta$},
+      ylabel={\scriptsize $\pol_\theta(a{=}1)$},
+      xlabel style={font=\scriptsize, color=rlCinza},
+      ylabel style={font=\scriptsize, color=rlCinza},
+      xtick={-1,0,1,4,5}, ytick={0,0.5,1},
+      ticklabel style={font=\tiny, color=rlCinza},
+      axis line style={rlCinza!60},
+      domain=-7:7, samples=200, ymin=-0.08, ymax=1.14, clip=false]
+      \addplot[rlAzul, very thick] {1/(1+exp(-x))};
+      % intervalo 1: theta em [-1,1]
+      \draw[rlLaranja!30, line width=0pt, fill=rlLaranja!14]
+        (axis cs:-1,0) rectangle (axis cs:1,1.02);
+      \draw[trans destac] (axis cs:-1,0.269) -- (axis cs:-1,0.731);
+      \node[font=\scriptsize, color=rlLaranja, anchor=south] at (axis cs:0,1.03) {$\Delta\theta = 2 \;\Rightarrow\; \Delta\pol \approx 0{,}46$};
+      % intervalo 2: theta em [4,6]
+      \draw[rlTeal!30, line width=0pt, fill=rlTeal!14]
+        (axis cs:4,0) rectangle (axis cs:6,1.02);
+      \node[font=\scriptsize, color=rlTeal, anchor=south] at (axis cs:5,1.03) {$\Delta\theta = 2 \;\Rightarrow\; \Delta\pol \approx 0{,}016$};
+    \end{axis}
+  \end{tikzpicture}
+
+  \vspace{-0.2em}
+  \begin{columns}[T]
+    \begin{column}{0.47\textwidth}
+      \begin{defbox}{Espaço de políticas}
+        \small No caso tabular, o conjunto
+        $\Pi = \{\pol \in \R^{\abs{\gS}\times\abs{\gA}} :
+           \sum_a \pol_{sa} = 1,\; \pol_{sa}\ge 0\}$.
+      \end{defbox}
+    \end{column}
+    \begin{column}{0.51\textwidth}
+      \begin{ideiabox}
+        \small \textbf{A pergunta que organiza o resto da aula:} como atualizar
+        de modo a \alert{nunca mudar a política mais do que pretendíamos}?
+      \end{ideiabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\section{Limites de desempenho relativo}
+
+\begin{frame}{O que queremos de uma regra de atualização}
+  \begin{itemize}\small
+    \item Usar as trajetórias da política \alert{mais recente} com a maior
+          eficiência possível.
+    \item Dar passos que respeitem distância no \alert{espaço de políticas},
+          não no espaço de parâmetros.
+  \end{itemize}
+  \vspace{-0.2em}
+  Para isso, precisamos de uma identidade que relacione o desempenho de
+  \emph{duas} políticas.
+
+  \begin{teobox}{Lema da diferença de desempenho}
+    {\small Para quaisquer políticas $\pol$ e $\polnovo$,
+    \vspace{-0.3em}
+    \[
+      J(\polnovo) - J(\pol)
+      = \E_{\tau\sim\polnovo}\!\left[\sum_{t=0}^{\infty}\gamma^t \Adv^{\pol}(s_t,a_t)\right]
+      = \frac{1}{1-\gamma}\,\E_{\substack{s\sim\dpolnovo\\ a\sim\polnovo}}\!\left[\Adv^{\pol}(s,a)\right]
+    \]}
+  \end{teobox}
+
+  \vspace{-0.3em}
+  \begin{ideiabox}
+    Leitura: \alert{a melhoria de $\polnovo$ sobre $\pol$ é a vantagem média,
+    medida com a régua antiga $\Adv^{\pol}$, ao longo das trajetórias novas.}
+    Toda a teoria desta aula é uma tentativa de tornar essa expressão
+    computável.
+  \end{ideiabox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{A distribuição descontada de estados futuros}
+  \vspace{-0.3em}
+  \begin{defbox}{$\dpol$}
+    \small
+    $\dpol(s) = (1-\gamma)\sum_{t\ge 0}\gamma^t\, \Prob(s_t = s \mid \pol)$ ---
+    a frequência com que $\pol$ visita $s$, com visitas tardias descontadas por
+    $\gamma^t$. O fator $(1-\gamma)$ normaliza: $\sum_s \dpol(s) = 1$.
+  \end{defbox}
+
+  \pause
+  \vspace{-0.5em}
+  {\small Substituindo no lema e reescrevendo a esperança sobre ações por
+  \alert{amostragem por importância}:}
+  \vspace{-0.4em}
+  \[
+    J(\polnovo) - J(\pol)
+    = \frac{1}{1-\gamma}\E_{\substack{s\sim\dpolnovo\\ a\sim\polnovo}}\!\left[\Adv^{\pol}(s,a)\right]
+    = \frac{1}{1-\gamma}\E_{\substack{s\sim\dpolnovo\\ a\sim\pol}}
+      \!\left[\frac{\polnovo(a\mid s)}{\pol(a\mid s)}\, \Adv^{\pol}(s,a)\right]
+  \]
+
+  \vspace{-0.6em}
+
+  \pause
+  \begin{alertabox}
+    Quase lá --- as \emph{ações} já vêm da política antiga. Resta $s \sim
+    \dpolnovo$: os \alert{estados} ainda são visitados pela política nova, que
+    é justamente a que ainda não temos.
+  \end{alertabox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Uma aproximação útil}
+  E se simplesmente disséssemos $\dpolnovo \approx \dpol$?
+  \vspace{-0.2em}
+  \[
+    J(\polnovo) - J(\pol) \;\approx\; \frac{1}{1-\gamma}
+      \E_{\substack{s\sim\dpol\\ a\sim\pol}}\!\left[
+      \frac{\polnovo(a\mid s)}{\pol(a\mid s)}\,\Adv^{\pol}(s,a)\right]
+    \;\defeq\; \Lsub{\pol}(\polnovo)
+  \]
+
+  \pause
+  \vspace{-0.4em}
+  \begin{teobox}{Limite de desempenho relativo \; {\normalfont\scriptsize (Achiam, Held, Tamar e Abbeel, 2017)}}
+    {\small
+    \vspace{-0.4em}
+    \[
+      \abs{\,J(\polnovo) - \left(J(\pol) + \Lsub{\pol}(\polnovo)\right)}
+      \;\le\; C\,\sqrt{\E_{s\sim\dpol}\!\left[\KLd{\polnovo}{\pol}[s]\right]}
+    \]}
+  \end{teobox}
+
+  \vspace{-0.3em}
+  \begin{ideiabox}
+    O erro cometido ao trocar $\dpolnovo$ por $\dpol$ é controlado pela
+    \alert{divergência KL média entre as políticas}. Se elas são próximas em
+    KL, a aproximação é boa --- e $\Lsub{\pol}(\polnovo)$ vira um
+    \emph{substituto} legítimo do objetivo verdadeiro.
+  \end{ideiabox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Divergência de Kullback--Leibler}
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      \begin{defbox}{$D_{\mathrm{KL}}$}
+        \small Para distribuições $P$ e $Q$ sobre uma variável discreta,
+        \vspace{-0.3em}
+        \[ \KLd{P}{Q} = \sum_x P(x)\log\frac{P(x)}{Q(x)} \]
+        \vspace{-1.1em}
+        \par Entre políticas, em um estado $s$:
+        \vspace{-0.3em}
+        \[ \KLd{\polnovo}{\pol}[s] = \sum_{a\in\gA}\polnovo(a\mid s)\log\frac{\polnovo(a\mid s)}{\pol(a\mid s)} \]
+      \end{defbox}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \textbf{Propriedades}
+      \begin{itemize}\small\setlength{\itemsep}{0.2ex}
+        \item $\KLd{P}{P} = 0$
+        \item $\KLd{P}{Q} \ge 0$
+        \item $\KLd{P}{Q} \ne \KLd{Q}{P}$ --- \alert{não é simétrica}, logo não
+              é uma métrica.
+      \end{itemize}
+      \vspace{0.3em}
+      \begin{ideiabox}
+        \small É a régua certa aqui porque mede diferença \emph{entre
+        distribuições}, e não entre os parâmetros que as geram --- exatamente
+        a distinção do slide da sigmoide.
+      \end{ideiabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{O que ganhamos com a aproximação}
+  \vspace{-0.2em}
+  \[
+    \Lsub{\pol}(\polnovo)
+    = \frac{1}{1-\gamma}\E_{\substack{s\sim\dpol\\ a\sim\pol}}\!\left[
+      \frac{\polnovo(a\mid s)}{\pol(a\mid s)}\Adv^{\pol}(s,a)\right]
+    = \E_{\tau\sim\pol}\!\left[\sum_{t=0}^{\infty}\gamma^t
+      \frac{\polnovo(a_t\mid s_t)}{\pol(a_t\mid s_t)}\Adv^{\pol}(s_t,a_t)\right]
+  \]
+
+  \begin{itemize}\small
+    \item Tudo do lado direito é estimável com trajetórias amostradas da
+          política \alert{antiga} $\pol$. Podemos otimizar $\polnovo$ sem
+          coletar dados novos --- isto é, dar \alert{vários passos de gradiente
+          por lote}.
+    \item É parente da amostragem por importância, mas com uma diferença
+          crucial: o peso depende \emph{só do passo atual}, e não do histórico
+          inteiro. Não há produto de $t$ razões, logo os pesos não explodem nem
+          desaparecem.
+  \end{itemize}
+
+  \vspace{-0.2em}
+  \begin{alertabox}
+    A licença é condicional: $\Lsub{\pol}(\polnovo)$ só aproxima o objetivo
+    verdadeiro \alert{enquanto $\polnovo$ ficar perto de $\pol$ em KL}. Otimizar
+    $\Lsub{\pol}$ sem restrição é otimizar um modelo fora de sua região de
+    validade.
+  \end{alertabox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{A região de confiança}
+  \centering
+  \begin{tikzpicture}[scale=0.92, every node/.style={transform shape}]
+    % curvas de nivel do objetivo substituto
+    \foreach \r/\o in {2.9/12, 2.2/22, 1.5/34, 0.8/50}{
+      \draw[rlAzulClaro!\o!white, line width=1.1pt, rotate=-22]
+        (1.9,0.55) ellipse [x radius=\r, y radius=\r*0.52];}
+    \node[font=\scriptsize, color=rlAzulClaro] at (3.9,2.05) {curvas de nível de $\Lsub{\pol_k}$};
+    % regiao de confianca
+    \draw[rlLaranja, thick, dashed, fill=rlLaranja!8] (-0.6,-0.35) circle (1.15);
+    \node[font=\scriptsize, color=rlLaranja, anchor=north] at (-0.6,-1.62)
+      {$\big\{\polnovo : \bar{D}_{\mathrm{KL}}(\polnovo \| \pol_k) \le \delta\big\}$};
+    % pontos
+    \fill[rlAzul] (-0.6,-0.35) circle (2.4pt);
+    \node[font=\scriptsize, color=rlAzul, anchor=east] at (-0.78,-0.35) {$\pol_k$};
+    \fill[rlLaranja] (0.5,0.03) circle (2.4pt);
+    \node[font=\scriptsize, color=rlLaranja, anchor=south west] at (0.55,0.05) {$\pol_{k+1}$};
+    \draw[trans destac] (-0.6,-0.35) -- (0.45,0.0);
+    % ponto ruim
+    \fill[rlVermelho] (2.9,1.2) circle (2.2pt);
+    \node[font=\scriptsize, color=rlVermelho, anchor=west] at (3.05,1.2)
+      {máximo irrestrito de $\Lsub{\pol_k}$ --- fora da região de validade};
+  \end{tikzpicture}
+
+  \vspace{-0.2em}
+  \begin{ideiabox}
+    Maximizar o substituto \emph{dentro} da bola de KL é a ideia por trás de
+    TRPO e, de forma aproximada e barata, do PPO. Fora da bola, o substituto
+    deixa de ser informativo sobre o objetivo real.
+  \end{ideiabox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Teste de compreensão --- o substituto}
+  \begin{quizbox}{}
+    \vspace{-0.2em}Sobre $\Lsub{\pol}(\polnovo)$ e o limite de desempenho relativo:
+    \begin{enumerate}\setlength{\itemsep}{0ex}\footnotesize
+      \item $\Lsub{\pol}(\pol) = 0$.
+      \item Em $\polnovo=\pol$, o gradiente de $\Lsub{\pol}$ coincide com o
+            gradiente de política usual.
+      \item O limite deixa de valer se $\polnovo$ estiver longe de $\pol$.
+      \item Se $\Lsub{\pol}(\polnovo) > 0$, então $J(\polnovo) > J(\pol)$.
+    \end{enumerate}
+    \paradiscussao
+  \end{quizbox}
+  \vspace{-0.5em}
+
+  \pause
+  \begin{respbox}
+    \textbf{1 e 2.} Em $\polnovo = \pol$ a razão vale $1$ e
+    $\E_{a\sim\pol}[\Adv^{\pol}] = 0$; derivando, reobtemos o gradiente da
+    Aula 5 --- $\Lsub{\pol}$ \emph{estende} aquele gradiente. O item 3 é
+    falso: o limite vale sempre, mas a folga fica grande demais para informar
+    --- daí o item 4 também ser falso.
+  \end{respbox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Leituras recomendadas}
+  \begin{itemize}
+    \item \textbf{Kakade e Langford (2002)} --- \emph{Approximately Optimal
+          Approximate Reinforcement Learning}. A origem da ideia de atualização
+          conservadora de políticas.
+    \item \textbf{Schulman et al. (2015)} --- \emph{Trust Region Policy
+          Optimization} (TRPO). A restrição de KL imposta exatamente, via
+          gradiente natural.
+    \item \textbf{Achiam et al. (2017)} --- \emph{Constrained Policy
+          Optimization}. Origem do limite apresentado neste slide.
+    \item \textbf{Schulman et al. (2017)} --- \emph{Proximal Policy
+          Optimization Algorithms}. O que veremos a seguir.
+  \end{itemize}
+
+  \vfill
+  \begin{ideiabox}
+    A sequência histórica é instrutiva: cada trabalho troca um pouco de rigor
+    por muita simplicidade de implementação. O PPO é o extremo dessa troca ---
+    e é o que todo mundo usa.
+  \end{ideiabox}
+\end{frame}
+
+%% ============================================================
+\section{Otimização proximal de política (PPO)}
+
+\begin{frame}{PPO: duas maneiras de não se afastar demais}
+  \framesubtitle{Uma família de métodos que impõe a restrição de KL \emph{aproximadamente}, sem gradiente natural}
+
+  \begin{columns}[T]
+    \begin{column}{0.49\textwidth}
+      \begin{defbox}{Penalidade KL adaptativa}
+        \small A atualização resolve um problema \alert{sem restrição}:
+        \vspace{-0.3em}
+        \[ \theta_{k+1} = \argmax_\theta\; \Lsub{\theta_k}(\theta)
+           - \beta_k\, \bar{D}_{\mathrm{KL}}(\theta \| \theta_k) \]
+        \vspace{-1.2em}
+        \par com
+        $\bar{D}_{\mathrm{KL}}(\theta\|\theta_k) =
+         \E_{s\sim d^{\pol_k}}\!\left[\KLd{\pol_{\theta_k}(\cdot\mid s)}{\pol_\theta(\cdot\mid s)}\right]$.
+        O coeficiente $\beta_k$ \alert{muda entre iterações} para fazer cumprir
+        aproximadamente a restrição.
+      \end{defbox}
+    \end{column}
+    \begin{column}{0.49\textwidth}
+      \begin{defbox}{Objetivo recortado}
+        \small Nenhuma penalidade explícita: a própria função objetivo é
+        \emph{achatada} onde a política se afasta demais. É a variante mais
+        usada --- e a que vocês implementarão.
+      \end{defbox}
+      \begin{ideiabox}
+        \small TRPO resolve o problema com restrição de KL de forma exata e
+        cara. O PPO faz um remendo barato que, empiricamente, funciona quase
+        igual.
+      \end{ideiabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{PPO com penalidade KL adaptativa}
+  \begin{algbox}{PPO --- penalidade KL adaptativa}
+    \small
+    \textbf{Entrada:} $\theta_0$, penalidade inicial $\beta_0$, KL alvo $\delta$\\[0.2em]
+    \textbf{para} $k = 0,1,2,\dots$ \textbf{faça}\\
+    \hspace*{1.2em} Colete trajetórias parciais $\mathcal{D}_k$ com $\pol_k = \pol(\theta_k)$\\
+    \hspace*{1.2em} Estime as vantagens $\Ahat_t^{\pol_k}$ por qualquer método\\
+    \hspace*{1.2em} Calcule
+      $\theta_{k+1} = \argmax_\theta \Lsub{\theta_k}(\theta) - \beta_k \bar{D}_{\mathrm{KL}}(\theta\|\theta_k)$
+      com $K$ passos de SGD por minilotes (Adam)\\
+    \hspace*{1.2em} \textbf{se} $\bar{D}_{\mathrm{KL}}(\theta_{k+1}\|\theta_k) \ge 1{,}5\,\delta$
+      \textbf{então} $\beta_{k+1} = 2\beta_k$\\
+    \hspace*{1.2em} \textbf{senão se} $\bar{D}_{\mathrm{KL}}(\theta_{k+1}\|\theta_k) \le \delta/1{,}5$
+      \textbf{então} $\beta_{k+1} = \beta_k/2$\\
+    \textbf{fim}
+  \end{algbox}
+
+  \vspace{-0.2em}
+  \begin{ideiabox}
+    O valor inicial de $\beta$ \alert{não importa muito} --- ele se adapta
+    rápido. Algumas iterações violam a restrição; a maioria não. E o
+    \alert{$K$} é o ponto central: é aqui que finalmente damos vários passos
+    por lote.
+  \end{ideiabox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{PPO com objetivo recortado}
+  \begin{defbox}{Razão de probabilidades e objetivo $L^{\mathrm{CLIP}}$}
+    Seja $r_t(\theta) = \dfrac{\pol_\theta(a_t\mid s_t)}{\pol_{\theta_k}(a_t\mid s_t)}$. Então
+    \vspace{-0.4em}
+    \[
+      L^{\mathrm{CLIP}}_{\theta_k}(\theta) = \E_{\tau\sim\pol_k}\!\left[
+        \sum_{t=0}^{T}
+        \min\!\Big(r_t(\theta)\,\Ahat_t^{\pol_k},\;
+        \clipop\big(r_t(\theta),\, 1-\epsilon,\, 1+\epsilon\big)\,\Ahat_t^{\pol_k}\Big)
+      \right]
+    \]
+    \vspace{-1.1em}
+    \par onde $\epsilon$ é um hiperparâmetro (tipicamente $\epsilon = 0{,}2$).
+    A atualização é $\theta_{k+1} = \argmax_\theta L^{\mathrm{CLIP}}_{\theta_k}(\theta)$.
+  \end{defbox}
+
+  \begin{itemize}\small
+    \item $r_t(\theta_k) = 1$: no início de cada época de otimização, a razão
+          vale exatamente $1$ e o objetivo coincide com $\Lsub{\theta_k}$.
+    \item O $\min$ com a versão recortada torna o objetivo um
+          \alert{limite inferior pessimista} do substituto --- nunca
+          otimista quanto ao ganho de se afastar.
+  \end{itemize}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{A geometria do recorte}
+  \framesubtitle{$L^{\mathrm{CLIP}}$ em função de $r$, para um único passo de tempo}
+
+  \centering
+  \begin{columns}[T]
+    \begin{column}{0.49\textwidth}
+      \centering {\footnotesize\color{rlCinza}\bfseries vantagem $\Ahat > 0$}\\[-0.2em]
+      \begin{tikzpicture}
+        \begin{axis}[width=6.0cm, height=3.7cm, axis lines=middle,
+          xlabel={\scriptsize $r$}, ylabel={\scriptsize $L^{\mathrm{CLIP}}$},
+          xlabel style={font=\scriptsize, color=rlCinza, at={(ticklabel* cs:1)}, anchor=west},
+          ylabel style={font=\scriptsize, color=rlCinza, at={(ticklabel* cs:1)}, anchor=south},
+          xtick={0.8,1,1.2}, xticklabels={$1{-}\epsilon$,$1$,$1{+}\epsilon$},
+          ytick=\empty, ticklabel style={font=\tiny, color=rlCinza},
+          axis line style={rlCinza!60}, xmin=0, xmax=1.9, ymin=-0.15, ymax=1.65, clip=false]
+          \addplot[rlAzul, very thick] coordinates {(0,0) (1.2,1.2) (1.9,1.2)};
+          \draw[rlCinza!50, dashed] (axis cs:1.2,0) -- (axis cs:1.2,1.2);
+          \fill[rlLaranja] (axis cs:1,1) circle (2pt);
+          \node[font=\tiny, color=rlLaranja, anchor=north west] at (axis cs:1.02,0.98) {$r=1$};
+        \end{axis}
+      \end{tikzpicture}\\[-0.2em]
+      {\scriptsize O ganho \emph{satura} em $1+\epsilon$: não há prêmio por
+      aumentar mais a probabilidade da ação.}
+    \end{column}
+    \begin{column}{0.49\textwidth}
+      \centering {\footnotesize\color{rlCinza}\bfseries vantagem $\Ahat < 0$}\\[-0.2em]
+      \begin{tikzpicture}
+        \begin{axis}[width=6.0cm, height=3.7cm, axis lines=middle,
+          xlabel={\scriptsize $r$}, ylabel={\scriptsize $L^{\mathrm{CLIP}}$},
+          xlabel style={font=\scriptsize, color=rlCinza, at={(ticklabel* cs:1)}, anchor=west},
+          ylabel style={font=\scriptsize, color=rlCinza, at={(ticklabel* cs:0)}, anchor=north},
+          xtick={0.8,1,1.2}, xticklabels={$1{-}\epsilon$,$1$,$1{+}\epsilon$},
+          ytick=\empty, ticklabel style={font=\tiny, color=rlCinza},
+          axis line style={rlCinza!60}, xmin=0, xmax=1.9, ymin=-1.65, ymax=0.15, clip=false]
+          \addplot[rlAzul, very thick] coordinates {(0,-0.8) (0.8,-0.8) (1.9,-1.9)};
+          \draw[rlCinza!50, dashed] (axis cs:0.8,0) -- (axis cs:0.8,-0.8);
+          \fill[rlLaranja] (axis cs:1,-1) circle (2pt);
+          \node[font=\tiny, color=rlLaranja, anchor=south west] at (axis cs:1.02,-1.0) {$r=1$};
+        \end{axis}
+      \end{tikzpicture}\\[-0.2em]
+      {\scriptsize A punição \emph{não} satura à direita: uma ação ruim que
+      ficou muito mais provável continua sendo penalizada.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Por que o mínimo, e por que a assimetria}
+  \begin{itemize}\small
+    \item \textbf{$\Ahat_t > 0$ (ação boa).} O objetivo cresce com $r$ até
+          $1+\epsilon$ e depois fica plano: o gradiente \alert{zera}. O
+          otimizador para de empurrar a ação para cima quando ela já ficou
+          $20\%$ mais provável.
+    \item \textbf{$\Ahat_t < 0$ (ação ruim).} O objetivo é plano à esquerda de
+          $1-\epsilon$ --- não vale a pena reduzir mais --- mas continua
+          decrescendo à direita.
+  \end{itemize}
+
+  \vspace{-0.2em}
+  \begin{ideiabox}
+    A assimetria é deliberada. O $\min$ escolhe sempre o \alert{ramo mais
+    pessimista}: o recorte remove o incentivo para se afastar, mas
+    \emph{nunca} remove o incentivo para \emph{voltar}. Se um passo anterior
+    empurrou uma ação ruim para $r \gg 1$, o gradiente ainda existe para
+    corrigi-lo.
+  \end{ideiabox}
+
+  \vspace{-0.2em}
+  \begin{alertabox}
+    O recorte limita a \emph{razão}, não a divergência KL. Não há garantia
+    formal de melhoria monotônica --- é uma heurística barata inspirada na
+    teoria da seção anterior.
+  \end{alertabox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Teste de compreensão --- o recorte do PPO}
+  \begin{quizbox}{}
+    Considere os dois gráficos do slide anterior, com $\epsilon \in (0,1)$.
+    \begin{enumerate}\setlength{\itemsep}{0ex}\footnotesize
+      \item O gráfico da esquerda mostra $L^{\mathrm{CLIP}}$ quando
+            $\Adv > 0$, e o da direita quando $\Adv < 0$.
+      \item O gráfico da direita mostra $L^{\mathrm{CLIP}}$ quando
+            $\Adv > 0$, e o da esquerda quando $\Adv < 0$.
+      \item Depende do valor de $\epsilon$.
+    \end{enumerate}
+    \paradiscussao
+  \end{quizbox}
+  \vspace{-0.5em}
+
+  \pause
+  \begin{respbox}
+    \textbf{1.} Com $\Adv > 0$ queremos $r$ grande, e o recorte satura o
+    \emph{ganho} em $1+\epsilon$ --- patamar à direita. Com $\Adv < 0$ o
+    objetivo é negativo e o patamar aparece à esquerda, em $1-\epsilon$. O
+    valor de $\epsilon$ move os joelhos da curva, mas não troca os painéis.
+  \end{respbox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{PPO recortado: o algoritmo completo}
+  \begin{algbox}{PPO com objetivo recortado}
+    \small
+    \textbf{Entrada:} $\theta_0$ (ator), $w_0$ (crítico), $\epsilon$, épocas $K$, tamanho do lote\\[0.2em]
+    \textbf{para} $k = 0,1,2,\dots$ \textbf{faça}\\
+    \hspace*{1.2em} Execute $\pol_{\theta_k}$ por $T$ passos em $N$ ambientes paralelos\\
+    \hspace*{1.2em} Estime as vantagens $\Ahat_t$ (na prática, por GAE --- Aula 7)\\
+    \hspace*{1.2em} Guarde $\log \pol_{\theta_k}(a_t\mid s_t)$: é o denominador de $r_t(\theta)$\\
+    \hspace*{1.2em} \textbf{para} época $= 1,\dots,K$ \textbf{faça}\\
+    \hspace*{2.4em} Para cada minilote: passo de Adam em
+      $-L^{\mathrm{CLIP}} + c_1 L^{V} - c_2 \mathcal{H}[\pol_\theta]$\\
+    \hspace*{1.2em} \textbf{fim}\\
+    \textbf{fim}
+  \end{algbox}
+
+  \vspace{-0.2em}
+  \begin{ideiabox}
+    Três termos na perda: o objetivo recortado do \alert{ator}; o erro
+    quadrático do \alert{crítico} ($L^V$); e um bônus de \alert{entropia}, que
+    impede a política de virar determinística cedo demais.
+  \end{ideiabox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{PPO na prática}
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      \textbf{Valores usuais}
+      \begin{itemize}\small\setlength{\itemsep}{0.2ex}
+        \item $\epsilon \approx 0{,}2$; \; $K \approx 3$--$10$ épocas por lote
+        \item $c_1 \approx 0{,}5$ (crítico), $c_2 \approx 0{,}01$ (entropia)
+        \item Vantagens normalizadas por minilote
+        \item Corte de norma do gradiente em $0{,}5$
+      \end{itemize}
+      \vspace{0.3em}
+      \begin{ideiabox}
+        \small Monitore a KL empírica entre $\pol_\theta$ e $\pol_{\theta_k}$ e
+        a \alert{fração recortada}. Se a KL dispara, reduza $K$ ou a taxa de
+        aprendizado.
+      \end{ideiabox}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{alertabox}
+        \small \textbf{Armadilhas frequentes}
+        \begin{itemize}\setlength{\itemsep}{0.2ex}
+          \item Recalcular $\Ahat_t$ dentro do laço de épocas: as vantagens são
+                de $\pol_{\theta_k}$ e devem ficar \emph{congeladas}.
+          \item Esquecer de destacar o gradiente do denominador de $r_t$.
+          \item $K$ grande demais: a política se afasta, e o recorte sozinho
+                não segura a KL.
+        \end{itemize}
+      \end{alertabox}
+      \vspace{0.2em}
+      {\scriptsize\color{rlCinza}Boa parte do desempenho publicado do PPO vem
+      dessas escolhas de implementação, e não do objetivo em si.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{O que você deve saber ao sair daqui}
+  \begin{enumerate}\small\setlength{\itemsep}{0.35em}
+    \item \textbf{Demonstrar} que uma linha de base $b(s)$ não introduz viés, e
+          apontar exatamente onde a demonstração quebraria se $b$ dependesse da
+          ação.
+    \item \textbf{Explicar} por que a linha de base ótima é aproximadamente
+          $\Vpi(s)$, e escrever o gradiente em termos da vantagem
+          $\Adv^{\pol} = \Qpi - \Vpi$.
+    \item \textbf{Distinguir} distância no espaço de parâmetros de distância no
+          espaço de políticas, e dizer por que a segunda é a que importa.
+    \item \textbf{Enunciar} o lema da diferença de desempenho e explicar qual
+          aproximação transforma $\Lsub{\pol}(\polnovo)$ em algo computável com
+          dados antigos --- e sob que condição ela é válida.
+    \item \textbf{Escrever} $L^{\mathrm{CLIP}}$, desenhar seus dois ramos e
+          justificar a assimetria entre eles.
+  \end{enumerate}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Resumo e próxima aula}
+  \begin{columns}[T]
+    \begin{column}{0.49\textwidth}
+      \begin{defbox}{O fio da aula}
+        \small
+        \begin{itemize}\setlength{\itemsep}{0.2ex}
+          \item Linha de base: variância menor, viés nenhum.
+          \item Crítico: variância ainda menor, viés controlado.
+          \item Substituto $\Lsub{\pol}$: vários passos por lote.
+          \item Recorte: mantém o substituto dentro da sua região de validade.
+        \end{itemize}
+      \end{defbox}
+    \end{column}
+    \begin{column}{0.49\textwidth}
+      \begin{ideiabox}
+        \small \textbf{Aula 7}
+        \begin{itemize}\setlength{\itemsep}{0.2ex}
+          \item GAE: interpolar entre TD e MC com um parâmetro $\lambda$.
+          \item Teoria de melhoria monotônica: quando o passo é
+                \emph{garantidamente} bom.
+          \item Aprendizagem por imitação: clonagem de comportamento, DAGGER,
+                RL inversa de máxima entropia.
+        \end{itemize}
+      \end{ideiabox}
+    \end{column}
+  \end{columns}
+
+  \vfill
+  {\footnotesize\color{rlCinza}Material adaptado de \emph{CS234: Reinforcement
+  Learning}, Emma Brunskill (Stanford); a seção de gradientes de política
+  avançados segue os slides de Joshua Achiam.}
+\end{frame}
+
+\end{document}
