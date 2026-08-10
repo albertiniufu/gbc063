@@ -1,0 +1,1310 @@
+%% ============================================================
+%%  Aula 12 — Aprendizagem rápida em MDPs
+%%  Adaptação em pt-BR do CS234 (Stanford, Emma Brunskill), Lecture 12
+%%  Prof. Marcelo Keese Albertini — Universidade Federal de Uberlândia
+%%  Compilar com XeLaTeX (2x)
+%% ============================================================
+\documentclass[aspectratio=169, 11pt]{beamer}
+
+\usetheme{AprendizadoRL}      % ANTES do babel — fontspec precisa vir primeiro
+\usepackage{babel}
+\babelprovide[import, main]{brazilian}
+\usepackage{booktabs}
+\usepackage{array}
+
+\title[Aula 12 — RL rápida em MDPs]{Aula 12: Aprendizagem rápida em MDPs\\ garantias PAC, otimismo e amostragem posterior}
+\subtitle[Aprendizagem por Reforço]{PAC \textbullet\ MBIE-EB \textbullet\ Lema da simulação \textbullet\ PSRL \textbullet\ Exploração com generalização}
+\author[Prof. Marcelo K. Albertini]{Prof. Marcelo Keese Albertini \\
+  \footnotesize Universidade Federal de Uberlândia \\
+  \footnotesize adaptado de Emma Brunskill, CS234 (Stanford)}
+\institute{Universidade Federal de Uberlândia}
+\date{2026}
+
+%% ---- Perguntas ficam para o professor conduzir em aula ------
+\newcommand{\paradiscussao}{\smallskip
+  {\footnotesize\color{rlCinza}\itshape Pergunta para o professor conduzir em aula.}}
+
+%% ---- Macros locais desta aula ------------------------------
+\newcommand{\Qtil}{\widetilde{Q}}
+\newcommand{\Rhat}{\widehat{\rec}}
+\newcommand{\That}{\widehat{P}}
+\newcommand{\Vmax}{V_{\max}}
+\newcommand{\Qstar}{Q^{*}}
+\newcommand{\hist}{h_t}
+\newcommand{\feat}{\phi}
+\newcommand{\Mdp}{\mathcal{M}}
+\newcommand{\Mtil}{\widetilde{\Mdp}}
+\newcommand{\Dir}{\mathrm{Dir}}
+\newcommand{\Bet}{\mathrm{Beta}}
+\newcommand{\Ber}{\mathrm{Bernoulli}}
+
+%% Compactação vertical: caixas um pouco menores e mais justas
+\tcbset{rlcaixa/.append style={fontupper=\small,
+  before skip=0.8mm, after skip=1.0mm, top=0.9mm, bottom=1.0mm}}
+\tcbset{fonttitle=\bfseries\small}
+
+%% Pseudocódigo numerado dentro de algbox
+\newenvironment{pseudo}[1][0.93\linewidth]{%
+  \small\setlength{\tabcolsep}{0pt}%
+  \begin{tabular}{@{}r@{\hspace{0.55em}}p{#1}@{}}}%
+  {\end{tabular}}
+\newcommand{\pln}[1]{{\scriptsize\color{rlCinza}#1:}}
+\newcommand{\ind}{\hspace*{1.1em}}
+\newcommand{\indd}{\hspace*{2.2em}}
+
+\begin{document}
+
+\begin{frame}[plain, noframenumbering]\titlepage\end{frame}
+
+%% ============================================================
+\begin{frame}{De onde viemos}{Aula 11 --- bandits, arrependimento e a visão bayesiana}
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      \begin{defbox}{o que já temos}
+        \begin{itemize}
+          \item \textbf{Arrependimento:} $\mathrm{Arrep}(T) = T\mu^{*} - \sum_{t}\mu_{a_t}$.
+          \item \textbf{UCB:} otimismo por concentração; $\tilde{O}(\sqrt{KT})$.
+          \item \textbf{Thompson:} casamento de probabilidades, conjugação Beta--Bernoulli.
+        \end{itemize}
+      \end{defbox}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \begin{ideiabox}
+        Tudo isso valia para \emph{uma única decisão} repetida. Hoje há \alert{estados}:
+        uma ação ruim não custa só a recompensa daquele passo --- ela decide
+        \emph{onde} você estará nos próximos mil.
+      \end{ideiabox}
+      \begin{alertabox}
+        É essa dependência temporal que torna a exploração em MDPs
+        \emph{qualitativamente} mais difícil, e não apenas mais cara.
+      \end{alertabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Aquecimento}{Conjugação Beta--Bernoulli e amostragem de Thompson}
+  \begin{quizbox}{}
+    Os \textit{a priori} são $\Bet(1,2)$ para o braço 1 e $\Bet(1,1)$ para o braço~2.
+    \begin{enumerate}
+      \item Os valores $0{,}1$, $0{,}5$, $0{,}3$ são mais compatíveis com qual dos dois?
+      \item É impossível que o parâmetro verdadeiro seja $0$ sob o \textit{a priori} $\Bet(1,1)$?
+      \item Com $\omega_1 = 0{,}4$, $\omega_2 = 0{,}6$ verdadeiros e amostras
+            $\tilde\omega_1 = 0{,}50$, $\tilde\omega_2 = 0{,}55$: Thompson foi
+            \emph{otimista}? Escolhe o braço ótimo?
+    \end{enumerate}
+    \paradiscussao
+  \end{quizbox}
+  \pause
+  \begin{respbox}
+    \textbf{1.} $\Bet(1,2)$: densidade $2(1-\omega)$, favorece valores pequenos.\quad
+    \textbf{2.} Falso --- $\Bet(1,1)$ é uniforme.\quad
+    \textbf{3.} Otimista no braço 1, \emph{pessimista} no 2 --- e mesmo assim acerta.
+  \end{respbox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Plano de hoje}
+  \begin{columns}[T]
+    \begin{column}{0.53\textwidth}
+      \begin{enumerate}
+        \item \textbf{Um novo critério: PAC.} Arrependimento mede área sob a curva de
+              erro; PAC \emph{conta} decisões ruins.
+        \item \textbf{Otimismo em MDPs: MBIE-EB} e sua garantia PAC.
+        \item \textbf{Lema da simulação:} converte erro de \emph{modelo} em erro de
+              \emph{valor}.
+        \item \textbf{PSRL:} amostrar um MDP inteiro por episódio.
+        \item \textbf{Generalização:} o que sobra quando não dá para contar visitas.
+      \end{enumerate}
+    \end{column}
+    \begin{column}{0.45\textwidth}
+      \begin{teobox}{A pergunta de fundo}
+        Existe algoritmo que, em \emph{qualquer} MDP tabular, cometa apenas um número
+        \alert{polinomial} de decisões ruins? Sim --- e o que decide isso não é a taxa
+        de aprendizado nem a arquitetura.
+      \end{teobox}
+      \begin{ideiabox}
+        No \textit{RiverSwim} adiante, $\epsilon$-guloso colhe $85$ e otimismo colhe
+        $8\,580$ --- mesmo ambiente, mesmo orçamento.
+      \end{ideiabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\section{Um novo critério: PAC}
+%% ============================================================
+
+\begin{frame}{O mapa da área}{Cenários, arcabouços e abordagens são eixos independentes}
+  \begin{columns}[T]
+    \begin{column}{0.33\textwidth}
+      \begin{defbox}{Cenários}
+        \begin{itemize}
+          \item \textbf{Bandits} --- sem estado.
+          \item \textbf{Bandits contextuais} --- estado, sem dinâmica.
+          \item \textbf{MDPs} --- a ação move o mundo.
+        \end{itemize}
+      \end{defbox}
+    \end{column}
+    \begin{column}{0.34\textwidth}
+      \begin{teobox}{Arcabouços (critérios)}
+        \begin{itemize}
+          \item Avaliação empírica
+          \item Convergência assintótica
+          \item Arrependimento (aula 11)
+          \item \alert{PAC (hoje)}
+          \item Arrependimento bayesiano
+        \end{itemize}
+      \end{teobox}
+    \end{column}
+    \begin{column}{0.33\textwidth}
+      \begin{algbox}{Abordagens}
+        \begin{itemize}
+          \item Guloso, $\epsilon$-guloso
+          \item \textbf{Otimismo}
+          \item \textbf{Thompson}
+          \item Meta-aprendizagem
+        \end{itemize}
+      \end{algbox}
+    \end{column}
+  \end{columns}
+  \begin{ideiabox}
+    Não confunda os eixos: \emph{otimismo} é abordagem, \emph{PAC} é critério.
+  \end{ideiabox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{O que o arrependimento não distingue}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      Dois agentes com \alert{o mesmo arrependimento acumulado}:
+      \begin{itemize}
+        \item \textbf{A} erra \emph{pouco, sempre}: perde $0{,}01$ por passo, para sempre.
+        \item \textbf{B} erra \emph{muito, raramente}: $100$ escolhas catastróficas; no
+              resto, é ótimo.
+      \end{itemize}
+      \smallskip
+      Em ensaio clínico, tutor inteligente ou controle de processo, a pergunta não é
+      ``quanto perdi no total'', mas \alert{``em quantos momentos entreguei uma decisão
+      ruim?''}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \scalebox{0.85}{%
+      \begin{tikzpicture}[x=1cm, y=1cm]
+        \draw[->, thick, rlCinza] (0,0) -- (5.5,0) node[right, font=\scriptsize] {$t$};
+        \draw[->, thick, rlCinza] (0,0) -- (0,2.8) node[above, font=\scriptsize] {erro por passo};
+        \draw[rlAzulClaro, very thick] (0,0.42) -- (5.2,0.42);
+        \node[font=\scriptsize, color=rlAzulClaro, anchor=west] at (2.3,0.65) {A: pequeno e constante};
+        \draw[rlLaranja, very thick] (0,0.05) -- (0.8,0.05) -- (0.8,2.1) -- (1.0,2.1)
+          -- (1.0,0.05) -- (2.6,0.05) -- (2.6,2.1) -- (2.8,2.1) -- (2.8,0.05)
+          -- (4.3,0.05) -- (4.3,2.1) -- (4.5,2.1) -- (4.5,0.05) -- (5.2,0.05);
+        \node[font=\scriptsize, color=rlLaranja, anchor=west] at (0.1,2.5) {B: raro e grande};
+        \draw[dashed, rlVerde!70!black] (0,0.95) -- (5.2,0.95);
+        \node[font=\scriptsize, color=rlVerde!70!black, anchor=west] at (3.2,1.18) {limiar $\epsilon$};
+      \end{tikzpicture}}
+      \\[0.2em]
+      {\scriptsize\color{rlCinza} PAC conta \emph{quantos} passos ficam acima da linha
+      tracejada; arrependimento integra a curva.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Provavelmente aproximadamente correto (PAC)}
+  \begin{defbox}{Algoritmo PAC}
+    Fixados $\epsilon > 0$ e $\delta \in (0,1)$, o algoritmo $\mathcal{A}$ é \textbf{PAC}
+    se, com probabilidade $\ge 1-\delta$, em todos os passos exceto no máximo $N$ deles
+    vale $\Qstar(s_t,a_t) \ge \Vstar(s_t) - \epsilon$, com $N$ \alert{polinomial} em
+    $\bigl(\abs{\gS}, \abs{\gA}, \tfrac{1}{1-\gamma}, \tfrac{1}{\epsilon}, \tfrac{1}{\delta}\bigr)$.
+  \end{defbox}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{ideiabox}
+        Leia os três termos na ordem: \emph{provavelmente} $\to 1-\delta$;
+        \emph{aproximadamente} $\to \epsilon$; \emph{correto} $\to$ em todos os passos
+        menos $N$ exceções.
+      \end{ideiabox}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \begin{alertabox}
+        \begin{itemize}
+          \item $N$ limita \emph{quantos} passos são ruins, não \emph{quando}.
+          \item ``Polinomial'' é o coração: com ``exponencial'' a definição fica vazia.
+          \item A garantia é sobre \emph{ações}; $Q$ pode nunca convergir.
+        \end{itemize}
+      \end{alertabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{PAC e arrependimento, lado a lado}
+  \centering
+  \small
+  \begin{tabular}{@{}l>{\raggedright\arraybackslash}p{0.35\textwidth}>{\raggedright\arraybackslash}p{0.35\textwidth}@{}}
+    \toprule
+    & \textbf{Arrependimento} & \textbf{PAC} \\
+    \midrule
+    Mede         & soma das perdas por passo & n\textsuperscript{o} de passos com perda $>\epsilon$ \\
+    Pergunta     & ``quanto perdi ao todo?'' & ``quantas vezes fui ruim?'' \\
+    Parâmetros   & horizonte $T$ & tolerância $\epsilon$, risco $\delta$ \\
+    Forma típica & $\tilde{O}(\sqrt{T})$ & $N=\tilde{O}\bigl(\tfrac{\abs{\gS}\abs{\gA}}{\epsilon^{2}(1-\gamma)^{3}}\bigr)$ \\
+    Cego a       & \emph{distribuição} dos erros & \emph{magnitude} dos erros $<\epsilon$ \\
+    \bottomrule
+  \end{tabular}
+  \vspace{0.6em}
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      \begin{teobox}{Não são equivalentes}
+        Arrependimento $O(\sqrt{T})$ admite infinitas decisões $\epsilon$-ruins (basta
+        rarearem); e um algoritmo PAC pode ter arrependimento linear se as $N$ decisões
+        ruins forem caríssimas.
+      \end{teobox}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \begin{ideiabox}
+        Na prática, ambos são atendidos pela \emph{mesma} família de algoritmos, porque
+        ambos exigem a mesma coisa: reduzir incerteza de forma \alert{dirigida}, não
+        por sorteio.
+      \end{ideiabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+%% ============================================================
+\section{Otimismo em MDPs: MBIE-EB}
+%% ============================================================
+
+\begin{frame}{Por que exploração em MDPs é outro problema}{O \textit{RiverSwim}: um contraexemplo de seis estados}
+  \centering
+  \scalebox{0.78}{%
+  \begin{tikzpicture}[node distance=13mm]
+    \foreach \i [count=\c] in {1,...,6}{
+      \ifnum\c=1
+        \node[estado] (s\i) {$s_{\i}$};
+      \else
+        \pgfmathtruncatemacro{\prev}{\i-1}
+        \node[estado, right=of s\prev] (s\i) {$s_{\i}$};
+      \fi}
+    \node[estado destacado] at (s1) {$s_1$};
+    \node[estado destacado] at (s6) {$s_6$};
+    \foreach \i in {1,...,5}{
+      \pgfmathtruncatemacro{\nx}{\i+1}
+      \draw[trans destac] (s\i) to[bend left=30] node[probl] {$0{,}35$} (s\nx);}
+    \foreach \i in {2,...,6}{
+      \pgfmathtruncatemacro{\pv}{\i-1}
+      \draw[trans] (s\i) to[bend left=30] node[probl] {$1{,}0$} (s\pv);}
+    \node[recomp, below=3mm of s1] {$r = 0{,}005$};
+    \node[recomp, below=3mm of s6] {$r = 1{,}0$};
+    \node[font=\scriptsize, color=rlLaranja, anchor=south] at ([yshift=11mm]s3.north)
+      {nadar contra a correnteza: sobe com $0{,}35$, fica com $0{,}60$, desce com $0{,}05$};
+    \node[font=\scriptsize, color=rlCinza, anchor=north] at ([yshift=-13mm]s4.south)
+      {deixar-se levar pela correnteza: desce com certeza};
+  \end{tikzpicture}}
+  \vspace{-0.2em}
+  \begin{columns}[T]
+    \begin{column}{0.49\textwidth}
+      \begin{alertabox}
+        A recompensa grande está a cinco passos improváveis, e o caminho é \emph{contra}
+        a dinâmica. A política ótima ($\gamma=0{,}95$) nada à direita em todo estado.
+      \end{alertabox}
+    \end{column}
+    \begin{column}{0.49\textwidth}
+      \begin{ideiabox}
+        Nenhuma quantidade de \emph{ruído local} produz uma \emph{sequência} coerente de
+        cinco escolhas certas. Explorar bem exige um \alert{plano} de exploração.
+      \end{ideiabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Quanto isso custa, em números}{$20\,000$ passos, $30$ execuções, $\gamma = 0{,}95$}
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      \centering\small
+      \begin{tabular}{@{}lrr@{}}
+        \toprule
+        Algoritmo & Recompensa & \% do ótimo \\
+        \midrule
+        $\epsilon$-guloso ($\epsilon=0{,}3$) & $61$ & $0{,}7\%$ \\
+        $\epsilon$-guloso ($\epsilon=0{,}1$) & $85$ & $1{,}0\%$ \\
+        \textbf{PSRL} (Thompson)             & $8\,095$ & $92{,}4\%$ \\
+        \textbf{MBIE-EB} (otimismo)          & $8\,580$ & $97{,}9\%$ \\
+        \midrule
+        $\polstar$ conhecida                 & $8\,760$ & $100\%$ \\
+        \bottomrule
+      \end{tabular}
+      \vspace{0.6em}
+      \begin{alertabox}
+        Em $20$ execuções de $200\,000$ passos, o $\epsilon$-guloso \alert{nunca}
+        visitou $s_6$: as ações aleatórias não se encadeiam.
+      \end{alertabox}
+    \end{column}
+    \begin{column}{0.47\textwidth}
+      \begin{teobox}{O escalonamento é exponencial}
+        Passos (mediana) até um explorador aleatório tocar o topo do rio:
+        \smallskip
+        \centering\small
+        \begin{tabular}{@{}rr@{}}
+          \toprule
+          $\abs{\gS}$ & passos até o topo \\
+          \midrule
+          $4$  & $54$ \\
+          $6$  & $763$ \\
+          $8$  & $5\,897$ \\
+          $10$ & $40\,179$ \\
+          $12$ & $362\,322$ \\
+          \bottomrule
+        \end{tabular}
+      \end{teobox}
+      {\scriptsize\color{rlCinza} Dois estados a mais multiplicam o custo por
+      $\approx 8$: assinatura de $e^{\Theta(\abs{\gS})}$.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{MBIE-EB}{\textit{Model-Based Interval Estimation with Exploration Bonus} --- Strehl \& Littman (2008)}
+  \vspace{-0.3em}
+  \begin{algbox}{MBIE-EB}
+    \begin{pseudo}
+      \pln{1}  & Dados $\epsilon$, $\delta$, $m$; \quad
+                 $\beta = \dfrac{1}{1-\gamma}\sqrt{0{,}5\,\ln\bigl(2\abs{\gS}\abs{\gA}m/\delta\bigr)}$ \\[0.3em]
+      \pln{2}  & $n(s,a), n(s,a,s'), r_c(s,a) \gets 0$; \quad
+                 $\Qtil(s,a) \gets \tfrac{1}{1-\gamma}$ \\[0.2em]
+      \pln{3}  & \textbf{repita} \\
+      \pln{4}  & \ind $a_t = \argmax_{a} \Qtil(s_t, a)$ \quad {\scriptsize\color{rlCinza}(guloso na $Q$ \emph{otimista})} \\
+      \pln{5}  & \ind observe $r_t$, $s_{t+1}$; atualize $n(s_t,a_t)$, $n(s_t,a_t,s_{t+1})$, $r_c$ \\[0.15em]
+      \pln{6}  & \ind $\Rhat(s,a) = \dfrac{r_c(s,a)}{n(s,a)}$, \quad
+                 $\That(s'\mid s,a) = \dfrac{n(s,a,s')}{n(s,a)}$ \\[0.35em]
+      \pln{7}  & \ind \textbf{até convergir:}\quad
+                 $\Qtil(s,a) \gets \Rhat(s,a)
+                 + \gamma \sum_{s'} \That(s'\mid s,a)\max_{a'}\Qtil(s',a')
+                 + \mdestaque{rlLaranja}{\frac{\beta}{\sqrt{n(s,a)}}}$
+    \end{pseudo}
+  \end{algbox}
+  \vspace{-0.4em}
+  {\small\color{rlCinza} Estime o modelo por contagens, some um \emph{bônus} que decai,
+  \emph{planeje} no modelo otimista e siga o plano --- sem nenhum $\epsilon$-guloso: a
+  política executada é determinística.}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Anatomia do bônus}{De onde vem $\beta/\sqrt{n(s,a)}$}
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      \begin{teobox}{1 --- concentração}
+        Com $n$ amostras i.i.d.\ em $[0,1]$, Hoeffding dá
+        $\abs{\Rhat - \rec} \le \sqrt{\ln(2/\delta')/(2n)}$ com probabilidade
+        $1-\delta'$.
+      \end{teobox}
+      \begin{teobox}{2 --- limitante da união}
+        Deve valer para $\abs{\gS}\abs{\gA}$ pares e $m$ níveis: troque $\delta'$ por
+        $\delta/(2\abs{\gS}\abs{\gA}m)$ --- daí o logaritmo em $\beta$.
+      \end{teobox}
+      \begin{teobox}{3 --- propagação}
+        O erro de um passo se acumula ao longo do horizonte efetivo: daí
+        $\tfrac{1}{1-\gamma}$.
+      \end{teobox}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{defbox}{o bônus é uma barra de erro}
+        \[
+          \frac{\beta}{\sqrt{n(s,a)}}
+          =
+          \underbrace{\frac{1}{1-\gamma}}_{\text{horizonte}}
+          \times
+          \underbrace{\sqrt{\frac{\ln(\cdot/\delta)}{2\,n(s,a)}}}_{\text{largura do IC}}
+        \]
+      \end{defbox}
+      \begin{ideiabox}
+        Estados nunca visitados começam com $\Qtil = \tfrac{1}{1-\gamma}$, o maior valor
+        possível: o desconhecido é, \emph{por construção}, o mais atraente do mapa.
+      \end{ideiabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{O bônus \emph{dentro} do planejamento}
+  \begin{columns}[T]
+    \begin{column}{0.45\textwidth}
+      \begin{defbox}{Em bandits}
+        $a_t = \argmax_a \bigl[\hat\mu(a) + \beta/\sqrt{n(a)}\bigr]$.
+        A incerteza de $a$ só influencia a escolha de $a$.
+      \end{defbox}
+      \begin{defbox}{Em MDPs}
+        O bônus entra na equação de Bellman e é \alert{propagado para trás}:
+        a incerteza em $s_6$ torna atraente \emph{o caminho inteiro} até $s_6$.
+      \end{defbox}
+      \begin{ideiabox}
+        É a \textbf{exploração profunda}: aceitar perdas imediatas certas em troca de
+        informação distante.
+      \end{ideiabox}
+    \end{column}
+    \begin{column}{0.53\textwidth}
+      \centering
+      \scalebox{0.88}{%
+      \begin{tikzpicture}[node distance=11mm]
+        \foreach \i [count=\c] in {1,...,5}{
+          \ifnum\c=1 \node[estado] (t\i) {$s_{\i}$};
+          \else \pgfmathtruncatemacro{\p}{\i-1}
+                \node[estado, right=of t\p] (t\i) {$s_{\i}$};\fi}
+        \node[estado destacado] at (t5) {$s_5$};
+        \foreach \i in {1,...,4}{\pgfmathtruncatemacro{\n}{\i+1}
+          \draw[trans] (t\i) -- (t\n);}
+        \node[font=\scriptsize, color=rlLaranja, anchor=south, align=center]
+          at ([yshift=15mm]t5.north) {bônus grande\\(nunca visitado)};
+        \draw[trans destac, dashed] (t5) to[bend left=35]
+          node[above, font=\tiny, color=rlLaranja] {$\gamma$} (t4);
+        \draw[trans destac, dashed] (t4) to[bend left=35]
+          node[above, font=\tiny, color=rlLaranja] {$\gamma^2$} (t3);
+        \draw[trans destac, dashed] (t3) to[bend left=35]
+          node[above, font=\tiny, color=rlLaranja] {$\gamma^3$} (t2);
+        \draw[trans destac, dashed] (t2) to[bend left=35]
+          node[above, font=\tiny, color=rlLaranja] {$\gamma^4$} (t1);
+        \node[font=\scriptsize, color=rlCinza, anchor=north, align=center]
+          at ([yshift=-5mm]t3.south)
+          {o planejamento carrega o otimismo para trás:\\
+           $s_1$ ``sabe'' que vale a pena caminhar até $s_5$};
+      \end{tikzpicture}}
+      \\[0.4em]
+      \[
+        \Qtil(s,a) = \Rhat + \tfrac{\beta}{\sqrt{n(s,a)}}
+        + \gamma \textstyle\sum_{s'}\That \max_{a'} \Qtil(s',a')
+      \]
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{MBIE-EB é PAC}
+  \begin{teobox}{Teorema (Strehl \& Littman, 2008 --- simplificado)}
+    Com probabilidade $\ge 1-\delta$, o MBIE-EB é $\epsilon$-ótimo em todos os passos
+    exceto no máximo
+    $N = \tilde{O}\bigl(\abs{\gS}^{2}\abs{\gA}\,\epsilon^{-3}(1-\gamma)^{-6}\bigr)$.
+  \end{teobox}
+  \begin{columns}[T]
+    \begin{column}{0.53\textwidth}
+      \begin{defbox}{Esqueleto da prova}
+        \begin{enumerate}
+          \item $\Qtil \ge \Qstar$ sempre (otimismo válido).
+          \item $n(s,a)\ge m \Rightarrow$ modelo preciso (par \emph{conhecido}).
+          \item Lema da simulação: modelo preciso $\Rightarrow$ valor preciso.
+          \item \textbf{Dicotomia:} ou a ação é $\epsilon$-ótima, ou há boa chance de
+                visitar um par desconhecido --- e só cabem $m\abs{\gS}\abs{\gA}$ fugas.
+        \end{enumerate}
+      \end{defbox}
+    \end{column}
+    \begin{column}{0.45\textwidth}
+      \begin{ideiabox}
+        O passo (4) é o pivô: \emph{ser otimista transforma cada erro em informação}.
+        Se a ação não é boa, $\Qtil$ está inflado em algum ponto do caminho --- e só
+        infla onde falta experiência.
+      \end{ideiabox}
+      \begin{alertabox}
+        Os expoentes são frouxos; Azar et al.\ (2017) atingem a dependência minimax.
+      \end{alertabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Lema da simulação}{A ponte entre erro de modelo e erro de valor}
+  \begin{teobox}{Lema (limitante do erro de valor)}
+    Sejam $\Mdp_1$ e $\Mdp_2$ MDPs sobre os mesmos espaços e $\pol$ uma política fixa.
+    Se para todo $(s,a)$
+    \[
+      \abs{\rec_1(s,a) - \rec_2(s,a)} \le \varepsilon_{\rec},
+      \qquad
+      \norm{P_1(\cdot\mid s,a) - P_2(\cdot \mid s,a)}_1 \le \varepsilon_{P},
+    \]
+    então, com $\Vmax = \rec_{\max}/(1-\gamma)$,
+    \[
+      \max_{s} \abs{V_1^{\pol}(s) - V_2^{\pol}(s)}
+      \;\le\;
+      \mdestaque{rlLaranja}{\frac{\varepsilon_{\rec} + \gamma\,\Vmax\,\varepsilon_{P}}{1-\gamma}} .
+    \]
+  \end{teobox}
+  \begin{columns}[T]
+    \begin{column}{0.49\textwidth}
+      \begin{ideiabox}
+        \emph{Modelos parecidos têm valores parecidos}, com amplificação $1/(1-\gamma)$
+        --- o horizonte efetivo.
+      \end{ideiabox}
+    \end{column}
+    \begin{column}{0.49\textwidth}
+      \begin{alertabox}
+        $\varepsilon_P$ entra multiplicado por $\Vmax$: custa $1/(1-\gamma)^2$ contra
+        $1/(1-\gamma)$ de $\varepsilon_{\rec}$. \emph{Errar a dinâmica é mais caro.}
+      \end{alertabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Prova do lema da simulação}
+  {\small
+  Some e subtraia $\gamma\sum_{s'} P_1(s'|s,a) V_2^{\pol}(s')$ na equação de Bellman:
+  \begin{align*}
+    \abs{Q_1^{\pol}(s,a) - Q_2^{\pol}(s,a)}
+    &= \Bigl| \rec_1 - \rec_2
+       + \gamma \sum_{s'} \bigl[ P_1(s'|s,a) V_1^{\pol}(s') - P_2(s'|s,a) V_2^{\pol}(s') \bigr] \Bigr| \\[0.1em]
+    &\le \varepsilon_{\rec}
+       + \gamma \underbrace{\Bigl| \sum_{s'} P_1\bigl[V_1^{\pol} - V_2^{\pol}\bigr]\Bigr|}_{\text{(a) mesmo modelo, valores diferentes}}
+       + \gamma \underbrace{\Bigl| \sum_{s'}\bigl[P_1 - P_2\bigr] V_2^{\pol}\Bigr|}_{\text{(b) modelos diferentes, mesmo valor}} .
+  \end{align*}
+  \vspace{-0.9em}
+  \begin{itemize}
+    \item (a): $P_1(\cdot|s,a)$ é distribuição, logo média ponderada
+          $\le \Delta := \max_{s}\abs{V_1^{\pol}(s) - V_2^{\pol}(s)}$;
+          \quad (b): Hölder dá $\le \varepsilon_P \norminf{V_2^{\pol}} \le \varepsilon_P \Vmax$.
+  \end{itemize}
+  Como $V^{\pol}_i(s) = Q^{\pol}_i(s,\pol(s))$, tomando o máximo em $s$ dos dois lados:
+  \[
+    \Delta \le \varepsilon_{\rec} + \gamma\Delta + \gamma \Vmax \varepsilon_P
+    \;\Longrightarrow\;
+    \Delta \le \frac{\varepsilon_{\rec} + \gamma\Vmax\varepsilon_P}{1-\gamma}. \qquad \blacksquare
+  \]
+  }
+  \vspace{-0.7em}
+  {\small\color{rlCinza} Separar erro de valor de erro de modelo por um termo híbrido é
+  o mesmo padrão da prova de contração da Aula 2.}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Fechando o argumento}{Como o lema vira uma garantia PAC}
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      \begin{defbox}{MDP conhecido induzido $\Mdp_K$}
+        Igual ao MDP real nos pares com $n(s,a)\ge m$; nos demais, um estado absorvente
+        de valor $\Vmax$. Há sempre dois regimes:
+        \begin{itemize}
+          \item age dentro de $\Mdp_K$ --- o lema garante valor quase ótimo;
+          \item ou \emph{escapa} para um par desconhecido --- e aprende.
+        \end{itemize}
+      \end{defbox}
+      {\small\color{rlCinza} Cada fuga incrementa algum $n(s,a)$: cabem no máximo
+      $m\abs{\gS}\abs{\gA}$ delas.}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{ideiabox}
+        ``Ou você é quase ótimo, ou aprende algo --- e só há um número finito de coisas
+        a aprender'' é o esqueleto de \emph{quase toda} prova de eficiência amostral em RL.
+      \end{ideiabox}
+      \begin{alertabox}
+        $m$ maior $\Rightarrow$ lema mais apertado, porém mais fugas: esse balanço fixa
+        o expoente de $\epsilon$.
+      \end{alertabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Para discutir}
+  \begin{quizbox}{}
+    Sobre exploração estratégica em MDPs, avalie cada afirmação:
+    \begin{enumerate}
+      \item ``Não importa muito, porque a distribuição dos dados independe da política.''
+      \item ``Pode envolver otimismo simultâneo quanto à dinâmica \emph{e} à recompensa.''
+      \item ``Chama-se PAC quando o número de decisões não quase-ótimas é menor que uma
+            função \emph{exponencial} dos parâmetros do domínio.''
+    \end{enumerate}
+    \paradiscussao
+  \end{quizbox}
+  \pause
+  \begin{respbox}
+    \textbf{1. Falsa} --- em RL os dados são \emph{gerados} pela política.\quad
+    \textbf{2. Verdadeira} --- é o que MBIE-EB e R-MAX fazem.\quad
+    \textbf{3. Falsa} --- tem de ser \emph{polinomial}.
+  \end{respbox}
+\end{frame}
+%% ============================================================
+\section{MDPs bayesianos e amostragem posterior}
+%% ============================================================
+
+\begin{frame}{Retomada: bandits bayesianos}
+  \begin{columns}[T]
+    \begin{column}{0.49\textwidth}
+      \begin{defbox}{Bandit de Bernoulli}
+        $r \sim \Ber(\theta_a)$ e \textit{a priori} $\theta_a \sim \Bet(\alpha,\beta)$.
+        Após observar $r$, o \textit{a posteriori} é
+        \[
+          \mdestaque{rlTeal}{\Bet(\alpha + r,\; \beta + 1 - r)} .
+        \]
+      \end{defbox}
+      \begin{ideiabox}
+        Atualizar a crença custa \emph{duas somas}. É essa conveniência algébrica que
+        torna Thompson barato o bastante para rodar em produção.
+      \end{ideiabox}
+    \end{column}
+    \begin{column}{0.49\textwidth}
+      \begin{algbox}{Thompson (bandits)}
+        \begin{pseudo}
+          \pln{1} & inicialize $p(\rec_a)$ para cada braço \\
+          \pln{2} & \textbf{repita} \\
+          \pln{3} & \ind amostre $\widetilde{\rec}_a \sim p(\rec_a \mid \hist)$ \\
+          \pln{4} & \ind $\Qtil(a) = \E[\widetilde{\rec}_a]$ \\
+          \pln{5} & \ind $a_t = \argmax_{a} \Qtil(a)$ \\
+          \pln{6} & \ind observe $r_t$; atualize por Bayes
+        \end{pseudo}
+      \end{algbox}
+      \begin{alertabox}
+        Com \textit{a priori} concentrado e errado, Thompson pode nunca corrigir ---
+        enquanto UCB, que não usa \textit{a priori}, corrige.
+      \end{alertabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Do bandit ao MDP bayesiano}
+  \begin{columns}[T]
+    \begin{column}{0.49\textwidth}
+      \begin{defbox}{Crença sobre o \emph{modelo}}
+        Em vez de um \textit{a posteriori} sobre recompensas médias, mantenha
+        $p\bigl(P, \rec \mid \hist\bigr)$ com
+        $\hist = (s_1,a_1,r_1,\ldots,s_t)$.
+        Cada amostra é \alert{um MDP inteiro}.
+      \end{defbox}
+      \begin{teobox}{Conjugação para a dinâmica}
+        Com $P(\cdot \mid s,a) \sim \Dir(\alpha_{s,a,1},\ldots,\alpha_{s,a,\abs{\gS}})$,
+        observar $(s,a)\to s'$ apenas incrementa $\alpha_{s,a,s'}$. Dirichlet está para
+        a Multinomial como Beta para a Bernoulli.
+      \end{teobox}
+    \end{column}
+    \begin{column}{0.49\textwidth}
+      \begin{defbox}{Casamento de probabilidades}
+        Escolha $a$ com probabilidade igual à probabilidade \emph{posterior} de que $a$
+        seja ótima:
+        \[
+          \pol(s,a \mid \hist)
+          = \E_{P,\rec \mid \hist}
+            \bigl[\mathbb{1}\bigl(a = \argmax\nolimits_{a'} Q(s,a')\bigr)\bigr].
+        \]
+      \end{defbox}
+      \begin{ideiabox}
+        Calcular essa probabilidade é intratável, mas \emph{amostrar} dela é trivial:
+        sorteie um MDP, resolva-o, aja de forma ótima nele. A ação já sai distribuída
+        assim, sem nunca calcular a integral.
+      \end{ideiabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{PSRL --- amostragem posterior para RL}{Osband, Russo \& Van Roy (NeurIPS 2013)}
+  \vspace{-0.3em}
+  \begin{algbox}{PSRL}
+    \begin{pseudo}
+      \pln{1} & inicialize \textit{a priori} $p(\rec_{s,a})$ e $p\bigl(P(\cdot\mid s,a)\bigr)$
+                para cada $(s,a)$ \\
+      \pln{2} & \textbf{para} episódio $k = 1,\ldots,K$: \\
+      \pln{3} & \ind \textbf{amostre um MDP} $\Mtil_k$: sorteie
+                $\widetilde{P}(\cdot\mid s,a)$ e $\widetilde{\rec}(s,a)$ do \textit{a posteriori} \\
+      \pln{4} & \ind resolva $\Mtil_k$, obtendo $Q^{*}_{\Mtil_k}$ \\
+      \pln{5} & \ind \textbf{para} $t = 1,\ldots,H$:\quad
+                $a_t = \argmax_{a} Q^{*}_{\Mtil_k}(s_t, a)$; observe $r_t$, $s_{t+1}$ \\
+      \pln{6} & \ind atualize o \textit{a posteriori} com os dados do episódio
+    \end{pseudo}
+  \end{algbox}
+  \vspace{-0.3em}
+  \begin{columns}[T]
+    \begin{column}{0.49\textwidth}
+      \begin{teobox}{Garantia}
+        Arrependimento \emph{bayesiano}
+        $\tilde{O}\bigl(H\sqrt{\abs{\gS}\abs{\gA}T}\bigr)$ --- comparável aos melhores
+        algoritmos otimistas, e em geral melhor na prática.
+      \end{teobox}
+    \end{column}
+    \begin{column}{0.49\textwidth}
+      \begin{ideiabox}
+        Repare no que PSRL \emph{não} tem: nenhum $\epsilon$, nenhum bônus, nenhuma
+        constante de concentração. A exploração emerge da variância do
+        \textit{a posteriori}, que encolhe sozinha.
+      \end{ideiabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{A granularidade da amostragem é o algoritmo}
+  \begin{columns}[T]
+    \begin{column}{0.49\textwidth}
+      \begin{alertabox}
+        Amostrar um MDP novo \emph{a cada passo}, em vez de a cada episódio, destrói a
+        garantia.
+      \end{alertabox}
+      \begin{defbox}{Por quê}
+        O agente troca de hipótese a cada passo: começa a nadar rio acima com $\Mtil_1$,
+        muda de ideia, volta. O agregado vira um \emph{passeio aleatório}.
+      \end{defbox}
+      \begin{ideiabox}
+        Comprometer-se com uma hipótese por um episódio é o análogo bayesiano da
+        propagação do bônus: ambos dão \alert{exploração profunda}.
+      \end{ideiabox}
+    \end{column}
+    \begin{column}{0.49\textwidth}
+      \centering
+      \scalebox{0.95}{%
+      \begin{tikzpicture}[y=0.62cm, x=0.62cm]
+        \node[font=\scriptsize\bfseries, color=rlVerde!70!black] at (2.5,4.3) {amostra por episódio};
+        \foreach \i in {0,...,5}{\node[estado, minimum size=5mm, font=\tiny] (a\i) at (\i,3.2) {};}
+        \foreach \i [count=\c] in {0,...,4}{\pgfmathtruncatemacro{\n}{\i+1}
+          \draw[trans destac] (a\i) -- (a\n);}
+        \node[font=\scriptsize, color=rlCinza, anchor=west] at (5.5,3.2) {chega};
+        \node[font=\scriptsize\bfseries, color=rlVermelho] at (2.5,1.8) {amostra por passo};
+        \foreach \i in {0,...,5}{\node[estado, minimum size=5mm, font=\tiny] (b\i) at (\i,0.7) {};}
+        \draw[trans] (b0) to[bend left=45] (b1);
+        \draw[trans] (b1) to[bend left=45] (b0);
+        \draw[trans] (b0) to[bend right=45] (b1);
+        \draw[trans] (b1) to[bend right=45] (b2);
+        \draw[trans] (b2) to[bend left=45] (b1);
+        \node[font=\scriptsize, color=rlCinza, anchor=west] at (5.5,0.7) {oscila};
+      \end{tikzpicture}}
+      \\[0.5em]
+      {\scriptsize\color{rlCinza} a mesma \textit{a posteriori}, duas granularidades,
+      desempenhos incomparáveis}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Otimismo e Thompson: duas leituras da mesma ideia}
+  \centering\small
+  \begin{tabular}{@{}l>{\raggedright\arraybackslash}p{0.33\textwidth}>{\raggedright\arraybackslash}p{0.33\textwidth}@{}}
+    \toprule
+     & \textbf{Otimismo (MBIE-EB)} & \textbf{Posterior (PSRL)} \\
+    \midrule
+    Incerteza é & conjunto de confiança & distribuição \textit{a posteriori} \\
+    Escolhe     & o \emph{melhor caso} do conjunto & \emph{um} caso, sorteado \\
+    Requer      & desigualdade de concentração & \textit{a priori} + conjugação \\
+    Garantia    & PAC / arrep.\ no pior caso & arrependimento bayesiano \\
+    Falha se    & o bônus é frouxo & o \textit{a priori} é rígido e errado \\
+    RiverSwim   & $8\,580$ & $8\,095$ \\
+    \bottomrule
+  \end{tabular}
+  \vspace{0.5em}
+  \begin{columns}[T]
+    \begin{column}{0.49\textwidth}
+      \begin{ideiabox}
+        Ambos transformam ``não sei'' em ``vale a pena ir ver''. Otimismo faz isso
+        \emph{deterministicamente e no pior caso}; Thompson, \emph{estocasticamente e
+        na média}.
+      \end{ideiabox}
+    \end{column}
+    \begin{column}{0.49\textwidth}
+      \begin{teobox}{Amostragem por semente}
+        Dimakopoulou \& Van Roy (2018): com $M$ agentes em paralelo, amostrar
+        independentemente faz todos seguirem hipóteses parecidas. Uma \emph{semente}
+        fixa por agente gera diversidade coordenada.
+      \end{teobox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Para discutir}
+  \begin{quizbox}{}
+    Sobre o PSRL apresentado:
+    \begin{enumerate}
+      \item ``Bastaria amostrar a recompensa e usar a média empírica para a dinâmica ---
+            o desempenho seria o mesmo.''
+      \item ``É possível replanejar sempre que o \textit{a posteriori} é atualizado.''
+      \item ``O custo computacional por passo é sempre o mesmo do $Q$-learning.''
+    \end{enumerate}
+    \paradiscussao
+  \end{quizbox}
+  \pause
+  \begin{respbox}
+    \textbf{1. Falsa} --- no \textit{RiverSwim} a incerteza que importa é sobre a
+    \emph{dinâmica}.\quad
+    \textbf{2. Verdadeira} no algoritmo mostrado, embora a garantia seja provada para
+    reamostragem por episódio.\quad
+    \textbf{3. Falsa} --- PSRL resolve um MDP inteiro por episódio: troca-se
+    \emph{computação por amostras}.
+  \end{respbox}
+\end{frame}
+%% ============================================================
+\section{Generalização e exploração}
+%% ============================================================
+
+\begin{frame}{O que quebra em espaços grandes}
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      \begin{alertabox}
+        \vspace{-0.9em}
+        \[
+          \Qtil(s,a) \gets \Rhat + \gamma\sum_{s'}\That\max_{a'}\Qtil
+          + \frac{\beta}{\sqrt{\mdestaque{rlVermelho}{n(s,a)}}}
+        \]
+        \vspace{-1.2em}
+
+        Se cada estado é visitado no máximo uma vez, $n(s,a) \in \{0,1\}$: o bônus
+        deixa de informar.
+      \end{alertabox}
+      \begin{defbox}{Três coisas a reconstruir}
+        \begin{enumerate}\setlength{\itemsep}{0.1ex}
+          \item ``Já visitei isto'' que respeite \emph{similaridade}.
+          \item Incerteza sobre \emph{valores}, não contagens.
+          \item Exploração profunda com aproximação de função.
+        \end{enumerate}
+      \end{defbox}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{ideiabox}
+        A generalização \emph{muda o problema de exploração}: se estados parecidos têm
+        valores parecidos, visitar um informa sobre os outros. A exploração deixa de
+        escalar com $\abs{\gS}$ e passa a escalar com a \emph{complexidade da classe
+        de funções}.
+      \end{ideiabox}
+      \begin{teobox}{Roteiro}
+        Primeiro os bandits contextuais lineares; depois, os MDPs.
+      \end{teobox}
+    \end{column}
+  \end{columns}
+\end{frame}
+%% ============================================================
+\begin{frame}{Bandits contextuais}
+  \begin{columns}[T]
+    \begin{column}{0.49\textwidth}
+      \begin{defbox}{Bandit contextual}
+        A cada rodada: o ambiente revela um contexto $s_t$ (não escolhido pelo agente);
+        o agente escolhe $a_t$; recebe $r_t \sim \rec_{a_t,s_t}$.
+        \textbf{Sem dinâmica:} $s_{t+1}$ não depende de $a_t$.
+      \end{defbox}
+      \begin{ideiabox}
+        Meio-termo exato entre bandit e MDP: tem \emph{estado} (exige generalização) mas
+        não tem \emph{consequência} (não exige exploração profunda). É onde a teoria é
+        completa --- e onde vive quase toda a aplicação industrial.
+      \end{ideiabox}
+    \end{column}
+    \begin{column}{0.49\textwidth}
+      \begin{teobox}{Modelo linear compartilhado}
+        $r(s,a) = \theta^{\!\top} \feat(s,a) + \eta$, \; $\eta \sim \mathcal{N}(0,\sigma^{2})$.
+      \end{teobox}
+      \begin{teobox}{Modelo linear disjunto}
+        Cada braço tem seu parâmetro: $r(s,a) = \theta_a^{\!\top} \feat(s) + \eta$.
+      \end{teobox}
+      \begin{quizbox}{}
+        O modelo compartilhado consegue representar um modelo disjunto? Se sim, como?
+        \paradiscussao
+      \end{quizbox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Sim --- por empilhamento em blocos}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      Com $\abs{\gA} = K$ e $\feat(s)\in\R^{d}$, defina $\feat(s,a) \in \R^{Kd}$ com
+      $\feat(s)$ no bloco $a$ e zeros nos demais, e empilhe
+      $\theta = (\theta_1,\ldots,\theta_K)$. Então
+      \[
+        \theta^{\!\top}\feat(s,a) = \theta_a^{\!\top}\feat(s).
+      \]
+      \begin{alertabox}
+        O preço é a dimensão: $d \to Kd$. E esse é o ponto --- o modelo disjunto
+        \alert{não compartilha informação entre braços}, e a dimensão maior é a
+        expressão formal disso. Um $\feat(s,a)$ bem projetado aprende sobre um braço
+        observando outro.
+      \end{alertabox}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \scalebox{0.9}{%
+      \begin{tikzpicture}[x=0.5cm, y=0.5cm]
+        \foreach \b/\lbl in {0/1, 1/2, 2/3}{
+          \pgfmathsetmacro{\yy}{-\b*1.5}
+          \node[font=\scriptsize, anchor=east, color=rlCinza] at (-0.3,{\yy+0.4}) {$\feat(s,a_{\lbl})$};
+          \foreach \k in {0,1,2}{
+            \ifnum\k=\b
+              \draw[fill=rlLaranja!30, draw=rlLaranja, thick] (\k*2.6,\yy) rectangle ({\k*2.6+2.3},{\yy+0.8});
+              \node[font=\tiny, color=rlLaranja!80!black] at ({\k*2.6+1.15},{\yy+0.4}) {$\feat(s)$};
+            \else
+              \draw[fill=rlAzul!6, draw=rlAzul!25] (\k*2.6,\yy) rectangle ({\k*2.6+2.3},{\yy+0.8});
+              \node[font=\tiny, color=rlCinza] at ({\k*2.6+1.15},{\yy+0.4}) {$0$};
+            \fi}}
+        \foreach \k/\lbl in {0/1, 1/2, 2/3}{
+          \node[font=\scriptsize, color=rlAzul] at ({\k*2.6+1.15},1.3) {$\theta_{\lbl}$};}
+        \draw[rlAzul!30, thick] (-0.1,1.0) -- (7.6,1.0);
+      \end{tikzpicture}}
+      \\[0.5em]
+      \begin{ideiabox}
+        É o LinUCB ``disjunto'' do artigo de recomendação de notícias do Yahoo!
+        (Li et al., WWW 2010) --- talvez o bandit contextual mais implantado da história.
+      \end{ideiabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{O ganho da generalização, medido}{$d = 5$, $\sigma = 0{,}3$, $T = 4\,000$ rodadas, média de 15 execuções}
+  \begin{columns}[T]
+    \begin{column}{0.47\textwidth}
+      \centering\small
+      \begin{tabular}{@{}rrr@{}}
+        \toprule
+        braços $K$ & UCB (sem contexto) & LinUCB \\
+        \midrule
+        $20$  & $63$    & $49$ \\
+        $60$  & $166$   & $66$ \\
+        $180$ & $481$   & $78$ \\
+        $540$ & $1\,282$ & $88$ \\
+        \bottomrule
+      \end{tabular}
+      \\[0.3em]
+      {\scriptsize\color{rlCinza} arrependimento acumulado ao fim de $T$}
+      \vspace{0.6em}
+      \begin{teobox}{A leitura teórica}
+        UCB: $\tilde{O}(\sqrt{KT})$; LinUCB: $\tilde{O}(d\sqrt{T})$. O número de braços
+        sai do limitante, substituído pela dimensão.
+      \end{teobox}
+    \end{column}
+    \begin{column}{0.51\textwidth}
+      \centering
+      \scalebox{0.85}{%
+      \begin{tikzpicture}[x=1cm, y=1cm]
+        \draw[->, thick, rlCinza] (0,0) -- (5.6,0) node[right, font=\scriptsize] {$K$};
+        \draw[->, thick, rlCinza] (0,0) -- (0,3.4) node[above, font=\scriptsize] {arrep.\ em $T$};
+        \draw[rlLaranja, very thick] (0.3,0.16) -- (1.9,0.42) -- (3.5,1.22) -- (5.1,3.2);
+        \foreach \x/\y in {0.3/0.16, 1.9/0.42, 3.5/1.22, 5.1/3.2}
+          \fill[rlLaranja] (\x,\y) circle (1.6pt);
+        \draw[rlTeal, very thick] (0.3,0.12) -- (1.9,0.17) -- (3.5,0.20) -- (5.1,0.22);
+        \foreach \x/\y in {0.3/0.12, 1.9/0.17, 3.5/0.20, 5.1/0.22}
+          \fill[rlTeal] (\x,\y) circle (1.6pt);
+        \node[font=\scriptsize, color=rlLaranja, anchor=east] at (4.9,2.7) {UCB sem contexto};
+        \node[font=\scriptsize, color=rlTeal, anchor=west] at (2.4,0.62) {LinUCB};
+        \foreach \x/\l in {0.3/20, 1.9/60, 3.5/180, 5.1/540}
+          \node[font=\tiny, color=rlCinza] at (\x,-0.28) {\l};
+      \end{tikzpicture}}
+      \\[0.3em]
+      \begin{alertabox}
+        O ganho existe \emph{se o modelo linear estiver correto}. Sob má especificação,
+        LinUCB converge com confiança para o braço errado --- risco que o UCB não corre.
+      \end{alertabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Incerteza sobre um vetor}{De intervalos de confiança a elipsoides}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \begin{defbox}{A mudança conceitual}
+        Antes, um intervalo em torno de um \emph{escalar}. Agora a incerteza vive em
+        $\theta \in \R^d$ e o conjunto de confiança é um \alert{elipsoide}:
+        \vspace{-0.7em}
+        \[
+          \mathcal{C}_t = \bigl\{\theta : \norm{\theta - \hat\theta_t}_{A_t} \le \alpha_t \bigr\},
+          \quad
+          A_t = \lambda I + \sum_{\tau < t}\feat_\tau \feat_\tau^{\!\top},
+        \]
+        \vspace{-1.1em}
+
+        com $\hat\theta_t = A_t^{-1}\sum_{\tau<t}\feat_\tau r_\tau$ (crista).
+      \end{defbox}
+      \begin{algbox}{LinUCB}
+        \vspace{-0.9em}
+        \[
+          a_t = \argmax_{a}\ \hat\theta_t^{\!\top}\feat(s_t,a)
+          + \alpha \sqrt{\feat(s_t,a)^{\!\top} A_t^{-1}\feat(s_t,a)}
+        \]
+        \vspace{-1.3em}
+      \end{algbox}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{ideiabox}
+        O termo $\sqrt{\feat^{\!\top}A_t^{-1}\feat}$ é a largura do elipsoide \emph{na
+        direção} de $\feat$: o análogo de $1/\sqrt{n(s,a)}$, sensível à geometria.
+      \end{ideiabox}
+      \begin{quizbox}{}
+        Por que representar a incerteza sobre $\theta$ basta para representar a
+        incerteza sobre $r$?
+        \paradiscussao
+      \end{quizbox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Incerteza epistêmica e incerteza aleatória}
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      \begin{respbox}
+        Porque $r$ é função conhecida de $\theta$ mais ruído independente. Dado
+        $\feat(s,a)$, toda a incerteza \alert{epistêmica} --- a que se reduz com dados
+        --- está em $\theta$. O resto é ruído \alert{aleatório}: irredutível e sem valor
+        informativo.
+      \end{respbox}
+      \begin{alertabox}
+        Explorar para reduzir ruído aleatório é desperdício. Um bônus proporcional à
+        \emph{variância total} exploraria para sempre o braço mais ruidoso, ainda que
+        sua média já fosse conhecida.
+      \end{alertabox}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{ideiabox}
+        Esta distinção atravessa a aula inteira:
+        \begin{itemize}
+          \item $\beta/\sqrt{n(s,a)}$ no MBIE-EB é epistêmico e decai;
+          \item a variância do \textit{a posteriori} do PSRL é epistêmica e encolhe;
+          \item o ruído de recompensa não decai --- e nenhum dos dois tenta reduzi-lo.
+        \end{itemize}
+      \end{ideiabox}
+      {\small\color{rlCinza} O \textit{ensemble} do Bootstrapped DQN estima incerteza
+      epistêmica; a variância de retornos, não.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{De volta aos MDPs grandes: bônus dentro do gradiente}
+  \begin{columns}[T]
+    \begin{column}{0.51\textwidth}
+      \begin{defbox}{$Q$-learning com aproximação}
+        \[
+          \Delta w = \eta \bigl( r + \gamma \max_{a'}\hat{Q}(s',a';w) - \hat{Q}(s,a;w)\bigr)
+                     \nabla_w \hat{Q}
+        \]
+      \end{defbox}
+      \begin{algbox}{Com bônus de exploração}
+        \[
+          \Delta w = \eta \bigl( r
+          + \mdestaque{rlLaranja}{r_{\text{bônus}}(s,a)}
+          + \gamma \max_{a'}\hat{Q}(s',a';w) - \hat{Q}(s,a;w)\bigr)
+          \nabla_w \hat{Q}
+        \]
+      \end{algbox}
+      {\small\color{rlCinza} Idêntico ao MBIE-EB: o bônus entra no \emph{alvo} de
+      Bellman e é propagado para trás. Muda só \emph{como} calculá-lo.}
+    \end{column}
+    \begin{column}{0.47\textwidth}
+      \begin{teobox}{Estimar novidade sem contar}
+        \begin{itemize}
+          \item \textbf{Pseudo-contagens:} ajuste $\rho(s)$ e derive $\hat{n}(s)$ do
+                quanto $\rho$ sobe ao reobservar $s$ (Bellemare et al.\ 2016).
+          \item \textbf{\textit{Hashing}:} discretize $s$ e conte \textit{buckets}
+                (Tang et al.\ 2017).
+          \item \textbf{Erro de predição} (RND): resíduo alto onde há pouca experiência.
+        \end{itemize}
+      \end{teobox}
+      \begin{alertabox}
+        Todos são substitutos de $1/\sqrt{n}$; nenhum tem garantia PAC em MDPs gerais.
+      \end{alertabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Quando isso importa muito: \textit{Montezuma's Revenge}}
+  \begin{columns}[T]
+    \begin{column}{0.49\textwidth}
+      \begin{defbox}{Por que este jogo}
+        Recompensa extremamente esparsa: dezenas de ações corretas encadeadas --- pegar
+        a chave, descer a escada, abrir a porta --- antes de qualquer sinal. É o
+        \textit{RiverSwim} com $\abs{\gS}$ enorme.
+      \end{defbox}
+      \begin{teobox}{Resultado}
+        DQN com $\epsilon$-guloso: pontuação praticamente nula após centenas de milhões
+        de quadros. Com bônus de pseudo-contagem: dezenas de salas e pontuação de ordem
+        de grandeza superior (Bellemare et al., 2016).
+      \end{teobox}
+    \end{column}
+    \begin{column}{0.49\textwidth}
+      \begin{alertabox}
+        Duas ressalvas práticas:
+        \begin{itemize}
+          \item \textbf{Bônus envelhecem:} guardado no \textit{buffer}, já não
+                corresponde à incerteza atual quando reamostrado.
+          \item \textbf{Não-estacionariedade:} o alvo de Bellman passa a depender de uma
+                recompensa que muda com o tempo.
+        \end{itemize}
+      \end{alertabox}
+      \begin{ideiabox}
+        A diferença entre um agente que funciona e um que não funciona está em
+        \emph{como ele decide o que ainda não sabe}.
+      \end{ideiabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Thompson com aproximação de função}
+  \begin{columns}[T]
+    \begin{column}{0.49\textwidth}
+      \begin{defbox}{O obstáculo}
+        Amostrar de um \textit{a posteriori} sobre $\Qstar$: não há conjugação, redes
+        neurais não têm \textit{a posteriori} fechado.
+      \end{defbox}
+      \begin{algbox}{Bootstrapped DQN (Osband et al.\ 2016)}
+        \begin{itemize}
+          \item $C$ ``cabeças'' treinadas em amostras \textit{bootstrap} dos mesmos dados.
+          \item Por episódio, sorteie \emph{uma} cabeça e siga-a até o fim.
+        \end{itemize}
+        A persistência recupera a exploração profunda.
+      \end{algbox}
+    \end{column}
+    \begin{column}{0.49\textwidth}
+      \begin{algbox}{Bayesian DQN (Azizzadenesheli et al.\ 2017)}
+        Rede profunda como extrator de características; na \emph{última camada},
+        regressão linear bayesiana --- que tem \textit{a posteriori} fechado.
+      \end{algbox}
+      \begin{teobox}{Como se comparam}
+        Empiricamente: bônus $>$ BDQN $>$ Bootstrapped DQN $>$ $\epsilon$-guloso, com
+        inversões por domínio. Nenhum domina.
+      \end{teobox}
+      {\small\color{rlCinza} O BDQN é o LinUCB sobre características aprendidas.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Aprender \emph{a explorar}}{Exploração entre tarefas e meta-RL}
+  \begin{columns}[T]
+    \begin{column}{0.49\textwidth}
+      \begin{defbox}{Observação de partida}
+        Tudo o que vimos supõe \alert{ignorância total} no início. Mas um agente real
+        enfrenta tarefas da mesma \emph{família} --- robôs em cozinhas diferentes,
+        tutores para alunos diferentes. Havendo estrutura comum, a exploração ótima pode
+        ser \emph{aprendida}.
+      \end{defbox}
+      \begin{teobox}{DREAM (Liu et al., NeurIPS 2022)}
+        Separa \emph{exploração} de \emph{execução}: a política de exploração é treinada
+        para produzir uma representação da tarefa útil à execução, e não para maximizar
+        recompensa.
+      \end{teobox}
+    \end{column}
+    \begin{column}{0.49\textwidth}
+      \begin{teobox}{Decision-Pretrained Transformer (Lee, Xie et al., NeurIPS 2023)}
+        Pré-treine um \textit{transformer} para prever a \emph{ação ótima} $a^{*}$ a
+        partir do histórico. Em teste ele age \textit{in-context}, sem atualizar pesos.
+        \textbf{Chave:} prever $a^{*}$ \emph{imita} Thompson, com um \textit{a priori}
+        implícito muito mais rico --- a distribuição de tarefas de treino.
+      \end{teobox}
+      \begin{ideiabox}
+        Fecha-se o círculo: começamos exigindo garantias no pior caso e terminamos
+        aprendendo o \textit{a priori} que o torna irrelevante.
+      \end{ideiabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\section{Panorama e fechamento}
+%% ============================================================
+
+\begin{frame}{Onde está a teoria hoje}
+  \begin{columns}[T]
+    \begin{column}{0.49\textwidth}
+      \begin{teobox}{MDPs tabulares --- essencialmente resolvido}
+        \begin{itemize}
+          \item \textbf{Arrependimento minimax:} Azar, Osband \& Munos, ICML 2017.
+          \item \textbf{PAC:} Dann, Li, Wei \& Brunskill, \textit{Policy certificates},
+                ICML 2019 --- com certificados por episódio.
+          \item \textbf{Dependentes da instância:} Zanette \& Brunskill (2019);
+                Simchowitz \& Jamieson (2019) --- adaptam-se a problemas fáceis.
+        \end{itemize}
+      \end{teobox}
+    \end{column}
+    \begin{column}{0.49\textwidth}
+      \begin{teobox}{Com aproximação de função --- em aberto}
+        \begin{itemize}
+          \item MDP \emph{linear}: Jin, Yang, Wang \& Jordan, COLT 2020.
+          \item Medidas de complexidade da exploração: \textbf{dimensão de Eluder}
+                (Russo \& Van Roy), \textbf{posto de Bellman} (Jiang et al.).
+        \end{itemize}
+      \end{teobox}
+      \begin{alertabox}
+        A pergunta em aberto não é ``existe algoritmo eficiente?'', e sim \emph{quais
+        propriedades do domínio} tornam a exploração tratável. Fora delas, há limitantes
+        inferiores exponenciais.
+      \end{alertabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Mapa: algoritmo $\times$ critério}
+  \centering\small
+  \begin{tabular}{@{}l l l l@{}}
+    \toprule
+    \textbf{Algoritmo} & \textbf{Cenário} & \textbf{Abordagem} & \textbf{Critério satisfeito} \\
+    \midrule
+    $\epsilon$-guloso (fixo)      & bandit / MDP      & aleatório & nenhum \\
+    $\epsilon$-guloso (GLIE)      & MDP               & aleatório & convergência assintótica \\
+    UCB                           & bandit            & otimismo  & arrependimento $\tilde{O}(\sqrt{KT})$ \\
+    Thompson                      & bandit            & posterior & arrep.\ bayesiano e frequentista \\
+    LinUCB                        & bandit contextual & otimismo  & arrependimento $\tilde{O}(d\sqrt{T})$ \\
+    \textbf{MBIE-EB} / R-MAX      & MDP tabular       & otimismo  & \textbf{PAC} \\
+    UCRL2, UCBVI                  & MDP tabular       & otimismo  & arrependimento (minimax) \\
+    \textbf{PSRL}                 & MDP tabular       & posterior & arrependimento bayesiano \\
+    Bônus de contagem (deep RL)   & MDP grande        & otimismo  & empírico \\
+    Bootstrapped DQN, BDQN        & MDP grande        & posterior & empírico \\
+    DREAM, DPT                    & família de MDPs   & meta      & empírico \\
+    \bottomrule
+  \end{tabular}
+  \vspace{0.4em}
+  {\small\color{rlCinza} De cima para baixo, quanto mais realista o cenário, mais
+  fracas as garantias --- mas as \emph{duas} abordagens atravessam a tabela inteira.}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{O que você deve sair sabendo}
+  \begin{columns}[T]
+    \begin{column}{0.49\textwidth}
+      \begin{defbox}{Conceitual}
+        \begin{itemize}
+          \item Enunciar a tensão exploração--explotação e por que ela não aparece em
+                aprendizado supervisionado.
+          \item Comparar os critérios: empírico, assintótico, arrependimento, PAC.
+          \item Mapear cada algoritmo ao critério que satisfaz.
+          \item Dizer por que $\epsilon$-guloso falha no \textit{RiverSwim}.
+        \end{itemize}
+      \end{defbox}
+    \end{column}
+    \begin{column}{0.49\textwidth}
+      \begin{defbox}{Técnico}
+        \begin{itemize}
+          \item Reproduzir o \textbf{lema da simulação} e sua prova.
+          \item Reconstruir o esboço da prova do UCB (Aula 11) e o da prova PAC de hoje.
+          \item Escrever MBIE-EB e PSRL, indicando onde entra cada hipótese.
+          \item Implementar UCB e Thompson para bandit contextual linear.
+        \end{itemize}
+      \end{defbox}
+      {\small\color{rlCinza}\textbf{Próxima aula:} busca em árvore de Monte Carlo.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Referências principais}
+  {\footnotesize
+  \begin{itemize}\setlength{\itemsep}{0.15ex}
+    \item A.\ L.\ Strehl, M.\ L.\ Littman. \textit{An analysis of model-based interval
+          estimation for MDPs.} J.\ of Computer and System Sciences, 2008.
+    \item I.\ Osband, D.\ Russo, B.\ Van Roy. \textit{(More) efficient RL via posterior
+          sampling.} NeurIPS 2013.
+    \item M.\ Dimakopoulou, B.\ Van Roy. \textit{Coordinated exploration in concurrent
+          RL.} ICML 2018.
+    \item L.\ Li, W.\ Chu, J.\ Langford, R.\ Schapire. \textit{A contextual-bandit
+          approach to personalized news article recommendation.} WWW 2010.
+    \item M.\ G.\ Bellemare et al. \textit{Unifying count-based exploration and intrinsic
+          motivation.} NIPS 2016.
+    \item I.\ Osband, C.\ Blundell, A.\ Pritzel, B.\ Van Roy. \textit{Deep exploration
+          via bootstrapped DQN.} NIPS 2016.
+    \item M.\ G.\ Azar, I.\ Osband, R.\ Munos. \textit{Minimax regret bounds for RL.}
+          ICML 2017.
+    \item C.\ Dann, L.\ Li, W.\ Wei, E.\ Brunskill. \textit{Policy certificates.} ICML 2019.
+    \item C.\ Jin, Z.\ Yang, Z.\ Wang, M.\ Jordan. \textit{Provably efficient RL with
+          linear function approximation.} COLT 2020.
+    \item J.\ Lee, A.\ Xie et al. \textit{Supervised pretraining can learn in-context
+          RL.} NeurIPS 2023.
+    \item T.\ Lattimore, C.\ Szepesvári. \textit{Bandit Algorithms.} Cambridge, 2020 ---
+          caps.\ 19 e 36.
+  \end{itemize}}
+\end{frame}
+
+\end{document}
