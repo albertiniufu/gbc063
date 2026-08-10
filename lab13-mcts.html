@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Laboratório 13 — MCTS ao vivo</title>
+<style>
+:root{
+  --azul:#16324F; --azulClaro:#2E5F8A; --teal:#18808D; --laranja:#E8590C;
+  --ambar:#F2A93B; --vermelho:#C1121F; --verde:#2B9348; --cinza:#5C677D;
+  --fundo:#FAFBFC; --linha:#E3E8EE;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fundo);color:#1b2430;
+  font-family:"Fira Sans","Segoe UI",Roboto,system-ui,sans-serif;line-height:1.5}
+header{background:var(--azul);color:#fff;padding:22px 26px 20px;
+  border-bottom:4px solid var(--laranja)}
+header .curso{color:var(--ambar);font-size:.72rem;font-weight:600;letter-spacing:.09em}
+header h1{margin:.35rem 0 .2rem;font-size:1.5rem;font-weight:600}
+header p{margin:0;color:#c9d6e4;font-size:.87rem;max-width:74ch}
+main{max-width:1220px;margin:0 auto;padding:22px 26px 60px}
+.grid{display:grid;grid-template-columns:290px 1fr;gap:22px;align-items:start}
+@media(max-width:940px){.grid{grid-template-columns:1fr}}
+.card{background:#fff;border:1px solid var(--linha);border-radius:9px;padding:16px 18px;
+  margin-bottom:18px}
+.card h2{margin:0 0 12px;font-size:.79rem;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--azul);border-left:3px solid var(--laranja);padding-left:8px}
+label{display:block;font-size:.81rem;color:var(--cinza);margin:12px 0 3px}
+label b{color:var(--azul);font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--laranja)}
+select{width:100%;padding:6px 8px;border:1px solid var(--linha);border-radius:5px;
+  font:inherit;font-size:.85rem;background:#fff;color:var(--azul)}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+button{font:inherit;font-size:.84rem;font-weight:600;padding:8px 13px;border-radius:6px;
+  border:1px solid var(--azul);background:var(--azul);color:#fff;cursor:pointer}
+button.sec{background:#fff;color:var(--azul)}
+button.acc{background:var(--laranja);border-color:var(--laranja)}
+button:hover{filter:brightness(1.12)}
+button:disabled{opacity:.4;cursor:default;filter:none}
+svg{width:100%;height:auto;display:block}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:4px}
+.stat{background:var(--fundo);border:1px solid var(--linha);border-radius:7px;padding:9px 11px}
+.stat .k{font-size:.68rem;color:var(--cinza);text-transform:uppercase;letter-spacing:.05em}
+.stat .v{font-size:1.18rem;font-weight:600;color:var(--azul);font-variant-numeric:tabular-nums}
+table{width:100%;border-collapse:collapse;font-size:.85rem;font-variant-numeric:tabular-nums}
+th,td{padding:6px 7px;text-align:right;border-bottom:1px solid var(--linha)}
+th:first-child,td:first-child{text-align:left}
+th{font-size:.71rem;text-transform:uppercase;letter-spacing:.05em;color:var(--cinza);
+  border-bottom:1.5px solid var(--azul)}
+tr.best td{background:#FFF3E8}
+.bar{height:9px;border-radius:5px;background:var(--laranja);display:inline-block;min-width:2px;
+  vertical-align:middle}
+.bar.q{background:var(--azulClaro)}
+.nota{font-size:.82rem;color:var(--cinza);margin:10px 0 0}
+.nota b{color:var(--azul)}
+.pill{display:inline-block;font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:20px;
+  background:#EDF2F7;color:var(--azulClaro)}
+.pill.ok{background:#E6F4EA;color:var(--verde)}
+.pill.no{background:#FDEBEC;color:var(--vermelho)}
+.legenda{display:flex;gap:16px;flex-wrap:wrap;font-size:.76rem;color:var(--cinza);margin-top:8px}
+.legenda i{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:5px;
+  vertical-align:-1px}
+details{margin-top:14px;font-size:.86rem}
+summary{cursor:pointer;font-weight:600;color:var(--azul);font-size:.85rem}
+details p{color:#26333f;margin:8px 0}
+code{background:#EDF2F7;padding:1px 5px;border-radius:4px;font-size:.86em}
+footer{max-width:1220px;margin:0 auto;padding:0 26px 40px;font-size:.78rem;color:var(--cinza)}
+</style>
+</head>
+<body>
+<header>
+  <div class="curso">APRENDIZAGEM POR REFORÇO • UNIVERSIDADE FEDERAL DE UBERLÂNDIA</div>
+  <h1>Laboratório 13 — MCTS ao vivo</h1>
+  <p>Uma árvore sintética com ramificação <b>b</b> e profundidade <b>d</b>. Rode simulações
+  de UCT ou PUCT e observe a árvore crescer de forma assimétrica, a distribuição de visitas
+  na raiz se separar dos valores médios, e o cenário “agulha no palheiro” derrotar o UCT.</p>
+</header>
+
+<main>
+<div class="grid">
+
+<!-- ============ CONTROLES ============ -->
+<div>
+  <div class="card">
+    <h2>Domínio</h2>
+    <label>Ramificação <b id="lb">3</b></label>
+    <input type="range" id="b" min="2" max="6" value="3" step="1">
+    <label>Profundidade <b id="ld">4</b></label>
+    <input type="range" id="d" min="2" max="6" value="4" step="1">
+    <label>Estrutura de recompensa</label>
+    <select id="modo">
+      <option value="suave">Suave — muitos caminhos razoáveis</option>
+      <option value="agulha">Agulha no palheiro — um caminho estreito</option>
+    </select>
+    <label>Ruído do rollout <b id="lsig">0,15</b></label>
+    <input type="range" id="sig" min="0" max="40" value="15" step="1">
+  </div>
+
+  <div class="card">
+    <h2>Busca</h2>
+    <label>Regra de seleção</label>
+    <select id="regra">
+      <option value="uct">UCT — bônus √(ln N / n)</option>
+      <option value="puct">PUCT — bônus ponderado pelo prior</option>
+    </select>
+    <label>Constante de exploração <b id="lc">1,00</b></label>
+    <input type="range" id="c" min="0" max="300" value="100" step="5">
+    <label>Avaliação da folha</label>
+    <select id="aval">
+      <option value="rollout">Rollout aleatório até o fim</option>
+      <option value="valor">Rede de valor v(s) (ruidosa)</option>
+    </select>
+    <label>Qualidade do prior <b id="lpq">média</b></label>
+    <input type="range" id="pq" min="0" max="100" value="50" step="5">
+    <div class="btns">
+      <button class="acc" id="run">▶ Rodar 200</button>
+      <button class="sec" id="step">+1 simulação</button>
+      <button class="sec" id="s10">+10</button>
+      <button class="sec" id="reset">Reiniciar</button>
+    </div>
+    <p class="nota" id="aviso"></p>
+  </div>
+</div>
+
+<!-- ============ PAINEL ============ -->
+<div>
+  <div class="card">
+    <h2>Estado da busca</h2>
+    <div class="stats">
+      <div class="stat"><div class="k">Simulações</div><div class="v" id="sK">0</div></div>
+      <div class="stat"><div class="k">Nós na árvore</div><div class="v" id="sN">1</div></div>
+      <div class="stat"><div class="k">Jogada (argmax N)</div><div class="v" id="sA">—</div></div>
+      <div class="stat"><div class="k">Arrependimento</div><div class="v" id="sR">—</div></div>
+    </div>
+    <p class="nota" id="diag"></p>
+  </div>
+
+  <div class="card">
+    <h2>Árvore construída</h2>
+    <svg id="tree" viewBox="0 0 900 380" preserveAspectRatio="xMidYMid meet"></svg>
+    <div class="legenda">
+      <span><i style="background:#E8590C"></i>caminho principal (mais visitado)</span>
+      <span><i style="background:#16324F"></i>nó expandido — raio ∝ √visitas</span>
+      <span><i style="background:#18808D"></i>ação ótima verdadeira na raiz</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Estatísticas na raiz</h2>
+    <table id="tab">
+      <thead><tr><th>Ação</th><th>N(raiz,a)</th><th>Q̂</th><th>Bônus</th>
+      <th>Escore</th><th>Prior</th><th>V* real</th><th style="width:150px">Visitas</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <p class="nota" id="conc"></p>
+  </div>
+
+  <div class="card">
+    <h2>Roteiro do laboratório</h2>
+    <details open>
+      <summary>1. Por que a árvore é assimétrica</summary>
+      <p>Com os valores padrão, rode 200 simulações. Repare que a maior parte dos nós está
+      concentrada em um ou dois ramos. Agora ponha <code>c = 0</code> e reinicie: a busca vira
+      puramente gulosa e trava no primeiro ramo que der sorte. Suba <code>c</code> para 3,0 e
+      reinicie: a árvore fica larga e rasa. O valor útil de <code>c</code> depende da escala dos
+      retornos — aqui eles vivem em [0,1].</p>
+    </details>
+    <details>
+      <summary>2. Visitas contra valor médio (Exercício 13.3)</summary>
+      <p>Rode apenas 30 simulações e olhe a tabela: com frequência a ação de maior <b>Q̂</b> não é
+      a de maior <b>N</b>, porque um ramo pouco visitado teve sorte em um rollout. A regra de saída
+      do MCTS devolve <code>argmax N</code> justamente por isso. Aumente o ruído do rollout para
+      ver o efeito piorar.</p>
+    </details>
+    <details>
+      <summary>3. O prior poda a busca (Exercício 13.4)</summary>
+      <p>Aumente a ramificação para 6 e a profundidade para 5. Com <b>UCT</b>, a busca gasta muitas
+      simulações só para tocar cada filho uma vez. Troque para <b>PUCT</b> com prior de qualidade
+      alta: a mesma quantidade de simulações agora chega muito mais fundo. Depois derrube a
+      qualidade do prior para 0 — um prior ruim é pior que nenhum, porque poda o ramo certo.</p>
+    </details>
+    <details>
+      <summary>4. Agulha no palheiro — onde o UCT falha</summary>
+      <p>Troque a estrutura de recompensa para <b>agulha</b>. Só uma sequência de ações leva à
+      recompensa alta; todo o resto é aproximadamente igual. Rode 500 simulações com UCT e veja o
+      arrependimento não cair. É o cenário de Coquelin e Munos (2007): as médias dentro da árvore
+      não são estacionárias, e o bônus logarítmico do UCB não compensa isso. Um prior informativo
+      resolve na hora — que é exatamente o argumento do AlphaZero.</p>
+    </details>
+    <details>
+      <summary>5. Rollout contra rede de valor</summary>
+      <p>Com rollout aleatório, a estimativa da folha é quase pura sorte em profundidade alta.
+      Troque para <b>rede de valor</b>: a estimativa passa a ser o valor ótimo do nó mais um ruído
+      pequeno. Compare o arrependimento com o mesmo orçamento. É essa troca que o AlphaGo Zero
+      fez ao eliminar os rollouts.</p>
+    </details>
+  </div>
+</div>
+</div>
+</main>
+
+<footer>
+Material do curso de Aprendizagem por Reforço — Prof. Marcelo Keese Albertini, Faculdade de
+Computação, UFU. Adaptado e expandido de <i>CS234: Reinforcement Learning</i>, Emma Brunskill,
+Stanford University (Lecture 13).
+</footer>
+
+<script>
+"use strict";
+
+/* ---------- gerador determinístico ---------- */
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
+  t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function gauss(rng){let u=1-rng(),v=rng();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)}
+
+/* ---------- domínio: árvore sintética ---------- */
+let B=3, D=4, MODO="suave", SIG=0.15, RNG=mulberry(20260813);
+let Vstar=null;              // valor ótimo por caminho (memo)
+let leafRng=mulberry(777);
+
+function leafValue(path){    // valor determinístico da folha, função do caminho
+  let h=2166136261;
+  for(const a of path){h^=(a+1);h=Math.imul(h,16777619)}
+  const u=((h>>>0)%100000)/100000;
+  if(MODO==="suave") return 0.15+0.7*u;
+  // agulha: só o caminho "todo zero" vale muito
+  const agulha=path.every(a=>a===0);
+  return agulha?0.95:0.30+0.10*u;
+}
+function optValue(path){     // valor ótimo do nó (max sobre folhas descendentes)
+  if(path.length===D) return leafValue(path);
+  let m=-1;
+  for(let a=0;a<B;a++) m=Math.max(m,optValue(path.concat(a)));
+  return m;
+}
+function rollout(path){      // simulação até a folha com política uniforme
+  let p=path.slice();
+  while(p.length<D) p.push(Math.floor(RNG()*B));
+  return Math.max(0,Math.min(1,leafValue(p)+SIG*gauss(RNG)));
+}
+function valueNet(path){     // "rede de valor": ótimo + ruído pequeno
+  return Math.max(0,Math.min(1,optValue(path)+0.35*SIG*gauss(RNG)));
+}
+
+/* ---------- prior de política ---------- */
+function prior(path){
+  const q=+document.getElementById("pq").value/100;   // 0 = uniforme, 1 = quase perfeito
+  const v=[]; let s=0;
+  for(let a=0;a<B;a++){const x=Math.exp((optValue(path.concat(a))-0.5)*12*q); v.push(x); s+=x}
+  return v.map(x=>x/s);
+}
+
+/* ---------- árvore de busca ---------- */
+let root=null, nodes=0, sims=0;
+function novoNo(path){
+  return {path, N:0, W:0, filhos:new Array(B).fill(null),
+          Nc:new Array(B).fill(0), Wc:new Array(B).fill(0),
+          P:null, expandido:false};
+}
+function reset(){
+  B=+document.getElementById("b").value;
+  D=+document.getElementById("d").value;
+  MODO=document.getElementById("modo").value;
+  SIG=+document.getElementById("sig").value/100;
+  RNG=mulberry(20260813);
+  root=novoNo([]); nodes=1; sims=0;
+  Vstar=[]; for(let a=0;a<B;a++) Vstar.push(optValue([a]));
+  render();
+}
+
+function escore(no,a,regra,c){
+  const n=no.Nc[a], q=n>0?no.Wc[a]/n:0;
+  if(regra==="puct"){
+    if(!no.P) no.P=prior(no.path);
+    return {q, bonus:c*no.P[a]*Math.sqrt(no.N)/(1+n), n};
+  }
+  if(n===0) return {q:0, bonus:Infinity, n:0};
+  return {q, bonus:c*Math.sqrt(Math.log(Math.max(1,no.N))/n), n};
+}
+
+function simular(){
+  const regra=document.getElementById("regra").value;
+  const c=+document.getElementById("c").value/100;
+  const aval=document.getElementById("aval").value;
+  const caminho=[]; let no=root;
+
+  while(true){
+    if(no.path.length===D){ break }
+    let melhor=-Infinity, esc=-1;
+    for(let a=0;a<B;a++){
+      const e=escore(no,a,regra,c);
+      const s=(e.bonus===Infinity)?1e9+RNG():e.q+e.bonus;
+      if(s>melhor){melhor=s;esc=a}
+    }
+    caminho.push([no,esc]);
+    if(!no.filhos[esc]){                       // EXPANSÃO
+      no.filhos[esc]=novoNo(no.path.concat(esc)); nodes++;
+      no=no.filhos[esc];
+      break;
+    }
+    no=no.filhos[esc];
+  }
+
+  // SIMULAÇÃO
+  const G = (no.path.length===D) ? leafValue(no.path)
+          : (aval==="valor" ? valueNet(no.path) : rollout(no.path));
+
+  // RETROPROPAGAÇÃO
+  no.N++; no.W+=G;
+  for(const [pai,a] of caminho){ pai.N++; pai.W+=G; pai.Nc[a]++; pai.Wc[a]+=G }
+  sims++;
+}
+
+/* ---------- desenho da árvore ---------- */
+function render(){
+  const svg=document.getElementById("tree");
+  const W=900,H=380,mx=30,my=26;
+  let out="";
+  // coleta por nível
+  const niveis=[]; for(let k=0;k<=D;k++) niveis.push([]);
+  (function walk(n){ niveis[n.path.length].push(n);
+    for(const f of n.filhos) if(f) walk(f) })(root);
+
+  const dy=(H-2*my)/Math.max(1,D);
+  const pos=new Map();
+  niveis.forEach((lst,k)=>{
+    lst.sort((p,q)=>q.N-p.N);
+    const m=lst.length, y=my+k*dy;
+    lst.forEach((n,i)=>{ pos.set(n,[mx+(W-2*mx)*((i+0.5)/m), y]) });
+  });
+
+  const melhorRaiz=argmaxN(root);
+  const otimaRaiz=Vstar?Vstar.indexOf(Math.max(...Vstar)):-1;
+  const maxN=Math.max(1,root.N);
+
+  // arestas
+  (function edges(n){
+    const [x,y]=pos.get(n);
+    n.filhos.forEach((f,a)=>{ if(!f)return;
+      const [fx,fy]=pos.get(f);
+      const principal = (n===root && a===melhorRaiz);
+      const w=0.6+2.6*Math.sqrt(n.Nc[a]/maxN);
+      out+=`<path d="M${x} ${y} C ${x} ${(y+fy)/2}, ${fx} ${(y+fy)/2}, ${fx} ${fy}"
+        fill="none" stroke="${principal?'#E8590C':'#B9C4D0'}" stroke-width="${w.toFixed(2)}"
+        opacity="${principal?0.95:0.7}"/>`;
+      edges(f);
+    });
+  })(root);
+
+  // nós
+  (function draw(n){
+    const [x,y]=pos.get(n);
+    const r=3.2+7.5*Math.sqrt(n.N/maxN);
+    const q=n.N>0?n.W/n.N:0;
+    const raizFilho=(n.path.length===1);
+    const cor = raizFilho && n.path[0]===otimaRaiz ? "#18808D" : "#16324F";
+    out+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(1)}"
+      fill="${cor}" fill-opacity="${(0.15+0.75*q).toFixed(2)}" stroke="${cor}"
+      stroke-width="1.1"/>`;
+    for(const f of n.filhos) if(f) draw(f);
+  })(root);
+
+  for(let k=0;k<=D;k++){
+    out+=`<text x="6" y="${(my+k*dy+3.5).toFixed(1)}" font-size="10" fill="#9AA7B4">${k}</text>`;
+  }
+  svg.innerHTML=out;
+  tabela();
+}
+
+function argmaxN(n){let b=-1,m=-1;for(let a=0;a<B;a++) if(n.Nc[a]>m){m=n.Nc[a];b=a} return b}
+
+function tabela(){
+  const regra=document.getElementById("regra").value;
+  const c=+document.getElementById("c").value/100;
+  const tb=document.querySelector("#tab tbody"); let html="";
+  const bestN=argmaxN(root);
+  let bestQ=-1,mq=-Infinity;
+  for(let a=0;a<B;a++){const q=root.Nc[a]>0?root.Wc[a]/root.Nc[a]:-1; if(q>mq){mq=q;bestQ=a}}
+  const otima=Vstar.indexOf(Math.max(...Vstar));
+  const maxN=Math.max(1,...root.Nc);
+
+  for(let a=0;a<B;a++){
+    const e=escore(root,a,regra,c);
+    const bon=(e.bonus===Infinity)?"∞":e.bonus.toFixed(3);
+    const sc=(e.bonus===Infinity)?"∞":(e.q+e.bonus).toFixed(3);
+    const p=(regra==="puct"&&root.P)?root.P[a].toFixed(3):"—";
+    html+=`<tr class="${a===bestN?'best':''}">
+      <td>a<sub>${a+1}</sub>${a===otima?' <span class="pill ok">ótima</span>':''}</td>
+      <td>${root.Nc[a]}</td><td>${root.Nc[a]>0?e.q.toFixed(3):'—'}</td>
+      <td>${bon}</td><td>${sc}</td><td>${p}</td><td>${Vstar[a].toFixed(3)}</td>
+      <td><span class="bar" style="width:${(100*root.Nc[a]/maxN).toFixed(0)}%"></span></td></tr>`;
+  }
+  tb.innerHTML=html;
+
+  const reg=Math.max(...Vstar)-Vstar[bestN>=0?bestN:0];
+  document.getElementById("sK").textContent=sims;
+  document.getElementById("sN").textContent=nodes;
+  document.getElementById("sA").textContent=bestN>=0&&root.Nc[bestN]>0?("a"+(bestN+1)):"—";
+  document.getElementById("sR").textContent=root.N>0?reg.toFixed(3):"—";
+
+  const concorda = bestN===bestQ;
+  document.getElementById("conc").innerHTML =
+    root.N===0 ? "Rode alguma simulação para preencher a tabela."
+    : `Regra de saída: <b>argmax N = a${bestN+1}</b>. Regra de maior valor médio:
+       <b>argmax Q̂ = a${bestQ+1}</b>. ${concorda
+       ? '<span class="pill">as duas concordam</span>'
+       : '<span class="pill no">as duas discordam — é o Exercício 13.3 acontecendo</span>'}`;
+
+  document.getElementById("diag").innerHTML =
+    root.N===0 ? "Árvore vazia."
+    : `A busca escolheria <b>a${bestN+1}</b>; a ação verdadeiramente ótima é
+       <b>a${otima+1}</b> (V* = ${Math.max(...Vstar).toFixed(3)}).
+       ${bestN===otima?'<span class="pill ok">decisão correta</span>'
+                      :'<span class="pill no">decisão subótima</span>'}
+       &nbsp;·&nbsp; profundidade média alcançada:
+       <b>${(profundidadeMedia()).toFixed(2)}</b> de ${D}.`;
+}
+
+function profundidadeMedia(){
+  let soma=0,tot=0;
+  (function w(n){ soma+=n.path.length*n.N; tot+=n.N; for(const f of n.filhos) if(f) w(f) })(root);
+  return tot>0?soma/tot:0;
+}
+
+/* ---------- interface ---------- */
+const $=id=>document.getElementById(id);
+function rotulos(){
+  $("lb").textContent=$("b").value;
+  $("ld").textContent=$("d").value;
+  $("lc").textContent=(+$("c").value/100).toFixed(2).replace(".",",");
+  $("lsig").textContent=(+$("sig").value/100).toFixed(2).replace(".",",");
+  const q=+$("pq").value;
+  $("lpq").textContent = q<20?"uniforme":q<45?"fraca":q<70?"média":q<90?"alta":"quase perfeita";
+  const puct=$("regra").value==="puct";
+  $("aviso").innerHTML = puct
+    ? "PUCT usa o prior no bônus. Com qualidade 0 o prior é uniforme e o efeito some."
+    : "UCT ignora o prior — o controle de qualidade abaixo não tem efeito nesta regra.";
+}
+["b","d","modo","sig"].forEach(id=>$(id).addEventListener("input",()=>{rotulos();reset()}));
+["c","pq","regra","aval"].forEach(id=>$(id).addEventListener("input",()=>{rotulos();render()}));
+$("step").onclick=()=>{simular();render()};
+$("s10").onclick=()=>{for(let i=0;i<10;i++)simular();render()};
+$("reset").onclick=reset;
+$("run").onclick=function(){
+  const btn=this; btn.disabled=true; let feitas=0;
+  (function lote(){
+    for(let i=0;i<20;i++) simular();
+    feitas+=20; render();
+    if(feitas<200) requestAnimationFrame(lote); else btn.disabled=false;
+  })();
+};
+rotulos(); reset();
+</script>
+</body>
+</html>
