@@ -1,0 +1,908 @@
+%% ============================================================
+%%  handout08.tex — Resumo da Aula 8
+%%  Aprendizagem por imitação, aprendizado de recompensa e RLHF
+%%  Aprendizagem por Reforço · UFU · Prof. Marcelo Keese Albertini
+%%  Compilar com XeLaTeX (2x) — latexmk -xelatex handout08.tex
+%% ============================================================
+\documentclass[11pt, a4paper]{article}
+
+\usepackage{handoutAprendizadoRL}
+\usepackage{babel}
+\babelprovide[import, main]{brazilian}
+
+\setlength{\emergencystretch}{3em}
+\hyphenation{Bradley--Terry apren-di-za-gem re-com-pen-sa pre-fe-rên-cias es-ta-tis-ti-ca-men-te Rein-for-ce-ment Op-ti-mi-za-tion In-struc-tions}
+
+\setaula{Aula 8}
+\setprof{Prof. Marcelo Keese Albertini}
+
+%% Macros locais desta aula
+\newcommand{\thv}{\theta}
+\newcommand{\polth}{\pol_{\thv}}
+\newcommand{\polE}{\pol^{E}}
+\newcommand{\pref}{\pol_{\mathrm{ref}}}
+\newcommand{\psft}{\pol_{\mathrm{SFT}}}
+\newcommand{\rphi}{r_{\phi}}
+\newcommand{\Dset}{\mathcal{D}}
+\newcommand{\traj}{\tau}
+\newcommand{\yw}{y_{w}}
+\newcommand{\yl}{y_{\ell}}
+\newcommand{\KLd}[2]{\mathrm{KL}\!\left(#1 \,\middle\|\, #2\right)}
+\newcommand{\sig}{\sigma}
+\newcommand{\gth}{\nabla_{\thv}}
+\newcommand{\Qhat}{\hat{Q}}
+
+\begin{document}
+
+\capa{Aprendizagem por imitação, aprendizado de recompensa e RLHF}
+     {Erros compostos \textbullet\ DAGGER \textbullet\ RL inverso \textbullet\ Bradley--Terry \textbullet\ RLHF \textbullet\ DPO}
+     {Prof. Marcelo Keese Albertini}
+     {Adaptado e expandido de CS234 --- \emph{Reinforcement Learning}, Emma Brunskill, Stanford University}
+
+\section{De onde vem a recompensa}
+
+Em todas as aulas anteriores a função de recompensa $\rec$ era um dado do
+problema. Escrevíamos $\rec(s,a)$, e todo o restante --- programação dinâmica,
+Q-learning, gradiente de política --- consistia em \emph{maximizá-la}. Esta aula
+retira essa premissa. O que fazer quando ninguém sabe escrever a recompensa?
+
+Há três respostas, e elas organizam a aula:
+
+\begin{enumerate}
+  \item \textbf{Copiar quem sabe fazer.} É a aprendizagem por imitação. Simples,
+    e com um modo de falha específico que estudaremos com cuidado: o erro cresce
+    com o \emph{quadrado} do horizonte.
+  \item \textbf{Inferir a recompensa a partir do comportamento.} É o
+    aprendizado por reforço inverso. Mais ambicioso, porque a recompensa é
+    transferível --- e mal posto, porque infinitas recompensas explicam os
+    mesmos dados.
+  \item \textbf{Perguntar a pessoas o que elas preferem.} É o caminho que
+    produziu o RLHF e o DPO. Explora uma assimetria: escrever uma boa resposta é
+    difícil; reconhecer qual de duas é melhor, nem tanto.
+\end{enumerate}
+
+\begin{ideiabox}
+Um fio percorre a aula inteira e vale ser dito desde já: \textbf{a recompensa
+nunca é identificável sozinha}. Ela aparece três vezes --- no RL inverso, no
+modelo de Bradley--Terry e no DPO --- sempre determinada apenas a menos de
+transformações que não alteram o comportamento ótimo. Reconhecer essa
+regularidade organiza metade do conteúdo.
+\end{ideiabox}
+
+\section{Aprendizagem por imitação}
+
+\subsection{O problema}
+
+\begin{defbox}{Aprendizagem por imitação}
+São dados os espaços $\gS$ e $\gA$, possivelmente um modelo de transição
+$\tran{s'}{s,a}$, e um conjunto de demonstrações
+\[
+  \Dset = \bigl\{(s_0, a_0, s_1, a_1, \dots)\bigr\},
+  \qquad a_t \sim \polE(\cdot \mid s_t),
+\]
+produzidas por um especialista $\polE$. \textbf{Não há função de recompensa.} O
+objetivo é obter uma política cujo desempenho se aproxime do de $\polE$.
+\end{defbox}
+
+A abordagem mais direta, vista na aula anterior, é a \textbf{clonagem de
+comportamento}: tratar o problema como classificação supervisionada, aprendendo
+$\pol(a\mid s)$ que minimize uma perda sobre os pares $(s,a)$ observados. É o
+que faz o ALVINN de 1989 (uma rede de duas camadas que dirigia um furgão) e o
+que faz a etapa de \emph{ajuste por instruções} de um modelo de linguagem
+moderno --- separadas por trinta e cinco anos, é o mesmo algoritmo.
+
+\subsection{A hipótese emprestada, e por que ela falha}
+
+Aprendizado supervisionado supõe pares $(x,y)$ independentes e identicamente
+distribuídos, extraídos da \emph{mesma} distribuição no treino e no teste. Num
+MDP, isso é falso duas vezes. Os estados de uma trajetória são dependentes no
+tempo, e --- o que é mais grave --- a distribuição de estados depende da
+política que os gera:
+\[
+  \text{treino: } s_t \sim d^{\polE},
+  \qquad
+  \text{teste: } s_t \sim d^{\pol}.
+\]
+
+O classificador é bom onde há dados, isto é, onde o especialista esteve. Basta
+um erro para que o agente saia dessa região, e ali não existe garantia alguma.
+Pior: fora da região, a política tende a errar mais, o que a leva ainda mais
+longe. O erro se \textbf{realimenta}.
+
+\begin{alertabox}
+Esta é a diferença estrutural entre imitação e classificação, e não uma
+dificuldade prática contornável com engenharia. Em aprendizado supervisionado, o
+conjunto de teste é fixo. Em imitação, \emph{as ações do aluno determinam quais
+perguntas cairão na prova}.
+\end{alertabox}
+
+\subsection{Contabilizando os erros}
+
+\textbf{Caso benigno.} Suponha que a política erre com probabilidade
+$\varepsilon$ em cada passo e que um erro \emph{não} afete os estados seguintes
+--- como se um mecanismo externo devolvesse o agente ao trilho. Por linearidade
+da esperança,
+\[
+  \E[\text{total de erros}] \le \varepsilon\, T .
+\]
+Custo linear no horizonte, exatamente o que a intuição supervisionada prevê.
+
+\textbf{Caso real.} Se um erro em $t$ leva a um estado fora do suporte dos dados,
+a suposição pessimista é que todos os $T-t$ passos restantes fiquem
+comprometidos. Somando sobre o instante em que o primeiro erro ocorre:
+\[
+  \E[\text{total de erros}] \;\lesssim\;
+  \varepsilon\bigl(T + (T-1) + \dots + 1\bigr)
+  = \varepsilon\,\frac{T(T+1)}{2}
+  \;=\; O\bigl(\varepsilon\,T^{2}\bigr).
+\]
+
+\begin{provabox}
+O argumento acima é heurístico e serve para fixar o expoente; o resultado formal
+é o Teorema 2.1 de Ross \& Bagnell (AISTATS 2010). Enunciado em termos de custo
+esperado $J$, com $\ell$ a perda de classificação $0$--$1$ sob a distribuição do
+especialista e custo por passo limitado por $1$:
+\[
+  J(\hat\pol) \;\le\; J(\polE) + T^{2}\,\varepsilon,
+  \qquad \varepsilon = \E_{s\sim d^{\polE}}\bigl[\ell(s,\hat\pol)\bigr].
+\]
+O fator $T^2$ não é frouxidão da análise: existe uma família de MDPs em que ele
+é atingido. A construção usa um estado ``absorvente ruim'' alcançável por um
+único erro, e do qual o especialista nunca demonstrou como sair --- precisamente
+porque ele nunca erra.
+\end{provabox}
+
+Os números tornam a diferença concreta. Com $\varepsilon = 1\%$ e $T = 1000$
+passos, o caso benigno prevê $10$ erros; o caso real, da ordem de $10^{4}$. Uma
+política com $99\%$ de acurácia de classificação é, em uma tarefa sequencial
+longa, inutilizável.
+
+\begin{discbox}
+Um sistema de direção autônoma treinado por clonagem sai da pista após alguns
+minutos. A equipe propõe coletar dez vezes mais demonstrações do motorista
+humano. Discuta: em que sentido isso ajuda, em que sentido não ajuda, e que
+tipo de dado adicional atacaria a causa em vez do sintoma.
+\end{discbox}
+
+\subsection{DAGGER: rotular onde a política realmente vai}
+
+A leitura correta do problema aponta o remédio. Se a dificuldade é que a política
+visita estados sobre os quais não há dados, então é preciso obter rótulos do
+especialista \emph{exatamente nesses estados}.
+
+\begin{algbox}{DAGGER --- \emph{Dataset Aggregation} (Ross, Gordon \& Bagnell, 2011)}
+\begin{itemize}
+  \item Inicialize $\Dset \leftarrow \emptyset$ e $\pol_1$ (o próprio $\polE$, ou
+    uma clonagem inicial).
+  \item \textbf{para} $i = 1,\dots,N$:
+    \begin{itemize}
+      \item defina a política de amostragem
+        $\hat\pol_i = \beta_i\,\polE + (1-\beta_i)\,\pol_i$, com $\beta_i \to 0$;
+      \item execute $\hat\pol_i$ e registre os estados visitados;
+      \item consulte o especialista em cada estado visitado, formando
+        $\Dset_i = \{(s, \polE(s))\}$;
+      \item agregue $\Dset \leftarrow \Dset \cup \Dset_i$;
+      \item treine $\pol_{i+1}$ minimizando a perda de classificação sobre
+        \emph{todo} o $\Dset$ acumulado.
+    \end{itemize}
+  \item Devolva a melhor $\pol_i$ segundo um conjunto de validação.
+\end{itemize}
+\end{algbox}
+
+Formalmente, o DAGGER é uma redução do problema de imitação a aprendizado
+\emph{online} sem arrependimento: cada iteração é uma rodada de um jogo em que o
+aprendiz escolhe uma política e o adversário escolhe a distribuição de estados.
+Um algoritmo sem arrependimento (\emph{follow the leader} sobre o conjunto
+agregado é suficiente) garante que exista $i$ com
+\[
+  J(\pol_i) \;\le\; J(\polE) + O(T\varepsilon) + o(1),
+\]
+recuperando a dependência \emph{linear} em $T$. A agregação --- treinar sempre
+sobre todo o histórico, e não apenas sobre o lote mais recente --- é o que torna
+o algoritmo estável; treinar só sobre $\Dset_i$ produz oscilação.
+
+\begin{ideiabox}
+O papel da mistura $\beta_i$: nas primeiras iterações $\pol_i$ ainda é ruim, e
+executá-la pura significa passar todo o tempo em estados catastróficos, dos
+quais se aprende pouco. É a lógica do instrutor de autoescola que mantém a mão
+no volante no início e a retira gradualmente.
+\end{ideiabox}
+
+\begin{alertabox}
+\textbf{O preço do DAGGER.} Ele exige um especialista disponível durante todo o
+treinamento, capaz de rotular estados arbitrários sob demanda. Três consequências
+tornam isso proibitivo em escala:
+\begin{itemize}
+  \item \textbf{custo} --- a supervisão humana passa a escalar com o número de
+    estados visitados, não com o número de demonstrações;
+  \item \textbf{contexto} --- perguntar a uma pessoa ``o que você faria
+    \emph{agora}?'' diante de um quadro congelado, sem o histórico que a levaria
+    até ali, produz rótulos de qualidade duvidosa;
+  \item \textbf{segurança} --- para rotular um estado é preciso visitá-lo, e
+    alguns estados não devem ser visitados nem uma vez.
+\end{itemize}
+\end{alertabox}
+
+\subsection{Comparação}
+
+\begin{center}\small
+\begin{tabular}{@{}p{0.28\linewidth}p{0.21\linewidth}p{0.2\linewidth}p{0.21\linewidth}@{}}
+\toprule
+& \textbf{Clonagem} & \textbf{DAGGER} & \textbf{RL inverso}\\
+\midrule
+Erro no horizonte & $O(\varepsilon T^2)$ & $O(\varepsilon T)$ & depende do planejador\\
+Interage com o ambiente & não & sim & sim\\
+Especialista durante o treino & não & \textbf{sim} & não\\
+O que produz & política & política & \textbf{recompensa}\\
+Transfere para nova dinâmica & não & não & \textbf{sim}\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+A última linha é o argumento decisivo a favor de aprender a recompensa: ela é a
+descrição mais compacta e transferível de uma tarefa. Troque o veículo, a
+estrada ou o corpo do robô e a política precisa ser refeita do zero; a
+\emph{intenção} permanece.
+
+\section{Aprendizado de recompensa (RL inverso)}
+
+\subsection{Formulação e não-identificabilidade}
+
+\begin{defbox}{Aprendizado por reforço inverso}
+Dados $\gS$, $\gA$, o modelo $\tran{s'}{s,a}$ e demonstrações de $\polE$, mas
+sem $\rec$: inferir uma função de recompensa sob a qual o comportamento
+observado seja ótimo.
+\end{defbox}
+
+A primeira pergunta a fazer é de identificabilidade, e a resposta é
+desconfortável: \textbf{existe um conjunto infinito de recompensas compatíveis}.
+O contraexemplo mais brutal é $\rec \equiv 0$, sob a qual toda política é ótima
+--- inclusive a do especialista. Há três fontes distintas de ambiguidade, e vale
+separá-las:
+
+\begin{enumerate}
+  \item \textbf{Degenerescência.} Qualquer recompensa constante explica qualquer
+    comportamento.
+  \item \textbf{Escala.} Se $\rec$ explica $\polE$, então $c\,\rec$ com $c>0$
+    também: multiplicar por uma constante positiva não altera nenhum
+    $\argmax$.
+  \item \textbf{Modelagem por potencial.} Para qualquer $\Phi:\gS\to\R$,
+    \[
+      \rec'(s,a,s') = \rec(s,a,s') + \gamma\,\Phi(s') - \Phi(s)
+    \]
+    induz \emph{exatamente} o mesmo conjunto de políticas ótimas
+    (Ng, Harada \& Russell, 1999).
+\end{enumerate}
+
+\begin{provabox}
+A invariância 3 é imediata quando se olha o retorno. Ao longo de uma trajetória,
+os termos de potencial telescopam:
+\[
+  \sum_{t=0}^{T-1}\gamma^{t}\bigl(\gamma\Phi(s_{t+1}) - \Phi(s_t)\bigr)
+  = \gamma^{T}\Phi(s_T) - \Phi(s_0).
+\]
+O retorno sob $\rec'$ difere do retorno sob $\rec$ por $-\Phi(s_0)$, que não
+depende da política, e por $\gamma^{T}\Phi(s_T)$, que desaparece quando
+$T\to\infty$ com $\gamma<1$ ou quando $\Phi$ se anula nos estados terminais.
+Ordenações entre políticas ficam preservadas. \hfill$\square$
+\end{provabox}
+
+\begin{ideiabox}
+Reter a invariância 2: ela reaparecerá idêntica no modelo de Bradley--Terry, onde
+a recompensa latente só é determinada a menos de uma constante aditiva. É a razão
+técnica pela qual o valor absoluto devolvido pelo modelo de recompensa de um LLM
+não significa nada isoladamente.
+\end{ideiabox}
+
+\subsection{Estrutura: recompensa linear em atributos}
+
+Escolher entre infinitas soluções exige impor estrutura. A hipótese clássica é
+linearidade em um vetor de atributos conhecido $x(s)\in\R^{n}$, com
+$\rec(s) = w^{\!\top}x(s)$. O valor de uma política vira então um produto
+interno com a \textbf{esperança de atributos descontada}:
+\[
+  \Vpi = \E\Bigl[\sum_{t\ge0}\gamma^{t} w^{\!\top}x(s_t)\Bigm|\pol\Bigr]
+       = w^{\!\top}\underbrace{\E\Bigl[\sum_{t\ge0}\gamma^{t}x(s_t)\Bigm|\pol\Bigr]}_{\textstyle \mu(\pol)}
+       = w^{\!\top}\mu(\pol).
+\]
+
+\begin{teobox}{Casar atributos basta}
+Se $\norm{w}_1 \le 1$ e $\norm{\mu(\pol)-\mu(\polE)}_1 \le \epsilon$, então
+\[
+  \bigl\lvert w^{\!\top}\mu(\pol) - w^{\!\top}\mu(\polE)\bigr\rvert
+  \;\le\; \norm{w}_{\infty}\norm{\mu(\pol)-\mu(\polE)}_{1} \;\le\; \epsilon
+\]
+para \emph{todo} $w$ admissível. Ou seja: não é preciso identificar $w$; basta
+igualar as esperanças de atributos.
+\end{teobox}
+
+Isso muda a natureza do problema. Em vez de descobrir ``o que o especialista
+queria'', basta comportar-se como ele estatisticamente, atributo por atributo.
+O preço é que a qualidade do resultado passa a depender inteiramente da escolha
+dos atributos --- se $x(\cdot)$ não captura a dimensão relevante da tarefa,
+nenhum algoritmo a recuperará.
+
+\subsection{Desempate: máxima entropia}
+
+Muitas distribuições sobre trajetórias casam as esperanças de atributos. O
+princípio da máxima entropia escolhe a \emph{menos comprometida} com o que não
+foi observado:
+\[
+  \max_{P}\; -\sum_{\traj}P(\traj)\log P(\traj)
+  \quad\text{s.a.}\quad
+  \sum_{\traj}P(\traj)\,x(\traj) = \tilde{x}_{E},
+  \qquad \sum_{\traj}P(\traj)=1 .
+\]
+
+\begin{provabox}
+Formando o lagrangiano
+$\mathcal{L} = -\sum_\traj P\log P + w^{\!\top}\bigl(\tilde x_E - \sum_\traj P\,x(\traj)\bigr) + \lambda\bigl(1-\sum_\traj P\bigr)$
+e anulando $\partial\mathcal{L}/\partial P(\traj)$:
+\[
+  -\log P(\traj) - 1 - w^{\!\top}x(\traj) - \lambda = 0
+  \;\Longrightarrow\;
+  P(\traj) \propto \exp\bigl(w^{\!\top}x(\traj)\bigr).
+\]
+(O sinal de $w$ é convenção; absorvendo-o, obtém-se a forma usual.) Normalizando,
+\[
+  P(\traj\mid w) = \frac{1}{Z(w)}\exp\bigl(w^{\!\top}x(\traj)\bigr),
+  \qquad x(\traj) = \sum_t \gamma^{t}x(s_t). \hfill\square
+\]
+\end{provabox}
+
+A leitura é importante: o especialista é tratado como \textbf{aproximadamente}
+ótimo. Trajetórias melhores são exponencialmente mais prováveis, mas erros não
+são impossíveis --- uma descrição muito mais fiel de uma pessoa do que a
+hipótese de otimalidade exata.
+
+Ajusta-se $w$ por máxima verossimilhança, e o gradiente tem forma memorável:
+\[
+  \nabla_w \mathcal{L}
+  = \underbrace{\tilde x_{E}}_{\text{atributos observados}}
+  - \underbrace{\E_{\traj\sim P(\cdot\mid w)}\bigl[x(\traj)\bigr]}_{\text{atributos previstos pelo modelo}}
+\]
+--- ``observado menos esperado'', a mesma forma do gradiente de qualquer família
+exponencial (e a mesma que apareceu no escore da política softmax, na Aula 5).
+
+\begin{alertabox}
+O termo de esperança exige \emph{resolver o MDP inteiro} a cada passo de
+gradiente, para obter as frequências de visita sob a recompensa corrente. É o
+gargalo do método. Guided Cost Learning (Finn et al., 2016) o substitui por
+amostragem por importância com uma política treinada em paralelo, e ao fazê-lo
+revela a equivalência estrutural com redes adversárias: a recompensa
+desempenha o papel do discriminador, e a política, o do gerador.
+\end{alertabox}
+
+\begin{discbox}
+Imitação pressupõe alguém que \emph{sabe executar} a tarefa. Enumere domínios em
+que existem avaliadores competentes mas não executores competentes. O que muda
+metodologicamente quando o especialista sabe julgar, mas não sabe fazer?
+\end{discbox}
+
+\section{Preferências humanas}
+
+\subsection{O espectro de esforço}
+
+Há muitas formas de uma pessoa ajudar a treinar um agente, e elas se ordenam
+naturalmente pelo esforço exigido:
+
+\begin{center}
+\begin{tikzpicture}[font=\scriptsize]
+  \draw[trans, very thick, rlCinza] (0,0) -- (12,0);
+  \node[below, text=rlCinza] at (6,-1.05) {\textbf{esforço humano} $\longrightarrow$};
+  \foreach \x/\rot/\cor in {
+    1.8/{Demonstrações\\ (coletadas uma vez)}/rlAzulClaro,
+    6.0/{Rótulos par a par\\ (baratos, repetíveis)}/rlLaranja,
+    10.2/{DAGGER / ensino\\ constante}/rlVermelho}{
+    \fill[\cor] (\x,0) circle (3pt);
+    \draw[\cor, thick] (\x,0) -- ++(0,0.5);
+    \node[above, text=\cor, align=center, text width=30mm] at (\x,0.5) {\rot};}
+  \node[below, text width=32mm, align=center, text=rlCinza] at (1.8,-0.12)
+    {só vale no suporte dos dados};
+  \node[below, text width=32mm, align=center, text=rlLaranja] at (6.0,-0.12)
+    {\textbf{ponto de equilíbrio}};
+  \node[below, text width=32mm, align=center, text=rlCinza] at (10.2,-0.12)
+    {não escala};
+\end{tikzpicture}
+\end{center}
+
+A tentativa histórica de pedir \emph{números} diretamente --- TAMER (Knox \&
+Stone, 2008), em que a pessoa aperta ``bom'' ou ``ruim'' enquanto o agente age
+--- esbarra em três dificuldades. \textbf{Calibração}: o ``7'' de uma pessoa não
+é o de outra, nem o dela mesma na semana seguinte. \textbf{Ruído}: julgamentos
+absolutos têm variância alta. \textbf{Esforço}: exige atenção contínua. Estudos
+com robôs ensináveis (Thomaz \& Breazeal, 2008) mostraram ainda que as pessoas
+não usam o canal de recompensa como a teoria de RL supõe: elas antecipam, premiam
+intenção e tentam \emph{orientar} em vez de apenas avaliar --- comportamento que
+viola frontalmente o modelo formal.
+
+A saída, conhecida em psicometria muito antes de existir aprendizado de máquina:
+não pergunte \emph{quanto}; pergunte \emph{qual dos dois}. Comparações par a par
+exigem só um julgamento relativo, que é estável entre avaliadores e barato de
+coletar. Quando o custo por consulta importa, é possível ainda \emph{escolher}
+quais pares apresentar, maximizando informação --- aprendizado ativo de
+preferências (Sadigh et al., RSS 2017).
+
+O que se perde é a escala. Comparações fornecem apenas uma \emph{ordem}, e RL
+precisa de um \emph{número}. Reconstruir a escala a partir da ordem é exatamente
+o papel do modelo a seguir.
+
+\subsection{O modelo de Bradley--Terry}
+
+\needspace{9\baselineskip}
+\begin{defbox}{Bradley--Terry (1952)}
+Dados $k$ itens $b_1,\dots,b_k$ e uma recompensa latente $r(\cdot)$, a
+probabilidade de uma pessoa preferir $b_i$ a $b_j$ é
+\[
+  \Prob(b_i \succ b_j)
+    = \frac{\exp\bigl(r(b_i)\bigr)}{\exp\bigl(r(b_i)\bigr)+\exp\bigl(r(b_j)\bigr)}
+    = \sig\bigl(r(b_i)-r(b_j)\bigr) = p_{ij},
+\]
+com $\sig(z) = 1/(1+e^{-z})$ a função logística.
+\end{defbox}
+
+Três consequências merecem atenção.
+
+\textbf{(i) É regressão logística.} Escrevendo $r$ como vetor de coeficientes e
+$e_i - e_j$ como vetor de atributos da comparação, o modelo é literalmente uma
+regressão logística. Toda a maquinaria clássica se aplica: a
+log-verossimilhança é côncava, o ajuste é um problema convexo, e há solução
+única uma vez fixada a normalização.
+
+\textbf{(ii) A recompensa é identificável apenas a menos de constante aditiva.}
+Substituir $r(\cdot)$ por $r(\cdot)+c$ não altera nenhum $p_{ij}$, pois só entra
+a diferença. É a mesma invariância de escala vista no RL inverso, e implica que
+os valores absolutos de um modelo de recompensa não são interpretáveis --- só
+diferenças, e só entre respostas ao mesmo prompt. Daí a prática de normalizar as
+recompensas por prompt antes de otimizar.
+
+\textbf{(iii) Transitividade estocástica.} O modelo impõe que $p_{ik}$ fique
+determinado por $p_{ij}$ e $p_{jk}$. Preferências humanas cíclicas --- comuns
+quando há múltiplos critérios em conflito, ou múltiplos avaliadores --- violam
+essa hipótese, e nenhuma quantidade de dados as acomoda dentro do modelo.
+
+\subsubsection*{Ajuste por entropia cruzada}
+
+Com $N$ tuplas $(b_i,b_j,\mu)$, onde $\mu=1$ se a pessoa marcou $b_i \succ b_j$,
+$\mu=0{,}5$ em caso de empate e $\mu=0$ caso contrário, maximizar a
+verossimilhança equivale a minimizar
+\[
+  \mathcal{L}(r) = -\!\!\sum_{(b_i,b_j,\mu)\in\Dset}\!\!
+    \Bigl[\mu\log\Prob(b_i\succ b_j) + (1-\mu)\log\Prob(b_j\succ b_i)\Bigr].
+\]
+
+\begin{alertabox}
+Se os dados forem \emph{separáveis} --- algum item nunca perde --- a
+verossimilhança é maximizada empurrando $r\to\infty$, e o ajuste não converge.
+Regularização não é refinamento opcional aqui; é o que mantém o problema bem
+posto. É o mesmo fenômeno da separação perfeita em regressão logística.
+\end{alertabox}
+
+\subsubsection*{Que item é ``o melhor''?}
+
+Quando as comparações não vêm de um modelo de Bradley--Terry, ``melhor'' deixa de
+ser óbvio. Três critérios clássicos da teoria da escolha social:
+
+\begin{itemize}
+  \item \textbf{Condorcet}: $b_i$ tal que $\Prob(b_i\succ b_j)>0{,}5$ para todo
+    $j\ne i$. Pode não existir.
+  \item \textbf{Copeland}: $b_i$ com o maior número de vitórias par a par
+    (vitórias menos derrotas). Sempre existe.
+  \item \textbf{Borda}: $b_i$ que maximiza a pontuação esperada, contando $1$ por
+    vitória, $0{,}5$ por empate e $0$ por derrota.
+\end{itemize}
+
+Historicamente, os algoritmos de bandidos ``em duelo'' ($k$ braços, consultas de
+dois em dois) buscavam o vencedor de Copeland (Yue, Broder, Kleinberg \&
+Joachims, JCSS 2012). \textbf{Sob Bradley--Terry os três critérios coincidem},
+porque a transitividade estocástica elimina os ciclos; a distinção só passa a
+importar quando o modelo falha --- que é precisamente o regime das preferências
+humanas agregadas sobre questões controversas.
+
+\subsection{De itens para trajetórias}
+
+A mesma construção vale trocando ``item'' por \emph{trajetória}. Para
+$\traj^1$ e $\traj^2$ com somas de recompensas latentes
+$R^1 = \sum_i r^1_i$ e $R^2 = \sum_i r^2_i$:
+\[
+  \hat\Prob\bigl(\traj^1 \succ \traj^2\bigr)
+    = \frac{\exp\bigl(\sum_i r^1_i\bigr)}
+           {\exp\bigl(\sum_i r^1_i\bigr)+\exp\bigl(\sum_i r^2_i\bigr)}
+    = \sig\bigl(R^1 - R^2\bigr).
+\]
+Agora $r$ é uma rede neural $\rphi(s,a)$, treinada pela mesma perda. Com
+$\rphi$ em mãos, o problema volta a ser RL comum: rode PPO usando a recompensa
+aprendida.
+
+\begin{ideiabox}
+Note o que a soma implica: a preferência é dada sobre a trajetória \emph{inteira},
+mas o modelo aprende uma recompensa \emph{por passo}. Trata-se de um problema de
+atribuição de crédito --- o mesmo que estruturou as aulas de diferenças
+temporais --- agora deslocado para dentro do sinal de supervisão.
+\end{ideiabox}
+
+O resultado que estabeleceu a viabilidade prática foi Christiano et al.\ (2017),
+\emph{Deep RL from Human Preferences}: um agente simulado aprendeu a executar um
+\emph{backflip} --- comportamento para o qual ninguém sabe escrever uma
+recompensa --- a partir de cerca de \textbf{900 comparações} de um avaliador
+humano, com o modelo de recompensa treinado em paralelo com a política e as
+consultas concentradas onde ele estava mais incerto. Novecentos bits de feedback
+compraram um comportamento que nenhuma recompensa escrita à mão havia produzido.
+
+\section{RLHF}
+
+\subsection{As três etapas}
+
+\begin{center}
+\begin{tikzpicture}[font=\scriptsize, node distance=8mm]
+  \node[draw=rlAzulClaro, thick, fill=rlAzulClaro!8, rounded corners=3pt,
+        text width=36mm, align=center, minimum height=17mm] (a)
+    {\textbf{1. Ajuste por instruções}\\[0.25em]
+     clonagem de comportamento sobre demonstrações escritas\\[0.2em] $\Rightarrow \psft$};
+  \node[draw=rlTeal, thick, fill=rlTeal!10, rounded corners=3pt,
+        text width=36mm, align=center, minimum height=17mm, right=8mm of a] (b)
+    {\textbf{2. Modelo de recompensa}\\[0.25em]
+     Bradley--Terry sobre pares $(\yw,\yl)$ rotulados\\[0.2em] $\Rightarrow \rphi$};
+  \node[draw=rlLaranja, very thick, fill=rlLaranja!10, rounded corners=3pt,
+        text width=36mm, align=center, minimum height=17mm, right=8mm of b] (c)
+    {\textbf{3. Otimização por RL}\\[0.25em]
+     PPO maximizando $\rphi$ com penalidade KL\\[0.2em] $\Rightarrow \polth$};
+  \draw[trans destac] (a) -- (b);
+  \draw[trans destac] (b) -- (c);
+  \draw[trans, dashed] (a.south) .. controls +(0,-0.9) and +(0,-0.9) ..
+    node[below, text=rlCinza, pos=0.5] {$\pref \defeq \psft$: ponto de partida \emph{e} âncora} (c.south);
+\end{tikzpicture}
+\end{center}
+
+A etapa 1 é exatamente a clonagem de comportamento da seção 2 --- com todos os
+seus limites. As etapas 2 e 3 são as duas metades da pergunta ``como maximizar
+algo que não sabemos escrever?''.
+
+\subsection{Etapa 2: o modelo de recompensa}
+
+Para um prompt $x$, geram-se várias respostas com $\psft$ e pede-se a uma pessoa
+que ordene um par. Escrevendo $\yw$ para a preferida e $\yl$ para a preterida:
+\[
+  \mathcal{L}(\phi) = -\,\E_{(x,\yw,\yl)\sim\Dset}
+    \Bigl[\log\sig\bigl(\rphi(x,\yw) - \rphi(x,\yl)\bigr)\Bigr].
+\]
+Na prática, $\rphi$ é o próprio modelo de linguagem com a camada de saída
+trocada por um escalar, e a soma de recompensas por token colapsa numa recompensa
+terminal atribuída à resposta completa.
+
+\begin{ideiabox}
+\textbf{Valide o modelo de recompensa antes de otimizar contra ele.} A métrica
+natural é a acurácia em prever julgamentos humanos retidos. Modelos grandes,
+treinados com dados suficientes, aproximam-se da concordância entre dois
+avaliadores humanos --- que é o teto real do problema, não $100\%$
+(Stiennon et al., 2020).
+\end{ideiabox}
+
+\subsection{Etapa 3: otimizar sem destruir o modelo}
+
+\[
+  \max_{\polth}\;
+  \E_{x\sim\Dset,\, y\sim\polth(\cdot\mid x)}
+  \Bigl[\, \termo{\rphi(x,y)}{recompensa aprendida}
+    \;-\;\beta\,\termo{\log\frac{\polth(y\mid x)}{\pref(y\mid x)}}{penalidade por se afastar}\Bigr]
+\]
+
+Em esperança, o segundo termo é $\beta\,\KLd{\polth(\cdot\mid x)}{\pref(\cdot\mid x)}$.
+Paga-se um preço sempre que $\polth(y\mid x) > \pref(y\mid x)$: o modelo pode
+mudar, mas não pode sair do lugar. A otimização usa PPO, tratando cada token como
+uma ação.
+
+\begin{alertabox}
+\textbf{Por que a penalidade é indispensável.} $\rphi$ é um modelo estatístico
+ajustado a dados finitos, válido apenas na região onde $\psft$ gera texto.
+Maximizá-lo sem restrição leva a política a \emph{explorar as falhas do
+avaliador} em vez de melhorar a resposta --- é o \emph{reward hacking}. A
+penalidade KL mantém a política dentro do domínio onde $\rphi$ ainda é confiável.
+\end{alertabox}
+
+\subsubsection*{Sobre-otimização: a lei de Goodhart quantificada}
+
+``Quando uma medida se torna um alvo, ela deixa de ser uma boa medida.''
+Empiricamente, ao aumentar a distância KL entre política e referência, a
+recompensa \emph{medida} $\rphi$ cresce monotonicamente enquanto a qualidade
+avaliada por pessoas sobe, atinge um máximo e depois \emph{cai}. O coeficiente
+$\beta$ é, na prática, o controle desse compromisso --- e a variável natural do
+eixo é a distância KL, não o número de passos de otimização.
+
+\subsubsection*{O que se observou}
+
+\begin{itemize}
+  \item RLHF supera pré-treino mais ajuste supervisionado em avaliação humana, e
+    a vantagem cresce com a escala (Stiennon et al., 2020).
+  \item \textbf{InstructGPT} (Ouyang et al., 2022) levou o \emph{pipeline} a
+    dezenas de milhares de tarefas; um modelo muito menor, alinhado, foi
+    preferido a um modelo bem maior sem alinhamento.
+  \item Comparações controladas com GPT-4 como avaliador substituto (Dubois et
+    al., 2023) confirmam que PPO funciona --- mas mostram que linhas de base
+    simples, como \emph{best-of-$n$} e treinar sobre as saídas melhor
+    classificadas, vão surpreendentemente longe.
+\end{itemize}
+
+A lição de engenharia: boa parte do ganho vem de \emph{ter um bom modelo de
+recompensa}, não da sofisticação do otimizador. Se o RL é a parte cara e frágil,
+cabe perguntar se dá para eliminá-la.
+
+\section{DPO: otimização direta de preferências}
+
+\subsection{A ideia}
+
+O modelo de recompensa é apenas um intermediário entre preferências e política.
+Se existir uma relação em forma fechada entre recompensa e política ótima, é
+possível substituir uma pela outra e treinar a política \emph{diretamente} sobre
+os pares --- eliminando o modelo de recompensa, o crítico, a amostragem online e
+a instabilidade do PPO. A derivação tem três passos.
+
+\subsection{Passo 1: a política ótima em forma fechada}
+
+\begin{teobox}{Solução do objetivo com regularização KL}
+O máximo de
+$\;\E_{y\sim\pol}[r(x,y)] - \beta\,\KLd{\pol(\cdot\mid x)}{\pref(\cdot\mid x)}$
+é atingido por
+\[
+  \pol_r(y\mid x) = \frac{1}{Z(x)}\,\pref(y\mid x)\exp\!\Bigl(\tfrac{1}{\beta}r(x,y)\Bigr),
+  \qquad
+  Z(x) = \sum_{y}\pref(y\mid x)\exp\!\Bigl(\tfrac{1}{\beta}r(x,y)\Bigr).
+\]
+\end{teobox}
+
+\begin{provabox}
+Divida o objetivo por $\beta$ e complete o logaritmo:
+\begin{align*}
+  \max_{\pol}\;\E_{y\sim\pol}\Bigl[\tfrac{1}{\beta}r(x,y) - \log\tfrac{\pol(y\mid x)}{\pref(y\mid x)}\Bigr]
+  &= \min_{\pol}\;\E_{y\sim\pol}\Bigl[\log\frac{\pol(y\mid x)}{\pref(y\mid x)} - \tfrac{1}{\beta}r(x,y)\Bigr]\\
+  &= \min_{\pol}\;\E_{y\sim\pol}\Bigl[\log\frac{\pol(y\mid x)}
+       {\tfrac{1}{Z(x)}\pref(y\mid x)e^{r(x,y)/\beta}}\Bigr] - \log Z(x)\\
+  &= \min_{\pol}\;\KLd{\pol(\cdot\mid x)}{\pol_r(\cdot\mid x)} - \log Z(x).
+\end{align*}
+Como $Z(x)$ não depende de $\pol$, e a divergência KL é não negativa e nula
+somente quando os argumentos coincidem, o mínimo ocorre em $\pol = \pol_r$.
+\hfill$\square$
+\end{provabox}
+
+\subsection{Passo 2: inverter a relação}
+
+A forma fechada é inútil como algoritmo: $Z(x)$ soma sobre todas as respostas
+possíveis, o que é intratável. Mas ela pode ser \emph{invertida}:
+\[
+  \pol_r(y\mid x) = \frac{1}{Z(x)}\pref(y\mid x)e^{r(x,y)/\beta}
+  \quad\Longleftrightarrow\quad
+  \mdestaque{rlLaranja}{r(x,y) = \beta\log\frac{\pol_r(y\mid x)}{\pref(y\mid x)} + \beta\log Z(x)}
+\]
+
+Toda função de recompensa pode, portanto, ser escrita como uma razão logarítmica
+entre uma política e a referência. A razão é positiva quando a política gosta da
+resposta \emph{mais} que o modelo de referência, e negativa quando gosta menos.
+O termo problemático $\beta\log Z(x)$ depende apenas de $x$ --- e o modelo de
+Bradley--Terry só enxerga \emph{diferenças} de recompensa para o mesmo $x$.
+
+\subsection{Passo 3: substituir}
+
+\[
+  r(x,\yw) - r(x,\yl)
+  = \beta\log\frac{\polth(\yw\mid x)}{\pref(\yw\mid x)}
+  - \beta\log\frac{\polth(\yl\mid x)}{\pref(\yl\mid x)}
+  + \underbrace{\beta\log Z(x) - \beta\log Z(x)}_{=\,0}
+\]
+
+Levando isso à perda de entropia cruzada do modelo de recompensa, obtém-se um
+objetivo que envolve \emph{apenas} a política:
+
+\begin{teobox}{Perda do DPO (Rafailov et al., NeurIPS 2023)}
+\[
+  \mathcal{L}_{\mathrm{DPO}}(\polth;\pref)
+  = -\,\E_{(x,\yw,\yl)\sim\Dset}\left[\log\sig\!\left(
+      \beta\log\frac{\polth(\yw\mid x)}{\pref(\yw\mid x)}
+    - \beta\log\frac{\polth(\yl\mid x)}{\pref(\yl\mid x)}\right)\right]
+\]
+\end{teobox}
+
+Uma perda supervisionada, sobre um conjunto fixo de pares. Sem amostragem, sem
+crítico, sem modelo de recompensa explícito.
+
+\subsection{O gradiente e sua leitura}
+
+Definindo a \textbf{recompensa implícita}
+$\hat r_{\thv}(x,y) = \beta\log\frac{\polth(y\mid x)}{\pref(y\mid x)}$,
+\[
+  \gth\mathcal{L}_{\mathrm{DPO}} = -\beta\,\E_{(x,\yw,\yl)}\Bigl[
+    \underbrace{\sig\bigl(\hat r_{\thv}(x,\yl) - \hat r_{\thv}(x,\yw)\bigr)}_{\text{peso: quão errado o modelo está}}
+    \bigl(\gth\log\polth(\yw\mid x) - \gth\log\polth(\yl\mid x)\bigr)\Bigr].
+\]
+
+A estrutura é a do gradiente de política --- aumente a log-probabilidade do que
+foi preferido, diminua a do que foi preterido --- com um \textbf{peso adaptativo}
+que quase se anula nos pares que o modelo já ordena corretamente e concentra o
+esforço nos que ele ainda erra. Esse peso é o que distingue o DPO de treinar
+ingenuamente por máxima verossimilhança sobre $\yw$, que colapsaria a
+distribuição.
+
+\begin{ideiabox}
+Onde está o modelo de recompensa no DPO? \emph{Nos pesos da política.} A razão
+$\beta\log(\polth/\pref)$ é um modelo de recompensa reparametrizado; o termo
+$\beta\log Z(x)$ continua existindo e fixando a normalização, apenas não precisa
+ser conhecido, porque a perda só depende de diferenças com o mesmo $x$.
+\end{ideiabox}
+
+\subsection{O que se ganha e o que se perde}
+
+\begin{center}\small
+\begin{tabular}{@{}p{0.32\linewidth}p{0.3\linewidth}p{0.3\linewidth}@{}}
+\toprule
+& \textbf{RLHF (PPO)} & \textbf{DPO}\\
+\midrule
+Modelos em memória & 4 & 2\\
+Dados & \emph{online}, regerados & \emph{offline}, fixos\\
+Estabilidade & sensível a hiperparâmetros & perda supervisionada\\
+Rotular dados novos & a qualquer momento & exige nova coleta\\
+Explorar fora do conjunto & sim & \textbf{não}\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+A última linha é a limitação real: o DPO só reordena o que já está no conjunto de
+dados, e nunca descobre uma resposta melhor que ninguém escreveu. Daí as
+variantes \emph{iterativas}, que alternam geração com a política corrente,
+rotulagem e uma nova rodada de DPO.
+
+Empiricamente, num experimento controlado --- gerar resenhas positivas com
+GPT-2 XL, usar um classificador de sentimento como recompensa ``de ouro'',
+construir preferências sintéticas a partir dela e otimizar com PPO e com DPO ---
+o DPO obtém recompensa igual ou maior para o \emph{mesmo} desvio KL da
+referência. Em escala, DPO e variantes tornaram-se padrão em famílias abertas de
+modelos (Zephyr, Mistral, Llama 3). A mesma ideia foi levada para preferências
+sobre trajetórias de controle, fora do domínio de linguagem, sob o nome CPL.
+
+\begin{discbox}
+O DPO herda inteira a hipótese de Bradley--Terry: preferências ruidosas,
+transitivas, geradas por uma recompensa latente escalar. Discuta situações
+realistas em que essa hipótese falha --- múltiplos avaliadores com valores
+conflitantes, respostas incomparáveis, critérios em conflito --- e o que se
+poderia fazer nesses casos.
+\end{discbox}
+
+\subsection{Onde a área foi depois}
+
+Duas direções se destacam. A primeira afrouxa hipóteses de Bradley--Terry: IPO
+substitui a logística por um objetivo que não satura, KTO dispensa pares
+(bastam rótulos binários de aprovação), ORPO funde ajuste supervisionado e
+alinhamento numa única etapa.
+
+A segunda é mais radical: quando a correção pode ser \textbf{verificada} --- uma
+prova formal, um teste unitário que passa, uma resposta numérica conferível ---
+a recompensa deixa de ser aprendida e volta a ser \emph{dada}. É o regime de
+RLVR (\emph{RL with verifiable rewards}) e de algoritmos como GRPO, que
+dispensam tanto o modelo de recompensa quanto o crítico. Nesse regime, todos os
+problemas de sobre-otimização discutidos nesta aula simplesmente desaparecem ---
+o que explica por que ele domina o trabalho recente em raciocínio.
+
+\section{Formulário}
+
+\begin{center}\small
+\begin{tabular}{@{}p{0.31\linewidth}p{0.65\linewidth}@{}}
+\toprule
+\textbf{Objeto} & \textbf{Expressão}\\
+\midrule
+Erro da clonagem & $J(\hat\pol) \le J(\polE) + T^{2}\varepsilon$\\[0.3em]
+Erro do DAGGER & $J(\pol_i) \le J(\polE) + O(T\varepsilon) + o(1)$\\[0.3em]
+Invariância por potencial & $\rec' = \rec + \gamma\Phi(s') - \Phi(s)$ preserva $\polstar$\\[0.3em]
+Valor com atributos & $\Vpi = w^{\!\top}\mu(\pol)$, \; $\mu(\pol)=\E[\sum_t \gamma^t x(s_t)\mid\pol]$\\[0.3em]
+MaxEnt IRL & $P(\traj\mid w) \propto \exp\bigl(w^{\!\top}x(\traj)\bigr)$; \;
+  $\nabla_w\mathcal{L} = \tilde x_E - \E_{P}[x(\traj)]$\\[0.3em]
+Bradley--Terry & $\Prob(b_i\succ b_j) = \sig\bigl(r(b_i)-r(b_j)\bigr)$\\[0.3em]
+Modelo de recompensa & $\mathcal{L}(\phi) = -\E\bigl[\log\sig(\rphi(x,\yw)-\rphi(x,\yl))\bigr]$\\[0.3em]
+Objetivo do RLHF & $\max_{\polth}\E\bigl[\rphi(x,y)\bigr] - \beta\,\KLd{\polth}{\pref}$\\[0.3em]
+Política ótima & $\pol_r(y\mid x) \propto \pref(y\mid x)\,e^{r(x,y)/\beta}$\\[0.3em]
+Recompensa implícita & $\hat r_{\thv}(x,y) = \beta\log\dfrac{\polth(y\mid x)}{\pref(y\mid x)}$\\[0.5em]
+Perda do DPO & $-\E\Bigl[\log\sig\bigl(\hat r_{\thv}(x,\yw) - \hat r_{\thv}(x,\yl)\bigr)\Bigr]$\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Exercícios}
+
+\begin{exbox}{8.1 --- O expoente}
+Considere um MDP determinístico em cadeia com $T$ passos, em que um único erro
+leva a um estado absorvente de custo $1$ por passo, e o especialista nunca visita
+esse estado. Mostre que o custo esperado da política clonada é
+$\Theta(\varepsilon T^{2})$ quando $\varepsilon T \ll 1$. Explique por que o
+limite superior de Ross \& Bagnell é, portanto, justo.
+\end{exbox}
+
+\begin{exbox}{8.2 --- Modelagem por potencial}
+Verifique explicitamente, num MDP de três estados à sua escolha, que
+$\rec' = \rec + \gamma\Phi(s')-\Phi(s)$ preserva a política ótima mas
+\emph{altera} $\Vstar$. Que função $\Phi$ tornaria $\Vstar \equiv 0$?
+\end{exbox}
+
+\begin{exbox}{8.3 --- Bradley--Terry, invariâncias}
+(a) Mostre que $r$ e $r+c$ induzem as mesmas probabilidades $p_{ij}$.
+(b) Mostre que \emph{não} vale o mesmo para $c\,r$ com $c\ne1$: descreva o efeito
+de $c\to\infty$ e de $c\to 0$ sobre as preferências previstas.
+(c) Que interpretação isso dá ao coeficiente $\beta$ do DPO?
+\end{exbox}
+
+\begin{exbox}{8.4 --- Condorcet sem Bradley--Terry}
+Construa uma matriz $3\times3$ de probabilidades $p_{ij}$ com um ciclo
+($p_{12}, p_{23}, p_{31} > 0{,}5$). Mostre que não há vencedor de Condorcet,
+calcule os vencedores de Copeland e de Borda, e argumente por que nenhuma
+recompensa escalar reproduz essa matriz.
+\end{exbox}
+
+\begin{exbox}{8.5 --- Deduzindo o DPO}
+Refaça a derivação das três etapas sem consultar o texto. No passo 3, explique
+com precisão \emph{por que} $\log Z(x)$ cancela, e o que aconteceria se as duas
+respostas de um par viessem de prompts \emph{diferentes}.
+\end{exbox}
+
+\begin{exbox}{8.6 --- Implementação}
+Implemente o DPO num problema de brinquedo: um bandido com $k=8$ braços,
+$\pref$ uniforme, recompensa ``de ouro'' $r^\star$ conhecida, e pares gerados
+segundo Bradley--Terry a partir de $r^\star$. Compare (i) treinar um modelo de
+recompensa e depois otimizar a política com penalidade KL, e (ii) DPO direto.
+Trace a fronteira recompensa $\times$ KL para vários valores de $\beta$.
+\end{exbox}
+
+\subsection*{Respostas comentadas dos dois primeiros}
+
+\textbf{8.1.} Seja $E$ o instante do primeiro erro. Para $\varepsilon T\ll1$,
+$\Prob(E=t)\approx\varepsilon$ e o custo condicional é $T-t$. Logo
+$\E[\text{custo}] \approx \varepsilon\sum_{t=1}^{T}(T-t) = \varepsilon T(T-1)/2$.
+O limite superior é atingido porque a construção realiza o pior caso: nenhum
+estado após o erro pertence ao suporte dos dados, e o custo é máximo em todos.
+
+\textbf{8.2.} A política ótima é preservada pelo argumento telescópico da
+seção 3.1. Já $\Vstar$ muda por $-\Phi(s)$: de fato, ${V'}^{\star}(s) =
+\Vstar(s) - \Phi(s)$. Portanto $\Phi = \Vstar$ torna ${V'}^{\star}\equiv0$ ---
+o que revela que modelagem por potencial com o potencial ``certo'' é
+exatamente o que transforma o problema em trivial, e por que $\Phi$ é
+tipicamente escolhida como uma \emph{aproximação} de $\Vstar$.
+
+\section{Glossário e leituras}
+
+\begin{center}\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Inglês} & \textbf{Português usado no curso}\\
+\midrule
+imitation learning & aprendizagem por imitação\\
+behavior cloning & clonagem de comportamento\\
+compounding errors & erros compostos\\
+distribution shift & deslocamento de distribuição\\
+inverse RL & aprendizado por reforço inverso\\
+reward shaping (potential-based) & modelagem de recompensa por potencial\\
+feature expectations & esperanças de atributos\\
+pairwise comparison & comparação par a par\\
+preference learning & aprendizado de preferências\\
+reward model & modelo de recompensa\\
+reward hacking / overoptimization & exploração da recompensa / sobre-otimização\\
+preferred / dispreferred response & resposta preferida / preterida\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\needspace{7\baselineskip}
+\textbf{Leituras principais.} Ross, Gordon \& Bagnell (2011), \emph{A Reduction
+of Imitation Learning and Structured Prediction to No-Regret Online Learning};
+Ng \& Russell (2000), \emph{Algorithms for Inverse Reinforcement Learning};
+Ziebart, Maas, Bagnell \& Dey (2008), \emph{Maximum Entropy Inverse
+Reinforcement Learning}; Christiano et al.\ (2017), \emph{Deep Reinforcement
+Learning from Human Preferences}; Stiennon et al.\ (2020), \emph{Learning to
+Summarize from Human Feedback}; Ouyang et al.\ (2022), \emph{Training Language
+Models to Follow Instructions with Human Feedback}; Rafailov et al.\ (2023),
+\emph{Direct Preference Optimization}.
+
+\begin{alertabox}
+Uma pergunta que a técnica não responde, e que vale trazer para a sala:
+\emph{de quem} são as preferências usadas para rotular os pares, e quem decide
+isso. Agregar preferências de um grupo com valores conflitantes esbarra em
+teoremas de impossibilidade conhecidos desde Arrow --- de modo que
+``alinhar a preferências humanas'' é, no plural, uma escolha de projeto, não um
+detalhe de implementação.
+\end{alertabox}
+
+\end{document}
