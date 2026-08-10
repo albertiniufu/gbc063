@@ -1,0 +1,921 @@
+%% ============================================================
+%%  handout11.tex — Resumo de estudo da Aula 11
+%%  Bandits bayesianos e amostragem de Thompson
+%%  Aprendizagem por Reforço · UFU · Prof. Marcelo Keese Albertini
+%%  Adaptado de CS234 (Stanford), lecture11post.pdf
+%%  Compilar com XeLaTeX (2x) — precisa de handoutAprendizadoRL.sty
+%% ============================================================
+\documentclass[11pt, a4paper]{article}
+
+\usepackage{handoutAprendizadoRL}   % antes do babel (carrega fontspec)
+\usepackage{babel}
+\babelprovide[import, main]{brazilian}
+\usepackage{multicol}
+
+\setaula{Aula 11 — Bandits bayesianos}
+\setprof{Prof.\ Marcelo Keese Albertini}
+
+%% ---- macros locais
+\newcommand{\arrep}{\mathrm{Arrep}}
+\newcommand{\arrepb}{\mathrm{ArrepBayes}}
+\newcommand{\alg}{\mathcal{A}}
+\newcommand{\Bdist}{\operatorname{Beta}}
+\newcommand{\Bern}{\operatorname{Bernoulli}}
+\newcommand{\Nrm}{\mathcal{N}}
+\newcommand{\hist}{h_t}
+\newcommand{\Ind}{\mathbb{1}}
+\newcommand{\subt}[1]{\medskip\noindent\textbf{\color{rlAzulClaro}#1}\par\nobreak\smallskip}
+
+\hyphenation{apren-di-za-gem re-com-pen-sa se-quen-cial de-ter-mi-nís-ti-co
+             ar-re-pen-di-men-to ba-ye-si-a-no con-ju-ga-ção pos-te-ri-or
+             uni-di-men-si-o-nais uni-di-men-si-o-nal in-de-pen-den-tes
+             im-plau-sí-veis con-tex-tu-al con-tex-tu-ais pseu-do-con-ta-gens
+             hi-per-pa-râ-me-tro con-cen-tra-ção pro-ba-bi-li-da-de}
+
+\begin{document}
+
+\capa{Aula 11 — Bandits bayesianos e amostragem de Thompson}
+     {Resumo de estudo \ \textbullet\ \ conjugação Beta--Bernoulli, casamento de
+      probabilidade e arrependimento bayesiano}
+     {Prof.\ Marcelo Keese Albertini}
+     {Adaptado e expandido de CS234: Reinforcement Learning, Emma Brunskill (Stanford)}
+
+\begin{ideiabox}
+A aula anterior resolveu a exploração por \emph{otimismo}: aja como se o melhor
+mundo compatível com seus dados fosse o verdadeiro. Esta aula apresenta a
+segunda grande família: aja como se \emph{um mundo sorteado ao acaso} entre os
+compatíveis fosse o verdadeiro. A segunda ideia cabe em seis linhas de código,
+não tem hiperparâmetro de exploração, e tem essencialmente as mesmas garantias
+teóricas.
+\end{ideiabox}
+
+%% ============================================================
+\section{O problema, em uma página}
+
+\begin{defbox}{bandit multiarmado}
+Par $(\gA, \mathcal{R})$ com $\gA$ um conjunto \emph{conhecido} de $m$ ações
+(braços) e $\mathcal{R}^a(r) = \Prob[r \mid a]$ uma distribuição
+\emph{desconhecida} de recompensas para cada braço. A cada passo $t$ o agente
+escolhe $a_t \in \gA$ e recebe $r_t \sim \mathcal{R}^{a_t}$. Escreve-se
+$Q(a) = \E[r \mid a]$ e $\Vstar = \max_a Q(a)$.
+\end{defbox}
+
+Um bandit é um MDP de um único estado. A ação não move o agente; ela só produz
+recompensa e informação. Com isso, a equação de Bellman degenera em
+$Q(a) = \E[r\mid a]$ e todo o conteúdo do problema passa a ser \emph{exploração}
+— por isso o bandit é o laboratório onde as ideias de exploração são inventadas
+antes de subirem para o MDP completo.
+
+\begin{defbox}{lacuna, arrependimento por passo e arrependimento total}
+$\Delta_a = \Vstar - Q(a)$ é a \emph{lacuna} do braço $a$;
+$\ell_t = \E[\Vstar - Q(a_t)]$ é o arrependimento do passo $t$; e
+\[
+  L_T \;=\; \E\!\left[\sum_{t=1}^{T} \Vstar - Q(a_t)\right]
+\]
+é o arrependimento total. Maximizar recompensa acumulada equivale a minimizar
+$L_T$. O objetivo é \emph{sublinearidade}: $L_T/T \to 0$.
+\end{defbox}
+
+\subt{A identidade que organiza toda a análise}
+
+Seja $N_T(a) = \sum_{t=1}^{T}\Ind(a_t = a)$ o número de puxadas do braço $a$.
+Trocando a ordem da soma:
+\begin{equation}
+  L_T \;=\; \E\!\left[\sum_{t=1}^{T}\sum_{a \in \gA} \Ind(a_t = a)\,\Delta_a\right]
+      \;=\; \sum_{a \in \gA} \E[N_T(a)]\;\Delta_a .
+  \label{eq:decomp}
+\end{equation}
+
+\begin{ideiabox}
+A equação~\eqref{eq:decomp} diz que \textbf{arrependimento é contagem de erros
+ponderada pela gravidade de cada erro}. Ela transforma toda demonstração de cota
+de arrependimento em um problema de contagem: basta mostrar que
+$\E[N_T(a)]$ é pequeno para os braços com $\Delta_a$ grande. Guarde-a — ela é
+usada na demonstração do UCB, na de Thompson e na cota inferior de Lai e
+Robbins.
+\end{ideiabox}
+
+\subt{Três limitações do otimismo que motivam esta aula}
+
+\begin{enumerate}
+  \item \textbf{UCB é determinístico.} Dado o histórico, a ação está decidida.
+        Se o retorno chega em lote — mil visitantes num site antes de sabermos
+        se o primeiro clicou — o índice não muda e o algoritmo repete a mesma
+        escolha mil vezes.
+  \item \textbf{UCB ignora conhecimento prévio.} Se dez anos de prontuários
+        indicam que um tratamento cura cerca de $90\%$ dos casos, o UCB começa
+        do zero mesmo assim.
+  \item \textbf{O bônus $\sqrt{2\ln t / N_t(a)}$ é genérico.} Ele vale para
+        qualquer distribuição limitada, e por isso é conservador demais para a
+        distribuição que você de fato tem.
+\end{enumerate}
+
+\begin{discbox}
+Num bandit com recompensas \emph{determinísticas} — cada braço devolve sempre o
+mesmo valor —, o que acontece com o UCB? Ele tem arrependimento sublinear com
+probabilidade $1$, ou existe probabilidade estritamente positiva de
+arrependimento linear? E a divisão por $N_t(a)$ chega a ser um problema?
+
+\smallskip
+{\footnotesize\color{rlCinza}\emph{Direção da resposta:} examinar por que o termo
+de confiança existe — cobrir o ruído amostral da média empírica — e o que
+sobra desse papel quando a variância é zero. Vale também discutir a
+inicialização, em que cada braço é puxado uma vez antes de o índice ser
+avaliado.}
+\end{discbox}
+
+%% ============================================================
+\section{Inferência bayesiana: só o necessário}
+
+Na visão bayesiana, partimos de um \emph{prior} sobre os parâmetros
+desconhecidos — aqui, sobre a distribuição de recompensas de cada braço — e o
+atualizamos com os dados pela regra de Bayes:
+\begin{equation}
+  \underbrace{p(\theta \mid r)}_{\text{posterior}}
+  \;=\;
+  \frac{\overbrace{p(r \mid \theta)}^{\text{verossimilhança}}\;
+        \overbrace{p(\theta)}^{\text{prior}}}
+       {\underbrace{\int p(r\mid\theta)p(\theta)\,d\theta}_{\text{evidência}}}
+  \;\;\propto\;\; p(r \mid \theta)\,p(\theta).
+  \label{eq:bayes}
+\end{equation}
+
+A mudança de objeto é o ponto: em vez da estimativa pontual $\hat{Q}(a)$ com uma
+barra de erro colada por fora, carregamos uma \emph{distribuição inteira} sobre
+$Q(a)$. A incerteza deixa de ser um apêndice do algoritmo e passa a ser o estado
+de conhecimento do agente.
+
+\begin{alertabox}
+O denominador de~\eqref{eq:bayes} é uma integral que, sem estrutura adicional,
+não tem forma fechada — restaria MCMC ou inferência variacional. Como o bandit
+faz \emph{uma} atualização por passo, isso seria inviável. Conjugação não é
+elegância matemática: é requisito de engenharia.
+\end{alertabox}
+
+\begin{defbox}{prior conjugado}
+$p(\theta)$ é \emph{conjugado} para a verossimilhança $p(r\mid\theta)$ se o
+posterior $p(\theta \mid r)$ pertence à mesma família paramétrica do prior. A
+atualização vira então um mapa entre hiperparâmetros — tipicamente somas — com
+custo e memória $O(1)$ por observação. Toda família exponencial admite prior
+conjugado.
+\end{defbox}
+
+\begin{center}\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Recompensa} & \textbf{Prior conjugado} & \textbf{Uso típico} \\
+\midrule
+$\Bern(\theta)$                    & $\Bdist(\alpha,\beta)$ & clique, cura/falha, conversão \\
+$\Nrm(\mu,\sigma^2)$, $\sigma$ conhecido & $\Nrm(\mu_0,\sigma_0^2)$ & recompensa contínua \\
+Categórica em $K$ valores          & $\mathrm{Dirichlet}(\alpha_1,\ldots,\alpha_K)$ & nota de $1$ a $5$ \\
+$\mathrm{Poisson}(\lambda)$        & $\mathrm{Gama}(\alpha,\beta)$ & contagens \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{O par Beta--Bernoulli}
+
+\begin{defbox}{distribuição Beta}
+\[
+  p(\theta \mid \alpha,\beta)
+  = \frac{\Gamma(\alpha+\beta)}{\Gamma(\alpha)\Gamma(\beta)}\,
+    \theta^{\alpha-1}(1-\theta)^{\beta-1},
+  \qquad \theta \in [0,1],\ \ \alpha,\beta>0,
+\]
+com $\E[\theta] = \frac{\alpha}{\alpha+\beta}$, moda
+$\frac{\alpha-1}{\alpha+\beta-2}$ (para $\alpha,\beta>1$) e
+$\Var[\theta] = \frac{\alpha\beta}{(\alpha+\beta)^2(\alpha+\beta+1)}$.
+Em particular $\Bdist(1,1)$ é a uniforme em $[0,1]$.
+\end{defbox}
+
+\begin{teobox}{Proposição — conjugação Beta--Bernoulli}
+Se $\theta \sim \Bdist(\alpha,\beta)$ e observamos $r \in \{0,1\}$ com
+$r \sim \Bern(\theta)$, então $\theta \mid r \sim \Bdist(\alpha+r,\ \beta+1-r)$.
+\end{teobox}
+
+\begin{provabox}
+Pela proporcionalidade em~\eqref{eq:bayes}, basta acompanhar os expoentes:
+\[
+  p(\theta\mid r)
+  \;\propto\;
+  \underbrace{\theta^{r}(1-\theta)^{1-r}}_{\text{verossimilhança }\Bern}
+  \cdot
+  \underbrace{\theta^{\alpha-1}(1-\theta)^{\beta-1}}_{\text{prior }\Bdist}
+  \;=\;
+  \theta^{(\alpha+r)-1}(1-\theta)^{(\beta+1-r)-1}.
+\]
+O lado direito é o núcleo de uma $\Bdist(\alpha+r,\ \beta+1-r)$. Como a família
+Beta é normalizável e o posterior é uma densidade, a constante de normalização
+está determinada e não precisa ser calculada. $\square$
+
+\smallskip
+Por indução, após $S$ sucessos e $F$ fracassos em qualquer ordem, o posterior é
+$\Bdist(\alpha+S,\ \beta+F)$ — a ordem das observações é irrelevante, o que era
+de se esperar, já que as recompensas são i.i.d.\ dado $\theta$.
+\end{provabox}
+
+\begin{ideiabox}
+\textbf{Leitura em pseudo-contagens.} $\alpha-1$ e $\beta-1$ são sucessos e
+fracassos \emph{imaginários} que o prior injeta antes de qualquer dado.
+Partindo de $\Bdist(1,1)$, a média posterior após $S$ sucessos e $F$ fracassos é
+\[
+  \E[\theta \mid S,F] \;=\; \frac{S+1}{S+F+2},
+\]
+a chamada regra de sucessão de Laplace: dois dados fantasmas que impedem o
+agente de concluir ``$100\%$ de acerto'' depois de um único acerto. A variância
+cai como $1/(\alpha+\beta)$: mais dados, posterior mais estreito.
+\end{ideiabox}
+
+\begin{center}
+\begin{tikzpicture}[x=6.4cm, y=0.30cm]
+  \draw[rlCinza!55] (0,0) -- (1.03,0);
+  \foreach \x in {0,0.25,0.5,0.75,1}{
+    \draw[rlCinza!55] (\x,0) -- ++(0,-2pt)
+      node[below, font=\tiny, color=rlCinza, inner sep=1pt] {\x};}
+  \node[font=\scriptsize, color=rlCinza, anchor=west] at (1.05,0) {$\theta$};
+  \draw[rlCinza!45, thick] plot[smooth] coordinates
+    {(0.000,1.000) (0.500,1.000) (1.000,1.000)};
+  \draw[rlAzul!45, thick] plot[smooth] coordinates
+    {(0.000,0.000) (0.114,0.006) (0.227,0.047) (0.341,0.158) (0.455,0.376)
+     (0.568,0.734) (0.682,1.268) (0.795,2.013) (0.886,2.785) (0.955,3.479) (1.000,4.000)};
+  \draw[rlTeal, thick] plot[smooth] coordinates
+    {(0.000,0.000) (0.205,0.001) (0.318,0.016) (0.409,0.082) (0.500,0.281)
+     (0.591,0.741) (0.682,1.569) (0.750,2.403) (0.818,3.213) (0.864,3.518)
+     (0.909,3.359) (0.955,2.363) (0.977,1.393) (1.000,0.000)};
+  \draw[rlLaranja, very thick] plot[smooth] coordinates
+    {(0.000,0.000) (0.500,0.000) (0.591,0.003) (0.659,0.036) (0.705,0.164)
+     (0.750,0.609) (0.795,1.837) (0.841,4.332) (0.886,7.266) (0.909,7.752)
+     (0.932,6.693) (0.955,3.989) (0.977,0.986) (1.000,0.000)};
+  \node[font=\tiny, color=rlCinza,   anchor=south] at (0.12,1.05) {$\Bdist(1,1)$};
+  \node[font=\tiny, color=rlAzul!55, anchor=south east] at (0.99,3.9) {$\Bdist(4,1)$};
+  \node[font=\tiny, color=rlTeal,    anchor=south east] at (0.79,3.3) {$\Bdist(8,2)$};
+  \node[font=\tiny, color=rlLaranja, anchor=south east] at (0.90,7.7) {$\Bdist(30,4)$};
+\end{tikzpicture}
+\end{center}
+
+\noindent
+{\footnotesize\color{rlCinza} O posterior de um braço ao longo de trinta e três
+observações. A massa migra para a direita \emph{e} encolhe: a média sobe de
+$0{,}5$ para $30/34 \approx 0{,}88$ e o desvio-padrão cai de $0{,}29$ para
+$0{,}055$. A largura da curva \emph{é} a incerteza — e é ela que dosará a
+exploração.}
+
+%% ============================================================
+\section{Bandits bayesianos}
+
+\begin{defbox}{bandit bayesiano}
+Bandit em que se assume conhecimento prévio $p[\mathcal{R}]$ sobre as
+recompensas. A cada passo computa-se o posterior $p[\mathcal{R}\mid \hist]$ com
+$\hist = (a_1,r_1,\ldots,a_{t-1},r_{t-1})$, e o posterior guia a exploração.
+No caso Bernoulli, todo o estado de conhecimento cabe em $2m$ números
+$(\alpha_a, \beta_a)$.
+\end{defbox}
+
+Há duas maneiras clássicas de transformar um posterior em uma ação.
+
+\subt{Bayes-UCB: otimismo calibrado}
+Escolha um quantil alto do posterior,
+$a_t = \argmax_a q_{1-1/t}\big(p(Q(a)\mid \hist)\big)$. A ideia é a mesma do UCB,
+mas o ``bônus'' vem da forma real do posterior, e não de uma desigualdade de
+concentração válida para o pior caso. (Kaufmann, Cappé e Garivier, 2012.)
+
+\subt{Casamento de probabilidade}
+Escolha cada ação com a probabilidade de que ela seja a ótima:
+\begin{equation}
+  \pol(a \mid \hist) \;=\; \Prob\big[\,Q(a) > Q(a'),\ \forall a'\neq a \ \big|\ \hist\,\big].
+  \label{eq:pm}
+\end{equation}
+Ações incertas têm caudas mais gordas e, portanto, maior probabilidade de serem
+o máximo: a exploração emerge da definição, sem bônus algum. O problema é
+computar~\eqref{eq:pm}, uma integral $m$-dimensional sem forma fechada simples.
+
+\begin{alertabox}
+\textbf{Cuidado com o nome.} Em psicologia experimental,
+``\emph{probability matching}'' designa escolher a alternativa $A$ numa fração
+das vezes igual à \emph{frequência com que $A$ é recompensada} — comportamento
+comprovadamente subótimo. Aqui a probabilidade é outra: a de que $A$ seja o
+\emph{melhor braço}, dada a evidência acumulada. Os dois procedimentos só
+coincidem no caso degenerado de um braço único.
+\end{alertabox}
+
+%% ============================================================
+\section{Amostragem de Thompson}
+
+\begin{algbox}{amostragem de Thompson (Thompson, 1933)}
+\begin{enumerate}[leftmargin=1.6em, itemsep=0.15em]
+  \item Inicialize um prior $p(\mathcal{R}^a)$ para cada braço $a$.
+  \item Para $t = 1, 2, \ldots$:
+  \begin{enumerate}[leftmargin=1.4em, label=(\alph*), itemsep=0.1em]
+    \item para cada braço $a$, \emph{sorteie}
+          $\tilde{\mathcal{R}}^a \sim p(\mathcal{R}^a \mid \hist)$ e calcule
+          $\tilde Q(a) = \E[\tilde{\mathcal{R}}^a]$;
+    \item jogue $a_t = \argmax_{a\in\gA} \tilde Q(a)$;
+    \item observe $r_t$ e atualize o posterior de $a_t$ pela regra de Bayes.
+  \end{enumerate}
+\end{enumerate}
+No caso Bernoulli com prior Beta, o passo (a) é
+$\tilde\theta_a \sim \Bdist(\alpha_a,\beta_a)$ e o passo (c) soma $1$ em
+$\alpha_{a_t}$ (se $r_t=1$) ou em $\beta_{a_t}$ (se $r_t=0$).
+\end{algbox}
+
+\begin{ideiabox}
+Leia o passo (a) como: \emph{``finja, por um instante, que um dos mundos
+compatíveis com meus dados é o mundo verdadeiro — e aja de forma ótima nele''}.
+Daí o nome alternativo, \textbf{amostragem posterior}.
+\end{ideiabox}
+
+\begin{teobox}{Proposição — Thompson implementa casamento de probabilidade}
+A probabilidade de a amostragem de Thompson jogar o braço $a$ no passo $t$ é
+exatamente $\pol(a\mid \hist)$, definida em~\eqref{eq:pm}.
+\end{teobox}
+
+\begin{provabox}
+O braço jogado é $\argmax_a \tilde Q(a)$, com $\tilde Q$ sorteado do posterior.
+Logo
+\[
+  \Prob[a_t = a]
+  \;=\;
+  \E_{\tilde Q \sim p(\cdot\mid \hist)}
+    \Big[\Ind\big(a = \argmax\nolimits_{a'\in\gA}\tilde Q(a')\big)\Big]
+  \;=\;
+  \Prob\big[Q(a) > Q(a'),\ \forall a'\neq a \mid \hist\big]
+  \;=\;
+  \pol(a\mid \hist),
+\]
+onde a segunda igualdade é apenas a definição de esperança de uma função
+indicadora sob o posterior. $\square$
+\end{provabox}
+
+\begin{ideiabox}
+O conteúdo da proposição, em uma frase: \textbf{sortear do posterior e tomar o
+$\argmax$ é um estimador de Monte Carlo com uma \emph{única} amostra} da
+integral que não sabíamos calcular. E uma amostra basta, porque não precisamos
+do \emph{valor} de $\pol(a\mid\hist)$ — precisamos apenas de uma ação
+\emph{distribuída} segundo ele. É uma das trocas mais elegantes da área: o
+problema difícil não foi resolvido, foi contornado.
+\end{ideiabox}
+
+\subsection*{Um exemplo numérico completo}
+
+Três tratamentos para um dedo quebrado, com parâmetros verdadeiros
+(desconhecidos do agente) $\theta_1 = 0{,}95$ para a cirurgia,
+$\theta_2 = 0{,}90$ para o esparadrapo e $\theta_3 = 0{,}10$ para não fazer
+nada. Prior $\Bdist(1,1)$ nos três braços.
+
+\begin{center}\small
+\begin{tabular}{@{}clccl@{}}
+\toprule
+\textbf{Passo} & \textbf{Posteriores antes} & \textbf{Amostras} & \textbf{Escolha} & \textbf{Resultado e atualização} \\
+\midrule
+1 & $(1,1)\;(1,1)\;(1,1)$ & $0{,}30\ \ 0{,}50\ \ 0{,}60$ & $a_3$ & $r=0 \Rightarrow \theta_3 \sim \Bdist(1,2)$ \\
+2 & $(1,1)\;(1,1)\;(1,2)$ & $0{,}70\ \ 0{,}50\ \ 0{,}30$ & $a_1$ & $r=1 \Rightarrow \theta_1 \sim \Bdist(2,1)$ \\
+3 & $(2,1)\;(1,1)\;(1,2)$ & $0{,}71\ \ 0{,}65\ \ 0{,}10$ & $a_1$ & $r=1 \Rightarrow \theta_1 \sim \Bdist(3,1)$ \\
+4 & $(3,1)\;(1,1)\;(1,2)$ & $0{,}75\ \ 0{,}45\ \ 0{,}40$ & $a_1$ & $r=1 \Rightarrow \theta_1 \sim \Bdist(4,1)$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{alertabox}
+Exemplo \emph{fictício}: estes não são os desfechos reais das opções de
+tratamento para um dedo quebrado. O caso serve apenas para acompanhar a
+aritmética.
+\end{alertabox}
+
+Na mesma instância, o otimismo puxou a sequência
+$a_1$, $a_2$, $a_3$, $a_1$, $a_2$, e Thompson puxou
+$a_3$, $a_1$, $a_1$, $a_1$, $a_1$. A diferença é qualitativa: o otimismo
+\emph{tem de} experimentar cada braço até que sua incerteza caia, porque o
+bônus é enorme para quem tem poucas puxadas; Thompson descarta braços que a
+evidência já tornou implausíveis, mesmo com um único dado. Numa amostra o TS
+ganha, noutra perde — o que se compara é a média.
+
+\subsection*{Implementação}
+
+\begin{algbox}{Thompson Bernoulli, em seis linhas}
+\begin{verbatim}
+alfa = np.ones(K); beta = np.ones(K)   # prior Beta(1,1) por braco
+for t in range(T):
+    theta = rng.beta(alfa, beta)       # 1 amostra de cada posterior
+    a = int(np.argmax(theta))          # otimo no mundo sorteado
+    r = puxar(a)                       # recompensa em {0,1}
+    alfa[a] += r; beta[a] += 1 - r     # atualizacao conjugada
+\end{verbatim}
+\end{algbox}
+
+Nenhum hiperparâmetro de exploração, nenhum cronograma, nenhuma cota de
+concentração. Custo por passo: $O(m)$ em tempo e memória — o mesmo do
+$\epsilon$-guloso. Para recompensas contínuas, trocam-se as duas últimas linhas
+pela atualização Normal--Normal; a estrutura do laço não muda.
+
+\subsection*{O que acontece na média}
+
+Simulação com $\theta = (0{,}95;\ 0{,}90;\ 0{,}10)$ e prior $\Bdist(1,1)$,
+com média sobre $1500$ execuções independentes:
+
+\begin{center}\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+\textbf{Arrependimento acumulado em} & $T=100$ & $T=500$ & $T=1000$ & $T=2000$ \\
+\midrule
+Amostragem de Thompson   & $3{,}2$ & $6{,}4$  & $7{,}9$  & $9{,}2$ \\
+Guloso                   & $2{,}6$ & $7{,}8$  & $14{,}1$ & $26{,}5$ \\
+UCB                      & $7{,}3$ & $19{,}5$ & $29{,}9$ & $45{,}7$ \\
+$\epsilon$-guloso ($\epsilon = 0{,}1$) & $5{,}1$ & $20{,}0$ & $36{,}9$ & $68{,}6$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{alertabox}
+\textbf{Não conclua que o guloso é bom.} O guloso tem arrependimento
+\emph{linear}: em $23\%$ das execuções ele trava no braço $a_2$ e nunca mais
+sai. Ele só parece competitivo porque $\Delta_2 = 0{,}05$ é minúsculo — a reta
+tem inclinação pequena, mas é reta. Estendendo o horizonte, seu arrependimento
+médio vai a $13{,}2$ ($T=10^3$), $58{,}9$ ($T=5\times10^3$) e $229{,}9$
+($T=2\times10^4$), enquanto o de Thompson vai a $9{,}2$, $13{,}0$ e $15{,}7$ —
+crescimento logarítmico. \emph{Moral metodológica:} nunca compare algoritmos de
+exploração em um único horizonte, nem olhando apenas a média.
+\end{alertabox}
+
+%% ============================================================
+\section{Arrependimento bayesiano}
+
+\begin{defbox}{arrependimento frequentista e bayesiano}
+\emph{Frequentista} — supõe parâmetros verdadeiros e fixos $\theta$, com a
+esperança tomada sobre o histórico gerado pelo algoritmo $\alg$:
+\[
+  \arrep(\alg,T;\theta) \;=\; \E_{\alg}\!\left[\sum_{t=1}^{T} Q(a^{*}) - Q(a_t)\ \Big|\ \theta\right].
+\]
+\emph{Bayesiano} — supõe um prior $p_\theta$ e tira a média também sobre ele:
+\[
+  \arrepb(\alg,T) \;=\; \E_{\theta \sim p_\theta}\big[\arrep(\alg,T;\theta)\big].
+\]
+\end{defbox}
+
+\begin{teobox}{Observação — uma cota implica a outra}
+$\arrepb(\alg,T) \;\le\; \sup_{\theta}\,\arrep(\alg,T;\theta)$, para todo prior
+$p_\theta$.
+\end{teobox}
+
+\begin{provabox}
+A média de uma função é no máximo o seu supremo:
+$\E_{\theta\sim p_\theta}[\arrep(\alg,T;\theta)] \le \sup_\theta \arrep(\alg,T;\theta)$.
+$\square$
+
+\smallskip
+Consequência prática: \textbf{toda cota frequentista uniforme já é uma cota
+bayesiana}. A recíproca é falsa — uma cota bayesiana boa pode conviver com
+desempenho péssimo em um $\theta$ de probabilidade a priori desprezível. É
+exatamente aí que mora a diferença de dificuldade entre as duas análises, e é
+por isso que uma cota \emph{frequentista} para Thompson é um resultado bem mais
+forte (e bem mais recente) do que a bayesiana.
+\end{provabox}
+
+\subt{Otimismo como técnica de demonstração}
+
+Suponha que $U_t(a)$ seja, com alta probabilidade, uma cota superior de $Q(a)$.
+No evento em que a cota vale,
+\begin{equation}
+  \arrep(\alg,T;\theta)
+  = \E\!\left[\sum_{t=1}^{T} Q(a^{*}) - Q(a_t)\right]
+  \;\le\;
+  \E\!\left[\sum_{t=1}^{T} \mdestaque{rlLaranja}{U_t(a_t) - Q(a_t)}\right].
+  \label{eq:otim}
+\end{equation}
+O passo usa duas coisas: $Q(a^*) \le U_t(a^*)$, porque a cota vale para o braço
+ótimo; e $U_t(a^*) \le U_t(a_t)$, porque o algoritmo escolheu $a_t$ justamente
+por ter o maior índice. À direita não sobra nenhuma referência a $a^*$: o
+arrependimento virou a soma das larguras dos intervalos de confiança dos braços
+\emph{efetivamente puxados} — e cotar isso é contar puxadas, via~\eqref{eq:decomp}.
+
+\begin{ideiabox}
+Eis a razão profunda de o otimismo ser onipresente na teoria de bandits: ele não
+é apenas uma heurística de exploração, é o artifício que faz a demonstração
+fechar. O notável é que a análise bayesiana de Thompson usa \emph{esse mesmo
+artifício} — via a chamada \emph{razão de informação} de Russo e Van Roy —
+apesar de o algoritmo não ser otimista. Thompson herda as cotas do otimismo sem
+ser otimista.
+\end{ideiabox}
+
+\begin{center}\small
+\begin{tabular}{@{}llp{6.4cm}@{}}
+\toprule
+\textbf{Garantia} & \textbf{Cota} & \textbf{Referência e observação} \\
+\midrule
+UCB, frequentista & $O(\sqrt{mT\ln T})$ &
+  Auer, Cesa-Bianchi e Fischer (2002); também
+  $O\big(\sum_a \ln T/\Delta_a\big)$, dependente das lacunas \\
+Thompson, bayesiano & $O(\sqrt{mT\ln T})$ &
+  Russo e Van Roy (2014), via razão de informação; vale para qualquer prior \\
+Thompson, frequentista & $O(\sqrt{mT\ln T})$ &
+  Agrawal e Goyal (2012, 2013), Bernoulli com prior Beta; constantes piores
+  que as do UCB \\
+Cota inferior (qualquer algoritmo) & $\Omega(\sqrt{mT})$ &
+  Lai e Robbins (1985); Auer et al.\ (2002) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\medskip
+\noindent
+Em ordem de grandeza, portanto, \textbf{empate}: amostragem posterior tem as
+mesmas cotas do UCB a menos de constantes, e ambos são ótimos em ordem. Nas
+constantes e na prática o TS costuma vencer, sobretudo em bandits contextuais,
+onde calibrar o bônus de otimismo é difícil.
+
+%% ============================================================
+\section{Onde Thompson falha, e o que vem depois}
+
+\subt{Prior enganoso}
+As garantias bayesianas são \emph{em média sobre o prior}. Se o prior estiver
+errado, não há promessa alguma. Com dois braços ($\theta_{\text{ruim}} = 0{,}10$
+e $\theta_{\text{bom}} = 0{,}50$) e $T = 1000$:
+
+\begin{center}\small
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Prior do braço ruim} & \textbf{Puxadas do braço ruim} & \textbf{Arrependimento} \\
+\midrule
+$\Bdist(1,1)$ — uniforme   & $13{,}6$  & $5{,}4$ \\
+$\Bdist(100,1)$ — enganoso & $204{,}0$ & $81{,}6$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent
+$\Bdist(100,1)$ afirma, antes de qualquer dado, que o braço acerta cerca de
+$99\%$ das vezes. Trazê-lo de volta à realidade exige acumular cerca de cem
+fracassos, e cada um deles é um passo desperdiçado: o arrependimento fica quinze
+vezes maior. \emph{Prática recomendada:} priors fracos ($\alpha+\beta$ pequeno),
+salvo evidência histórica real. Um prior informativo é uma afirmação empírica e
+deve ser defendida como tal.
+
+\subt{\emph{Feedback} em lote}
+Quando o retorno demora, o UCB — sendo determinístico — repete a mesma ação até
+que o histórico mude. Thompson, sorteando a cada decisão, \emph{diversifica
+naturalmente} dentro do lote: mil decisões tomadas com o mesmo posterior
+produzem uma mistura de braços na proporção $\pol(a\mid \hist)$. Foi um dos
+motivos empíricos do sucesso do TS em recomendação em larga escala.
+
+\subt{Bandits contextuais}
+No bandit contextual, o ambiente sorteia i.i.d.\ um contexto $x_t$ que afeta a
+recompensa de cada braço; o agente vê $x_t$, escolhe $a_t$ e recebe
+$r_t \sim \mathcal{R}(\cdot \mid x_t, a_t)$. É o passo intermediário entre
+bandit e MDP: já há generalização entre situações, mas a ação ainda não move o
+estado. O TS se estende sem esforço — mantenha um posterior sobre os
+\emph{parâmetros} de $Q_w(x,a)$, sorteie $\tilde w$, jogue
+$\argmax_a Q_{\tilde w}(x_t,a)$. Chapelle e Li (2010) mostraram que, em
+recomendação de notícias, o TS iguala ou supera o LinUCB, com implementação mais
+simples e maior robustez a atrasos.
+
+\subt{A política ótima e o índice de Gittins}
+Dado um prior e um horizonte, existe uma política que maximiza a recompensa
+esperada, e TS não é ela. Formalmente, o problema bayesiano é um MDP cujo estado
+é a \emph{crença} — todos os pares $(\alpha_a,\beta_a)$ —, cuja ação é o braço e
+cuja transição é a atualização de Bayes. Chama-se \emph{MDP de crenças}, e a
+política ótima sai de programação dinâmica sobre ele. Computacionalmente isso é
+inviável de forma ingênua: o conjunto de crenças alcançáveis cresce
+combinatoriamente com o horizonte.
+
+\begin{defbox}{política de índice}
+Política que calcula um índice de valor real para cada braço usando somente as
+estatísticas \emph{daquele braço} e o horizonte, e joga o braço de maior índice.
+(Definição de Lattimore e Szepesvári, \emph{Bandit Algorithms}.)
+\end{defbox}
+
+\begin{teobox}{Teorema do índice (Gittins, 1979)}
+Para um bandit bayesiano com braços \emph{independentes} e critério de recompensa
+esperada \emph{descontada} em horizonte infinito, a política ótima é uma
+política de índice: jogue sempre o braço de maior índice de Gittins.
+\end{teobox}
+
+O resultado é notável: reduz um problema de dimensão $m$ a $m$ problemas
+unidimensionais independentes. As limitações explicam por que ele não é usado
+na prática — exige braços independentes, quebra com horizonte finito ou com o
+critério de recompensa média, o índice é caro de calcular, e não há extensão
+para o caso contextual.
+
+\begin{ideiabox}
+Note a inversão conceitual do parágrafo anterior. O bandit começou como o caso
+\emph{fácil} do MDP — um único estado. Ao exigirmos otimalidade sob incerteza,
+ele voltou a ser um MDP, agora de estado contínuo e alta dimensão.
+\textbf{A incerteza é, ela própria, um estado.}
+\end{ideiabox}
+
+\subt{De volta ao RL}
+A ideia de Thompson não depende de o problema ser um bandit. O padrão geral é:
+\emph{sorteie um mundo plausível, aja de forma ótima nele por um episódio
+inteiro, atualize}.
+
+\begin{center}\small
+\begin{tabular}{@{}lp{7.0cm}l@{}}
+\toprule
+\textbf{Método} & \textbf{O que se sorteia} & \textbf{Referência} \\
+\midrule
+PSRL & um MDP inteiro do posterior sobre $(P,\rec)$, uma vez por episódio & Osband et al.\ (2013) \\
+RLSVI & pesos ruidosos da função valor linear & Osband et al.\ (2016) \\
+\emph{Bootstrapped} DQN & uma das $K$ cabeças da rede, uma vez por episódio & Osband et al.\ (2016) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\medskip
+\noindent
+Manter a \emph{mesma} amostra durante todo o episódio é o que produz
+\textbf{exploração profunda}: uma sequência coerente de decisões exploratórias,
+capaz de alcançar estados que só compensam depois de muitos passos. O
+$\epsilon$-guloso, que sorteia de novo a cada passo, executa um passeio
+aleatório e nunca chega lá.
+
+\begin{discbox}
+Um portal de notícias recebe milhares de acessos por segundo, e com frequência
+um novo leitor chega antes de sabermos se o anterior clicou. Nesse regime, o que
+se pode dizer da comparação entre amostragem de Thompson e algoritmos de
+otimismo? E o que muda se o prior inicial for muito enganoso?
+
+\smallskip
+{\footnotesize\color{rlCinza}\emph{Direção da resposta:} explorar a natureza
+determinística do UCB (histórico congelado $\Rightarrow$ índice congelado)
+contra a natureza estocástica do TS, e separar a pergunta empírica — o que
+funciona melhor aqui — da teórica — quem tem a cota mais forte neste cenário.}
+\end{discbox}
+
+\begin{discbox}
+É legítimo usar amostragem de Thompson para alocar pacientes em um ensaio
+clínico? O algoritmo reduz o número de pacientes expostos ao tratamento
+inferior, mas produz tamanhos de amostra desbalanceados e dependentes dos dados.
+
+\smallskip
+{\footnotesize\color{rlCinza}\emph{Direção da resposta:} contrapor benefício
+individual (menos pacientes no braço ruim) a poder estatístico e validade da
+inferência posterior; mencionar desenhos adaptativos com restrição de alocação
+mínima por braço, e o fato de que a aleatoriedade do TS preserva alguma
+proteção contra vieses temporais que um desenho determinístico perderia.}
+\end{discbox}
+
+%% ============================================================
+\section{Síntese}
+
+\begin{center}\small
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+ & $\epsilon$\textbf{-guloso} & \textbf{UCB} & \textbf{Thompson} & \textbf{Gittins} \\
+\midrule
+Usa conhecimento prévio        & não & não & sim & sim \\
+Determinístico                 & não & sim & não & sim \\
+Arrependimento                 & linear se $\epsilon$ fixo & $O(\ln T)$ & $O(\ln T)$ & --- \\
+Ótimo dado o prior             & não & não & não & sim$^{\dagger}$ \\
+Custo por passo                & $O(m)$ & $O(m)$ & $O(m)$ & alto \\
+Estende ao caso contextual     & sim & sim & sim, bem & não \\
+Hiperparâmetro de exploração   & $\epsilon$ & constante do bônus & nenhum & --- \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent{\footnotesize $^{\dagger}$ Sob independência entre braços e critério
+descontado em horizonte infinito.}
+
+\medskip
+\noindent
+Uma leitura útil: o $\epsilon$-guloso explora \emph{cegamente}, o UCB explora
+\emph{sistematicamente}, e Thompson explora \emph{na proporção da dúvida}. Os
+três exploram; apenas o último deixa que os dados decidam quanto.
+
+\subsection*{Arrependimento e PAC não são a mesma coisa}
+
+Com $\varepsilon = 0{,}05$ no exemplo dos três tratamentos, e definindo o
+critério PAC como $\Ind\big(Q(a_t) \ge Q(a^{*}) - \varepsilon\big)$:
+
+\begin{center}\small
+\begin{tabular}{@{}ccccccc@{}}
+\toprule
+\textbf{Otimismo} & \textbf{TS} & \textbf{Ótimo} & \textbf{Arrep.\ otim.} &
+\textbf{Otim.\ em $\varepsilon$?} & \textbf{Arrep.\ TS} & \textbf{TS em $\varepsilon$?} \\
+\midrule
+$a_1$ & $a_3$ & $a_1$ & $0$        & sim & $0{,}85$ & não \\
+$a_2$ & $a_1$ & $a_1$ & $0{,}05$   & sim & $0$      & sim \\
+$a_3$ & $a_1$ & $a_1$ & $0{,}85$   & não & $0$      & sim \\
+$a_1$ & $a_1$ & $a_1$ & $0$        & sim & $0$      & sim \\
+$a_2$ & $a_1$ & $a_1$ & $0{,}05$   & sim & $0$      & sim \\
+\midrule
+\multicolumn{3}{@{}l}{\textbf{Total}} & $\mathbf{0{,}95}$ & $4/5$ & $\mathbf{0{,}85}$ & $4/5$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\medskip
+\noindent
+Os dois critérios discordam de propósito. O arrependimento penaliza $a_3$
+dezessete vezes mais do que $a_2$, porque mede \emph{quanto} se perdeu; o PAC
+trata $a_2$ como acerto e $a_3$ como erro, porque só conta \emph{quantas vezes}
+se errou feio. Escolher entre eles é decisão de projeto: em um ensaio clínico
+importa o dano acumulado; em uma busca de hiperparâmetros, importa terminar com
+uma boa configuração.
+
+\subsection*{Formulário}
+
+\begin{center}\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+Arrependimento total & $L_T = \sum_a \E[N_T(a)]\,\Delta_a$, \ \ $\Delta_a = \Vstar - Q(a)$ \\
+Regra de Bayes & $p(\theta\mid r) \propto p(r\mid\theta)\,p(\theta)$ \\
+Conjugação Beta--Bernoulli & $\Bdist(\alpha,\beta) \to \Bdist(\alpha+S,\ \beta+F)$ \\
+Média posterior (Laplace) & $\E[\theta\mid S,F] = (S+1)/(S+F+2)$ a partir de $\Bdist(1,1)$ \\
+Casamento de probabilidade & $\pol(a\mid \hist) = \Prob[Q(a) > Q(a')\ \forall a' \neq a \mid \hist]$ \\
+Passo de Thompson & $\tilde\theta_a \sim \Bdist(\alpha_a,\beta_a)$;\ \ $a_t = \argmax_a \tilde\theta_a$ \\
+Arrependimento bayesiano & $\arrepb(\alg,T) = \E_{\theta\sim p_\theta}[\arrep(\alg,T;\theta)]$ \\
+Cota por otimismo & $\arrep \le \E\big[\sum_t U_t(a_t) - Q(a_t)\big]$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+%% ============================================================
+\section{Exercícios}
+
+\begin{exbox}{11.1 — conjugação para uma sequência}
+Mostre, por indução em $n$, que se $\theta \sim \Bdist(\alpha,\beta)$ e
+observamos $r_1,\ldots,r_n$ i.i.d.\ $\Bern(\theta)$ com $S = \sum_i r_i$
+sucessos e $F = n - S$ fracassos, então
+$\theta \mid r_{1:n} \sim \Bdist(\alpha+S,\ \beta+F)$. Conclua que a ordem das
+observações é irrelevante e explique por quê.
+\end{exbox}
+
+\begin{exbox}{11.2 — casamento de probabilidade em forma fechada}
+Suponha $\theta_1 \sim \Bdist(2,1)$, $\theta_2 \sim \Bdist(1,1)$ e
+$\theta_3 \sim \Bdist(1,2)$, independentes. Calcule analiticamente
+$\Prob[\theta_1 > \theta_2 \text{ e } \theta_1 > \theta_3]$ e as duas
+probabilidades análogas para os braços $2$ e $3$. Verifique que somam $1$ e
+compare com a frequência com que a amostragem de Thompson escolheria cada braço.
+\end{exbox}
+
+\begin{exbox}{11.3 — o guloso tem arrependimento linear}
+No exemplo dos três tratamentos, argumente que existe probabilidade
+estritamente positiva $p > 0$ de o algoritmo guloso ficar preso em $a_2$ para
+sempre, e conclua que $L_T \ge p\,\Delta_2\,(T - c)$ para alguma constante $c$.
+Por que o arrependimento médio observado ($13{,}2$ em $T=1000$) parecia
+inofensivo?
+\end{exbox}
+
+\begin{exbox}{11.4 — cota bayesiana a partir da frequentista}
+Prove que $\arrepb(\alg,T) \le \sup_\theta \arrep(\alg,T;\theta)$ e dê um
+exemplo (pode ser esquemático) de algoritmo com arrependimento bayesiano
+pequeno e arrependimento frequentista grande para algum $\theta$.
+\end{exbox}
+
+\begin{exbox}{11.5 — quanto custa um prior errado}
+Um braço tem $\theta = 0{,}1$ e prior $\Bdist(100,1)$. Estime quantas puxadas
+são necessárias para que a média posterior caia abaixo de $0{,}5$, supondo que
+as recompensas saiam na proporção esperada. Compare com o valor observado na
+simulação ($204$ puxadas em $T=1000$) e explique a diferença.
+\end{exbox}
+
+\begin{exbox}{11.6 — Thompson gaussiano}
+Deduza a atualização conjugada Normal--Normal: se
+$\theta \sim \Nrm(\mu_0,\sigma_0^2)$ e $r \mid \theta \sim \Nrm(\theta,\sigma^2)$
+com $\sigma$ conhecido, mostre que o posterior é gaussiano com precisão
+$1/\sigma_1^2 = 1/\sigma_0^2 + 1/\sigma^2$ e média igual à média das duas
+médias ponderada pelas precisões. Escreva o laço de Thompson correspondente.
+\end{exbox}
+
+\begin{exbox}{11.7 — implementação}
+Reproduza a tabela de arrependimento acumulado deste handout comparando guloso,
+$\epsilon$-guloso, UCB e Thompson em $T = 2000$, com pelo menos $500$ execuções.
+Estenda para $T = 2\times 10^4$ e verifique empiricamente qual curva é
+logarítmica e qual é linear. Reporte também a \emph{dispersão} entre execuções,
+não só a média.
+\end{exbox}
+
+\subsection*{Respostas comentadas}
+
+\textbf{11.1.} Base $n=1$: é a proposição do texto. Passo: pelo posterior ser um
+prior para a observação seguinte, $\Bdist(\alpha+S_k,\beta+F_k)$ atualizado por
+$r_{k+1}$ dá $\Bdist(\alpha+S_{k+1},\beta+F_{k+1})$. A irrelevância da ordem
+decorre de o posterior depender dos dados apenas por $(S,F)$, que é uma
+\emph{estatística suficiente} — coerente com as recompensas serem i.i.d.\ dado
+$\theta$.
+
+\medskip
+\textbf{11.2.} Com densidades $f_1(t) = 2t$, $f_2(t) = 1$, $f_3(t) = 2(1-t)$ e
+acumuladas $F_1(t)=t^2$, $F_2(t)=t$, $F_3(t)=2t-t^2$:
+\[
+  \Prob[\theta_1 \text{ máx}] = \int_0^1 2t\,\cdot t \cdot (2t-t^2)\,dt
+  = \int_0^1 (4t^3 - 2t^4)\,dt = 1 - \tfrac{2}{5} = \tfrac{3}{5} = 0{,}60 .
+\]
+Analogamente,
+$\Prob[\theta_2 \text{ máx}] = \int_0^1 t^2(2t-t^2)\,dt = \tfrac{3}{10}$ e
+$\Prob[\theta_3 \text{ máx}] = \int_0^1 2(1-t)\,t^3\,dt = \tfrac{1}{10}$.
+Somam $1$, como devem. Uma simulação com $4\times10^5$ amostras dá $0{,}598$,
+$0{,}301$ e $0{,}101$ — e essas são \emph{exatamente} as frequências com que
+Thompson escolheria cada braço, pela proposição da Seção~4.
+
+\medskip
+\textbf{11.3.} Basta que, nas primeiras puxadas, $a_1$ falhe e $a_2$ acerte:
+esse evento tem probabilidade positiva ($\approx 0{,}05 \times 0{,}90$ na
+inicialização usada), e a partir daí a média empírica de $a_2$ nunca é superada,
+porque $a_1$ deixa de ser puxado. Nesse evento o arrependimento cresce a taxa
+$\Delta_2$ por passo, o que dá a cota. O arrependimento médio parecia inofensivo
+porque $\Delta_2 = 0{,}05$ é minúsculo: a reta tem inclinação pequena. Ao
+quadruplicar $T$, o arrependimento do guloso quadruplica ($58{,}9 \to 229{,}9$),
+enquanto o de Thompson cresce como $\ln T$ ($13{,}0 \to 15{,}7$).
+
+\medskip
+\textbf{11.4.} A primeira parte é a monotonicidade da esperança. Para a segunda,
+considere um algoritmo que ignore os dados e jogue sempre o braço com maior
+valor \emph{a priori}: se o prior concentra quase toda a massa num $\theta$ em
+que esse braço é ótimo, o arrependimento bayesiano é quase nulo, mas para o
+$\theta$ (de probabilidade a priori pequena) em que o braço é péssimo o
+arrependimento frequentista é linear em $T$.
+
+\medskip
+\textbf{11.5.} A média posterior é $100/(100+1+F)$, com $F$ fracassos
+acumulados; ela cai abaixo de $0{,}5$ quando $F > 99$. Como $\theta = 0{,}1$,
+cerca de $90\%$ das puxadas são fracassos, e são necessárias
+$\approx 99/0{,}9 \approx 110$ puxadas. A simulação registra $204$ porque o
+critério real não é a média posterior cair abaixo de $0{,}5$, e sim as
+\emph{amostras} do posterior deixarem de ganhar do outro braço — o que exige
+concentração adicional, já que a Beta ainda tem cauda à direita.
+
+\medskip
+\textbf{11.6.} Multiplicando as duas densidades gaussianas e completando o
+quadrado em $\theta$, os termos quadráticos dão
+$\sigma_1^{-2} = \sigma_0^{-2} + \sigma^{-2}$ e os lineares dão
+$\mu_1 = \sigma_1^2(\mu_0/\sigma_0^2 + r/\sigma^2)$. O laço de Thompson passa a
+sortear $\tilde\theta_a \sim \Nrm(\mu_a, \sigma_a^2)$ e a atualizar
+$(\mu_{a_t}, \sigma_{a_t})$ pela fórmula acima. Note a interpretação: precisões
+se somam, e a média nova é a média ponderada pelas precisões — o dado ``puxa''
+o prior tanto mais quanto menos ruidoso for.
+
+\medskip
+\textbf{11.7.} Exercício de implementação; o esqueleto de seis linhas da
+Seção~4 basta para o TS. Um resultado esperado: a dispersão do guloso é
+bimodal (execuções que acertam o braço bom têm arrependimento quase nulo;
+as que travam têm arrependimento linear), enquanto a do TS é unimodal e
+estreita. Essa diferença de \emph{forma} da distribuição é invisível na média
+e é o argumento mais forte contra o guloso.
+
+%% ============================================================
+\section{Autoavaliação e glossário}
+
+\noindent Você domina esta aula se consegue, sem consultar o material:
+
+\begin{multicols}{2}
+{\footnotesize
+\begin{itemize}[leftmargin=1.5em, itemsep=0.3ex, topsep=0.2ex, label=$\square$]
+  \item escrever $L_T = \sum_a \E[N_T(a)]\Delta_a$ e explicar por que ela
+        organiza toda a análise;
+  \item enunciar e demonstrar a conjugação Beta--Bernoulli;
+  \item ler $(\alpha,\beta)$ como pseudo-contagens e recuperar a regra de
+        Laplace;
+  \item definir casamento de probabilidade e dizer por que é difícil de
+        calcular;
+  \item escrever o laço de Thompson e implementá-lo em poucas linhas;
+  \item demonstrar que Thompson implementa casamento de probabilidade;
+  \item distinguir arrependimento frequentista de bayesiano e provar a
+        desigualdade entre eles;
+  \item explicar o papel do otimismo como \emph{técnica de demonstração};
+  \item dar um exemplo concreto em que um prior enganoso arruína o TS;
+  \item explicar por que o guloso tem arrependimento linear mesmo parecendo
+        bom em horizonte curto;
+  \item enunciar o teorema do índice de Gittins e suas três limitações;
+  \item explicar o que é exploração profunda e por que $\epsilon$-guloso não a
+        produz.
+\end{itemize}}
+\end{multicols}
+
+\subsection*{Convenções de tradução fixadas nesta aula}
+
+\begin{center}\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Inglês} & \textbf{Português} \\
+\midrule
+regret / Bayesian regret & arrependimento / arrependimento bayesiano \\
+arm / gap & braço / lacuna \\
+prior / posterior & prior / posterior \\
+conjugate prior & prior conjugado \\
+probability matching & casamento de probabilidade \\
+Thompson sampling / posterior sampling & amostragem de Thompson / amostragem posterior \\
+optimism in the face of uncertainty & otimismo diante da incerteza \\
+index policy / Gittins index & política de índice / índice de Gittins \\
+contextual bandit & bandit contextual \\
+belief-state MDP & MDP de crenças \\
+deep exploration & exploração profunda \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\medskip
+\noindent{\footnotesize\color{rlCinza}
+\textbf{Leituras.} Sutton e Barto, \emph{Reinforcement Learning: An
+Introduction}, 2.\textsuperscript{a} ed., cap.~2 (seções 2.7 e 2.9)
+\textbullet\ Russo, Van Roy, Kazerouni, Osband e Wen, \emph{A Tutorial on
+Thompson Sampling} (2018) \textbullet\ Lattimore e Szepesvári, \emph{Bandit
+Algorithms} (2020), caps.~34--36 \textbullet\ Chapelle e Li, \emph{An Empirical
+Evaluation of Thompson Sampling} (NeurIPS 2011) \textbullet\ Russo e Van Roy,
+\emph{Learning to Optimize via Posterior Sampling} (2014).
+
+\medskip
+Material adaptado e expandido de \textbf{CS234: Reinforcement Learning}, Emma
+Brunskill, Stanford University. Prof.\ Marcelo Keese Albertini, Faculdade de
+Computação, Universidade Federal de Uberlândia.}
+
+\end{document}
