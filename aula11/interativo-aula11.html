@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Laboratório — Bandits bayesianos e amostragem de Thompson</title>
+<style>
+:root{
+  --azul:#16324F; --azul-claro:#2E5F8A; --teal:#18808D; --laranja:#E8590C;
+  --ambar:#F2A93B; --vermelho:#C1121F; --verde:#2B9348; --cinza:#5C677D;
+  --fundo:#FAFBFC; --fundo-quiz:#FFF8EE;
+  --texto:#1A1D24; --linha:#DDE3EA;
+  --sans:"Fira Sans","Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+  --mono:"Fira Mono","SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:#fff; color:var(--texto); font-family:var(--sans);
+  font-size:16px; line-height:1.55;
+}
+.envelope{max-width:1120px;margin:0 auto;padding:0 20px}
+
+/* ---------- cabeçalho: mesma faixa da capa do deck ---------- */
+header{background:var(--azul);color:#fff;position:relative;overflow:hidden}
+header svg.malha{position:absolute;right:-30px;top:-10px;opacity:.14;pointer-events:none}
+header .envelope{position:relative;padding:38px 20px 34px}
+.eyebrow{
+  color:var(--ambar);font-weight:600;font-size:.74rem;letter-spacing:.09em;
+  text-transform:uppercase;margin:0 0 .7em
+}
+header h1{font-size:clamp(1.5rem,3.4vw,2.3rem);line-height:1.15;margin:0 0 .35em;font-weight:600}
+header p.sub{color:var(--ambar);margin:0 0 1.2em;font-size:1.02rem}
+header p.quem{color:rgba(255,255,255,.72);margin:0;font-size:.86rem}
+
+/* ---------- navegação entre estações ---------- */
+nav{border-bottom:1px solid var(--linha);background:#fff;position:sticky;top:0;z-index:20}
+nav .envelope{display:flex;gap:2px;overflow-x:auto}
+nav button{
+  appearance:none;background:none;border:0;border-bottom:3px solid transparent;
+  padding:14px 16px;font:inherit;font-size:.9rem;color:var(--cinza);cursor:pointer;
+  white-space:nowrap;display:flex;align-items:baseline;gap:.55em
+}
+nav button .num{
+  font-family:var(--mono);font-size:.74rem;color:var(--laranja);font-weight:700
+}
+nav button:hover{color:var(--azul)}
+nav button[aria-selected="true"]{color:var(--azul);font-weight:600;border-bottom-color:var(--laranja)}
+nav button:focus-visible{outline:2px solid var(--azul-claro);outline-offset:-3px}
+
+/* ---------- estações ---------- */
+section.estacao{padding:34px 0 56px}
+section.estacao[hidden]{display:none}
+h2{font-size:1.42rem;margin:0 0 .25em;font-weight:600;color:var(--azul)}
+h2+p.chapeu{color:var(--cinza);margin:0 0 1.6em;max-width:62ch}
+
+.painel{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:22px;align-items:start}
+@media(max-width:860px){.painel{grid-template-columns:1fr}}
+
+.cartao{
+  background:var(--fundo);border-left:3px solid var(--azul-claro);
+  border-radius:0 6px 6px 0;padding:14px 16px 16px
+}
+.cartao.laranja{border-left-color:var(--laranja)}
+.cartao.ambar{border-left-color:var(--ambar);background:var(--fundo-quiz)}
+.cartao.vermelho{border-left-color:var(--vermelho);background:#FDF4F4}
+.cartao.teal{border-left-color:var(--teal)}
+.cartao h3{
+  margin:0 0 .6em;font-size:.79rem;letter-spacing:.05em;text-transform:uppercase;
+  font-weight:700;color:var(--azul-claro)
+}
+.cartao.laranja h3{color:var(--laranja)}
+.cartao.ambar h3{color:var(--laranja)}
+.cartao.vermelho h3{color:var(--vermelho)}
+.cartao.teal h3{color:var(--teal)}
+.cartao p{margin:0 0 .7em;font-size:.9rem}
+.cartao p:last-child{margin-bottom:0}
+
+.tela{width:100%;display:block;border:1px solid var(--linha);border-radius:6px;background:#fff}
+
+/* ---------- controles ---------- */
+.controles{display:flex;flex-wrap:wrap;gap:9px;margin:14px 0 6px}
+button.acao{
+  appearance:none;border:1px solid var(--azul);background:var(--azul);color:#fff;
+  font:inherit;font-size:.88rem;font-weight:500;padding:8px 15px;border-radius:5px;cursor:pointer
+}
+button.acao:hover{background:#0F2439}
+button.acao.destaque{background:var(--laranja);border-color:var(--laranja)}
+button.acao.destaque:hover{background:#C94A08}
+button.acao.leve{background:#fff;color:var(--azul);border-color:var(--linha)}
+button.acao.leve:hover{background:var(--fundo);border-color:var(--azul-claro)}
+button.acao:disabled{opacity:.42;cursor:not-allowed}
+button.acao:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--azul-claro);outline-offset:2px}
+
+.campos{display:flex;flex-wrap:wrap;gap:16px;margin:12px 0}
+label.campo{display:flex;flex-direction:column;gap:4px;font-size:.79rem;color:var(--cinza)}
+label.campo input[type=number]{
+  width:82px;font:inherit;font-family:var(--mono);font-size:.86rem;padding:5px 7px;
+  border:1px solid var(--linha);border-radius:4px;background:#fff;color:var(--texto)
+}
+label.campo input[type=range]{width:170px;accent-color:var(--laranja)}
+label.campo .val{font-family:var(--mono);color:var(--azul);font-weight:600}
+label.caixa{display:flex;align-items:center;gap:6px;font-size:.82rem;color:var(--cinza);cursor:pointer}
+label.caixa input{accent-color:var(--laranja)}
+
+/* ---------- tabelas ---------- */
+table{border-collapse:collapse;width:100%;font-size:.86rem;margin:2px 0 0}
+th,td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--linha)}
+th:first-child,td:first-child{text-align:left}
+thead th{
+  font-size:.71rem;letter-spacing:.045em;text-transform:uppercase;color:var(--cinza);
+  font-weight:600;border-bottom:1.5px solid var(--azul)
+}
+tbody td{font-family:var(--mono);font-variant-numeric:tabular-nums}
+tbody td:first-child{font-family:var(--sans)}
+tr.destacada td{background:#FFF3EA}
+.chip{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:7px;vertical-align:baseline}
+
+/* ---------- leitura numérica grande ---------- */
+.leituras{display:flex;gap:26px;flex-wrap:wrap;margin:14px 0 2px}
+.leitura .rotulo{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--cinza)}
+.leitura .numero{font-family:var(--mono);font-size:1.5rem;font-weight:600;color:var(--azul);line-height:1.2}
+.leitura .numero.laranja{color:var(--laranja)}
+
+/* ---------- barras de probabilidade ---------- */
+.barras{margin-top:4px}
+.barra-linha{display:grid;grid-template-columns:96px 1fr 52px;gap:8px;align-items:center;margin-bottom:5px;font-size:.8rem}
+.barra-trilho{background:#EAEEF3;border-radius:3px;height:15px;position:relative;overflow:hidden}
+.barra-preench{height:100%;border-radius:3px;transition:width .28s ease}
+.barra-obs{position:absolute;top:0;height:100%;border-right:2px dashed var(--azul);width:0;transition:width .28s ease}
+.barra-linha .pct{font-family:var(--mono);text-align:right;color:var(--azul);font-variant-numeric:tabular-nums}
+
+.progresso{height:4px;background:#EAEEF3;border-radius:2px;overflow:hidden;margin:10px 0 0}
+.progresso div{height:100%;background:var(--laranja);width:0;transition:width .12s linear}
+
+.log{
+  font-family:var(--mono);font-size:.78rem;background:#fff;border:1px solid var(--linha);
+  border-radius:5px;padding:9px 11px;height:132px;overflow-y:auto;color:var(--cinza)
+}
+.log b{color:var(--azul)}
+.log .ganho{color:var(--verde)}
+.log .perda{color:var(--vermelho)}
+
+footer{border-top:1px solid var(--linha);margin-top:20px;padding:24px 0 40px;color:var(--cinza);font-size:.82rem}
+footer a{color:var(--azul-claro)}
+
+@media(prefers-reduced-motion:reduce){
+  *{transition-duration:.01ms !important;animation-duration:.01ms !important}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <svg class="malha" width="330" height="200" viewBox="0 0 330 200" aria-hidden="true">
+    <g fill="none" stroke="#fff" stroke-width="2.2">
+      <circle cx="250" cy="150" r="15"/><circle cx="180" cy="112" r="15"/>
+      <circle cx="98"  cy="140" r="15"/><circle cx="212" cy="52"  r="15"/>
+      <circle cx="118" cy="66"  r="15"/><circle cx="42"  cy="96"  r="15"/>
+      <path d="M236 143 L195 120"/><path d="M165 108 L113 130"/>
+      <path d="M177 97 L207 67"/><path d="M197 47 L133 60"/>
+      <path d="M103 71 L57 90"/><path d="M85 138 L57 108"/>
+    </g>
+  </svg>
+  <div class="envelope">
+    <p class="eyebrow">Aprendizagem por Reforço · Universidade Federal de Uberlândia</p>
+    <h1>Laboratório da Aula&nbsp;11<br>Bandits bayesianos e amostragem de Thompson</h1>
+    <p class="sub">Três estações para ver a exploração acontecer, em vez de ler sobre ela</p>
+    <p class="quem">Prof. Marcelo Keese Albertini · adaptado de CS234 (Stanford), Emma Brunskill</p>
+  </div>
+</header>
+
+<nav>
+  <div class="envelope" role="tablist" aria-label="Estações do laboratório">
+    <button role="tab" id="aba-1" aria-controls="est-1" aria-selected="true"><span class="num">01</span> O sorteio</button>
+    <button role="tab" id="aba-2" aria-controls="est-2" aria-selected="false"><span class="num">02</span> A corrida</button>
+    <button role="tab" id="aba-3" aria-controls="est-3" aria-selected="false"><span class="num">03</span> Quando o prior mente</button>
+  </div>
+</nav>
+
+<main class="envelope">
+
+<!-- ============================================================ -->
+<!-- ESTAÇÃO 1                                                     -->
+<!-- ============================================================ -->
+<section class="estacao" id="est-1" role="tabpanel" aria-labelledby="aba-1">
+  <h2>Um sorteio por passo</h2>
+  <p class="chapeu">Cada curva é a crença atual sobre a taxa de sucesso de um braço. Thompson
+  sorteia um ponto de cada curva e puxa o braço do maior ponto. Observe o que a
+  <em>largura</em> da curva faz com a chance de cada braço ser sorteado como o maior.</p>
+
+  <div class="painel">
+    <div>
+      <canvas class="tela" id="tela1" height="330"></canvas>
+
+      <div class="controles">
+        <button class="acao destaque" id="b1-passo">Sortear e puxar</button>
+        <button class="acao" id="b1-vinte">Rodar 20 passos</button>
+        <button class="acao leve" id="b1-auto">Rodar continuamente</button>
+        <button class="acao leve" id="b1-zerar">Reiniciar</button>
+      </div>
+      <label class="caixa"><input type="checkbox" id="b1-verdade" checked> Marcar os valores verdadeiros de θ no eixo</label>
+
+      <div class="leituras">
+        <div class="leitura"><div class="rotulo">Passo</div><div class="numero" id="b1-t">0</div></div>
+        <div class="leitura"><div class="rotulo">Arrependimento acumulado</div><div class="numero laranja" id="b1-arrep">0,00</div></div>
+        <div class="leitura"><div class="rotulo">Acertos</div><div class="numero" id="b1-acertos">0 / 0</div></div>
+      </div>
+
+      <table id="b1-tabela">
+        <thead><tr>
+          <th>Braço</th><th>θ real</th><th>Puxadas</th><th>Sucessos</th>
+          <th>Posterior</th><th>Média post.</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div>
+      <div class="cartao laranja">
+        <h3>Probabilidade de ser o melhor</h3>
+        <p style="font-size:.84rem">Barra cheia: π(a | hₜ), estimada do posterior. Traço vertical:
+        frequência com que este experimento de fato escolheu o braço. A proposição da aula diz
+        que as duas coincidem — aqui dá para ver isso acontecer.</p>
+        <div class="barras" id="b1-barras"></div>
+      </div>
+
+      <div class="cartao" style="margin-top:16px">
+        <h3>Histórico</h3>
+        <div class="log" id="b1-log"></div>
+      </div>
+
+      <div class="cartao ambar" style="margin-top:16px">
+        <h3>O que observar</h3>
+        <p>Comece com prior uniforme nos três braços: as três curvas são retas e o sorteio é quase
+        um lançamento de moeda entre eles.</p>
+        <p>Depois de um único fracasso, a curva do braço ruim se inclina para a esquerda e ele
+        praticamente some do sorteio — <b>sem nenhuma regra dizendo para abandoná-lo</b>.</p>
+        <p>Perto do passo 100, as curvas dos dois braços bons ainda se sobrepõem. É por isso que
+        Thompson continua alternando entre eles: a dúvida é real, e o algoritmo age na medida dela.</p>
+      </div>
+
+      <div class="cartao teal" style="margin-top:16px">
+        <h3>Parâmetros do problema</h3>
+        <div id="b1-campos"></div>
+        <p style="font-size:.8rem;color:var(--cinza);margin-top:.8em">Alterar qualquer campo reinicia o experimento.
+        Exemplo fictício: estes não são desfechos reais de tratamento.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- ESTAÇÃO 2                                                     -->
+<!-- ============================================================ -->
+<section class="estacao" id="est-2" role="tabpanel" aria-labelledby="aba-2" hidden>
+  <h2>Quatro algoritmos, muitas execuções</h2>
+  <p class="chapeu">Arrependimento acumulado médio. Uma execução isolada não diz nada — o que
+  se compara é a média sobre muitas, e a dispersão entre elas. Estenda o horizonte para separar
+  as curvas logarítmicas das retas.</p>
+
+  <div class="painel">
+    <div>
+      <canvas class="tela" id="tela2" height="360"></canvas>
+
+      <div class="campos">
+        <label class="campo">Horizonte T <span class="val" id="v-T">2000</span>
+          <input type="range" id="c-T" min="500" max="20000" step="500" value="2000"></label>
+        <label class="campo">Execuções <span class="val" id="v-R">300</span>
+          <input type="range" id="c-R" min="50" max="1000" step="50" value="300"></label>
+        <label class="campo">ε do ε-guloso <span class="val" id="v-eps">0,10</span>
+          <input type="range" id="c-eps" min="0.01" max="0.5" step="0.01" value="0.1"></label>
+      </div>
+
+      <div class="controles">
+        <button class="acao destaque" id="b2-rodar">Rodar a corrida</button>
+        <button class="acao leve" id="b2-escala">Eixo horizontal: linear</button>
+        <label class="caixa" style="margin-left:6px"><input type="checkbox" id="b2-faixa">
+          Mostrar faixa de 10% a 90% das execuções</label>
+      </div>
+      <div class="progresso"><div id="b2-prog"></div></div>
+      <p id="b2-aviso" style="font-size:.8rem;color:var(--vermelho);margin:.7em 0 0"></p>
+
+      <table id="b2-tabela" style="margin-top:18px">
+        <thead><tr>
+          <th>Algoritmo</th><th>Arrep. em T</th><th>Mediana</th>
+          <th>Faixa 10–90%</th><th>Presas em braço subótimo</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div>
+      <div class="cartao vermelho">
+        <h3>A armadilha do guloso</h3>
+        <p>Em T = 2000 o guloso costuma aparecer <b>abaixo</b> do UCB. Isso não contradiz a teoria.</p>
+        <p>Ele fica preso no braço subótimo em cerca de um quinto das execuções, e nunca mais sai.
+        Só parece competitivo porque a lacuna Δ₂ = 0,05 é minúscula: a reta tem inclinação pequena,
+        mas é reta.</p>
+        <p><b>Teste.</b> Leve o horizonte para 20 000 e compare o crescimento. Depois marque a faixa
+        de 10 a 90% — a do guloso abre num leque, porque a distribuição é bimodal; a de Thompson
+        permanece estreita.</p>
+      </div>
+
+      <div class="cartao ambar" style="margin-top:16px">
+        <h3>Outros experimentos</h3>
+        <p><b>Aumente ε.</b> O ε-guloso paga ε·Δ̄ por passo para sempre: arrependimento linear com
+        inclinação proporcional a ε.</p>
+        <p><b>Aproxime os braços</b> na estação 1 (θ₁ = 0,90 e θ₂ = 0,89) e volte aqui. Com lacunas
+        pequenas todos demoram mais a decidir, e a vantagem de Thompson encolhe — a dificuldade do
+        problema está nas lacunas, não no número de braços.</p>
+        <p><b>Afaste-os</b> (0,95 contra 0,30) e o UCB alcança Thompson: quando o problema é fácil,
+        a escolha do explorador importa pouco.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- ESTAÇÃO 3                                                     -->
+<!-- ============================================================ -->
+<section class="estacao" id="est-3" role="tabpanel" aria-labelledby="aba-3" hidden>
+  <h2>Quando o prior mente</h2>
+  <p class="chapeu">As garantias bayesianas valem <em>em média sobre o prior</em>. Dois braços:
+  um ruim, com θ = 0,10, e um bom, com θ = 0,50. Dê ao braço ruim um prior confiante e errado, e
+  veja quanto custa desfazer essa convicção.</p>
+
+  <div class="painel">
+    <div>
+      <canvas class="tela" id="tela3" height="300"></canvas>
+
+      <div class="campos">
+        <label class="campo">α do prior do braço ruim <span class="val" id="v-a">1</span>
+          <input type="range" id="c-a" min="1" max="200" step="1" value="1"></label>
+        <label class="campo">β do prior do braço ruim <span class="val" id="v-b">1</span>
+          <input type="range" id="c-b" min="1" max="200" step="1" value="1"></label>
+        <label class="campo">θ do braço ruim
+          <input type="number" id="c-tr" min="0" max="1" step="0.05" value="0.10"></label>
+        <label class="campo">θ do braço bom
+          <input type="number" id="c-tb" min="0" max="1" step="0.05" value="0.50"></label>
+      </div>
+
+      <div class="controles">
+        <button class="acao destaque" id="b3-rodar">Rodar 300 execuções (T = 1000)</button>
+        <button class="acao leve" id="b3-varrer">Varrer α de 1 a 200</button>
+      </div>
+      <div class="progresso"><div id="b3-prog"></div></div>
+
+      <table id="b3-tabela" style="margin-top:18px">
+        <thead><tr>
+          <th>Prior do braço ruim</th><th>Puxadas do braço ruim</th>
+          <th>Arrependimento em T</th><th>Custo relativo</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div>
+      <div class="cartao ambar">
+        <h3>A conta de guardanapo</h3>
+        <p>A média posterior do braço ruim é α / (α + β + F), com F fracassos acumulados. Para
+        cair abaixo de 0,5 é preciso F &gt; α − β. Como só 10% das puxadas dão sucesso, são
+        necessárias cerca de (α − β)/0,9 puxadas — e cada uma delas é um passo desperdiçado.</p>
+        <p>Com α = 100 e β = 1 isso dá aproximadamente 110 puxadas. A simulação registra mais do
+        que isso, porque o critério real não é a média cair: é as <em>amostras</em> pararem de
+        ganhar do outro braço, o que exige concentração adicional.</p>
+      </div>
+
+      <div class="cartao" style="margin-top:16px">
+        <h3>Prática recomendada</h3>
+        <p>Use priors fracos — α + β pequeno — a menos que exista evidência histórica real. Um
+        prior informativo é uma afirmação empírica sobre o mundo, e deve ser defendida como tal.</p>
+        <p>Note a assimetria: aumentar β (pessimismo sobre um braço bom) custa bem menos que
+        aumentar α, porque o algoritmo abandona o braço e não descobre o erro. <b>Um prior
+        pessimista erra em silêncio; um prior otimista erra e paga.</b></p>
+      </div>
+
+      <div class="cartao teal" style="margin-top:16px">
+        <h3>Varredura</h3>
+        <p style="font-size:.85rem">O botão de varredura roda a simulação para vários valores de α
+        e desenha o arrependimento resultante. Demora alguns segundos.</p>
+        <canvas class="tela" id="tela3b" height="180" style="margin-top:8px"></canvas>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="envelope">
+    Laboratório de apoio à Aula 11 — <b>Bandits bayesianos e amostragem de Thompson</b>.
+    Todas as simulações rodam no seu navegador; nada é enviado a lugar nenhum.
+    Material adaptado e expandido de CS234: Reinforcement Learning, Emma Brunskill, Stanford
+    University. Prof. Marcelo Keese Albertini, Faculdade de Computação, Universidade Federal de
+    Uberlândia.
+  </div>
+</footer>
+
+<script>
+"use strict";
+
+/* ============================================================
+   1. NÚCLEO NUMÉRICO
+   (conferido contra scipy e contra simulações independentes)
+   ============================================================ */
+function criarRng(semente){
+  let a = semente>>>0;
+  return function(){
+    a|=0; a=(a+0x6D2B79F5)|0;
+    let t=Math.imul(a^(a>>>15),1|a);
+    t=(t+Math.imul(t^(t>>>7),61|t))^t;
+    return ((t^(t>>>14))>>>0)/4294967296;
+  };
+}
+function criarNormal(rng){
+  let guardado=null;
+  return function(){
+    if(guardado!==null){const v=guardado;guardado=null;return v;}
+    let u=0,v=0;
+    while(u===0)u=rng();
+    while(v===0)v=rng();
+    const r=Math.sqrt(-2*Math.log(u));
+    guardado=r*Math.sin(2*Math.PI*v);
+    return r*Math.cos(2*Math.PI*v);
+  };
+}
+function criarGama(rng,normal){
+  return function amostraGama(k){
+    if(k<1) return amostraGama(k+1)*Math.pow(rng(),1/k);
+    const d=k-1/3, c=1/Math.sqrt(9*d);
+    for(;;){
+      let x,v;
+      do{ x=normal(); v=1+c*x; }while(v<=0);
+      v=v*v*v;
+      const u=rng(), x2=x*x;
+      if(u<1-0.0331*x2*x2) return d*v;
+      if(Math.log(u)<0.5*x2+d*(1-v+Math.log(v))) return d*v;
+    }
+  };
+}
+function criarBeta(gama){ return function(a,b){const x=gama(a),y=gama(b);return x/(x+y);}; }
+
+const LANCZOS=[676.5203681218851,-1259.1392167224028,771.32342877765313,
+  -176.61502916214059,12.507343278686905,-0.13857109526572012,
+  9.9843695780195716e-6,1.5056327351493116e-7];
+function logGama(z){
+  if(z<0.5) return Math.log(Math.PI/Math.sin(Math.PI*z))-logGama(1-z);
+  z-=1;
+  let x=0.99999999999980993;
+  for(let i=0;i<LANCZOS.length;i++) x+=LANCZOS[i]/(z+i+1);
+  const t=z+LANCZOS.length-0.5;
+  return 0.5*Math.log(2*Math.PI)+(z+0.5)*Math.log(t)-t+Math.log(x);
+}
+function densidadeBeta(x,a,b){
+  const lc=logGama(a+b)-logGama(a)-logGama(b);
+  if(x<=0) return a<1?Infinity:(a===1?Math.exp(lc):0);
+  if(x>=1) return b<1?Infinity:(b===1?Math.exp(lc):0);
+  return Math.exp(lc+(a-1)*Math.log(x)+(b-1)*Math.log(1-x));
+}
+
+const rngGlobal=criarRng(20260810);
+const amostraBeta=criarBeta(criarGama(rngGlobal,criarNormal(rngGlobal)));
+
+function probabilidadeDeSerOtimo(alfas,betas,n){
+  const m=alfas.length, cont=new Array(m).fill(0);
+  for(let i=0;i<n;i++){
+    let melhor=0,vMelhor=-1;
+    for(let a=0;a<m;a++){
+      const v=amostraBeta(alfas[a],betas[a]);
+      if(v>vMelhor){vMelhor=v;melhor=a;}
+    }
+    cont[melhor]++;
+  }
+  return cont.map(c=>c/n);
+}
+
+/* uma execução completa; devolve arrependimento acumulado e puxadas */
+function executar(alg,thetas,T,rng,opts){
+  opts=opts||{};
+  const eps=opts.eps===undefined?0.1:opts.eps;
+  const normal=criarNormal(rng), gama=criarGama(rng,normal), beta_=criarBeta(gama);
+  const m=thetas.length, melhor=Math.max.apply(null,thetas);
+  const n=new Float64Array(m), s=new Float64Array(m);
+  const alfa=new Float64Array(m), bet=new Float64Array(m);
+  for(let a=0;a<m;a++){
+    alfa[a]=opts.priorA?opts.priorA[a]:1;
+    bet[a]=opts.priorB?opts.priorB[a]:1;
+  }
+  const arrep=new Float64Array(T);
+  let acum=0;
+  for(let t=0;t<T;t++){
+    let a=0;
+    if(alg==='ts'){
+      let vMax=-1;
+      for(let i=0;i<m;i++){const v=beta_(alfa[i],bet[i]);if(v>vMax){vMax=v;a=i;}}
+    } else if(t<m){
+      a=t;
+    } else if(alg==='ucb'){
+      let vMax=-Infinity;
+      for(let i=0;i<m;i++){
+        const v=s[i]/n[i]+Math.sqrt(2*Math.log(t+1)/n[i]);
+        if(v>vMax){vMax=v;a=i;}
+      }
+    } else if(alg==='eps'){
+      if(rng()<eps){ a=Math.floor(rng()*m); }
+      else{
+        let vMax=-Infinity;
+        for(let i=0;i<m;i++){const v=s[i]/n[i];if(v>vMax){vMax=v;a=i;}}
+      }
+    } else {
+      let vMax=-Infinity;
+      for(let i=0;i<m;i++){const v=s[i]/n[i];if(v>vMax){vMax=v;a=i;}}
+    }
+    const r=rng()<thetas[a]?1:0;
+    n[a]+=1; s[a]+=r; alfa[a]+=r; bet[a]+=1-r;
+    acum+=melhor-thetas[a];
+    arrep[t]=acum;
+  }
+  return {arrep:arrep,puxadas:Array.from(n)};
+}
+
+/* ============================================================
+   2. UTILIDADES DE APRESENTAÇÃO
+   ============================================================ */
+const CORES={azul:'#16324F',azulClaro:'#2E5F8A',teal:'#18808D',laranja:'#E8590C',
+  ambar:'#F2A93B',vermelho:'#C1121F',verde:'#2B9348',cinza:'#5C677D',linha:'#DDE3EA'};
+const num=(v,c)=>v.toLocaleString('pt-BR',{minimumFractionDigits:c,maximumFractionDigits:c});
+const $=s=>document.querySelector(s);
+
+function prepararTela(cv){
+  const r=window.devicePixelRatio||1;
+  const larg=cv.clientWidth||cv.parentElement.clientWidth;
+  /* a altura lógica é guardada na primeira passagem: atribuir cv.height
+     sobrescreveria o atributo e o canvas cresceria a cada redesenho */
+  if(!cv.dataset.alt) cv.dataset.alt=cv.getAttribute('height');
+  const alt=parseInt(cv.dataset.alt,10);
+  cv.width=Math.round(larg*r); cv.height=Math.round(alt*r);
+  cv.style.height=alt+'px';
+  const ctx=cv.getContext('2d');
+  ctx.setTransform(r,0,0,r,0,0);
+  ctx.clearRect(0,0,larg,alt);
+  return {ctx:ctx,L:larg,A:alt};
+}
+function textoEixo(ctx){ ctx.font='11px '+getComputedStyle(document.body).fontFamily; }
+
+/* ============================================================
+   3. ESTAÇÃO 1 — O SORTEIO
+   ============================================================ */
+const E1={
+  nomes:['Cirurgia','Esparadrapo','Nada'],
+  cores:[CORES.laranja,CORES.teal,CORES.cinza],
+  thetas:[0.95,0.90,0.10],
+  priorA:[1,1,1], priorB:[1,1,1],
+  alfa:[1,1,1], beta:[1,1,1],
+  alfaAnim:[1,1,1], betaAnim:[1,1,1],
+  n:[0,0,0], s:[0,0,0],
+  escolhas:[0,0,0],
+  t:0, arrep:0, acertos:0,
+  amostras:null, vencedor:-1, faseDrop:1, pulso:0,
+  auto:null, escalaY:1, pOtimo:[1/3,1/3,1/3], ultimoP:0,
+  mostrarVerdade:true, alvoMorf:false, tempoMorf:null
+};
+
+function e1Zerar(){
+  E1.alfa=E1.priorA.slice(); E1.beta=E1.priorB.slice();
+  E1.alfaAnim=E1.alfa.slice(); E1.betaAnim=E1.beta.slice();
+  E1.n=[0,0,0]; E1.s=[0,0,0]; E1.escolhas=[0,0,0];
+  E1.t=0; E1.arrep=0; E1.acertos=0;
+  E1.amostras=null; E1.vencedor=-1; E1.pulso=0; E1.escalaY=1;
+  E1.pOtimo=probabilidadeDeSerOtimo(E1.alfa,E1.beta,6000);
+  $('#b1-log').innerHTML='';
+  e1Pintar(); e1Atualizar();
+}
+
+function e1Passo(animar){
+  const m=3;
+  const am=[];
+  for(let i=0;i<m;i++) am.push(amostraBeta(E1.alfa[i],E1.beta[i]));
+  let venc=0;
+  for(let i=1;i<m;i++) if(am[i]>am[venc]) venc=i;
+  E1.amostras=am; E1.vencedor=venc;
+
+  const r=rngGlobal()<E1.thetas[venc]?1:0;
+  E1.n[venc]+=1; E1.s[venc]+=r; E1.escolhas[venc]+=1;
+  E1.alfa[venc]+=r; E1.beta[venc]+=1-r;
+  E1.t+=1; E1.acertos+=r;
+  E1.arrep+=Math.max.apply(null,E1.thetas)-E1.thetas[venc];
+
+  const linha=document.createElement('div');
+  linha.innerHTML='<b>'+String(E1.t).padStart(3,'\u00A0')+'</b> '+
+    'sorteios '+am.map(v=>v.toFixed(2)).join(' · ')+' → '+E1.nomes[venc]+
+    (r? ' <span class="ganho">sucesso</span>':' <span class="perda">falha</span>');
+  $('#b1-log').prepend(linha);
+  while($('#b1-log').childElementCount>60) $('#b1-log').lastElementChild.remove();
+
+  if(animar){
+    E1.faseDrop=0; E1.pulso=0;
+    if(E1.tempoMorf) clearTimeout(E1.tempoMorf);
+    E1.alvoMorf=false;
+  }
+  else { E1.faseDrop=1; E1.alfaAnim=E1.alfa.slice(); E1.betaAnim=E1.beta.slice(); }
+  e1Atualizar();
+}
+
+function e1Atualizar(){
+  $('#b1-t').textContent=E1.t;
+  $('#b1-arrep').textContent=num(E1.arrep,2);
+  $('#b1-acertos').textContent=E1.acertos+' / '+E1.t;
+
+  const corpo=$('#b1-tabela tbody');
+  corpo.innerHTML='';
+  for(let i=0;i<3;i++){
+    const tr=document.createElement('tr');
+    if(i===E1.vencedor) tr.className='destacada';
+    const media=E1.alfa[i]/(E1.alfa[i]+E1.beta[i]);
+    tr.innerHTML=
+      '<td><span class="chip" style="background:'+E1.cores[i]+'"></span>'+E1.nomes[i]+'</td>'+
+      '<td>'+num(E1.thetas[i],2)+'</td>'+
+      '<td>'+E1.n[i]+'</td>'+
+      '<td>'+E1.s[i]+'</td>'+
+      '<td>Beta('+num(E1.alfa[i],0)+', '+num(E1.beta[i],0)+')</td>'+
+      '<td>'+num(media,3)+'</td>';
+    corpo.appendChild(tr);
+  }
+
+  const agora=performance.now();
+  if(agora-E1.ultimoP>160){
+    E1.pOtimo=probabilidadeDeSerOtimo(E1.alfa,E1.beta,6000);
+    E1.ultimoP=agora;
+  }
+  const caixa=$('#b1-barras');
+  if(caixa.childElementCount!==3){
+    caixa.innerHTML='';
+    for(let i=0;i<3;i++){
+      const d=document.createElement('div');
+      d.className='barra-linha';
+      d.innerHTML='<span>'+E1.nomes[i]+'</span>'+
+        '<span class="barra-trilho"><span class="barra-preench" style="background:'+E1.cores[i]+'"></span>'+
+        '<span class="barra-obs"></span></span><span class="pct"></span>';
+      caixa.appendChild(d);
+    }
+  }
+  for(let i=0;i<3;i++){
+    const l=caixa.children[i];
+    const obs=E1.t>0?E1.escolhas[i]/E1.t:0;
+    l.querySelector('.barra-preench').style.width=(100*E1.pOtimo[i]).toFixed(1)+'%';
+    l.querySelector('.barra-obs').style.width=(100*obs).toFixed(1)+'%';
+    l.querySelector('.pct').textContent=(100*E1.pOtimo[i]).toFixed(0)+'%';
+  }
+}
+
+function e1Pintar(){
+  const cv=$('#tela1'); if(!cv.clientWidth) return;
+  const {ctx,L,A}=prepararTela(cv);
+  const mE=44,mD=16,mT=16,mB=34;
+  const larg=L-mE-mD, alt=A-mT-mB;
+
+  /* escala vertical suavizada */
+  let pico=1;
+  for(let i=0;i<3;i++){
+    const a=E1.alfaAnim[i],b=E1.betaAnim[i];
+    const modo=(a>1&&b>1)?(a-1)/(a+b-2):(a>=b?1:0);
+    const v=densidadeBeta(Math.min(0.999,Math.max(0.001,modo)),a,b);
+    if(isFinite(v)&&v>pico) pico=v;
+  }
+  pico=Math.min(pico,26);
+  E1.escalaY+= (pico*1.12-E1.escalaY)*0.25;
+  const eY=E1.escalaY;
+
+  const px=x=>mE+x*larg;
+  const py=d=>mT+alt-Math.min(d/eY,1)*alt;
+
+  /* eixos */
+  ctx.strokeStyle=CORES.linha; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(mE,mT+alt); ctx.lineTo(mE+larg,mT+alt); ctx.stroke();
+  textoEixo(ctx);
+  ctx.fillStyle=CORES.cinza; ctx.textAlign='center'; ctx.textBaseline='top';
+  for(const g of [0,0.25,0.5,0.75,1]){
+    ctx.beginPath(); ctx.moveTo(px(g),mT+alt); ctx.lineTo(px(g),mT+alt+4); ctx.stroke();
+    ctx.fillText(num(g,2),px(g),mT+alt+7);
+  }
+  ctx.textAlign='right'; ctx.textBaseline='middle';
+  ctx.fillText('densidade',mE-6,mT+6);
+  ctx.textAlign='center';
+  ctx.fillText('θ',mE+larg/2,mT+alt+20);
+
+  /* curvas */
+  for(let i=0;i<3;i++){
+    const a=E1.alfaAnim[i], b=E1.betaAnim[i];
+    ctx.beginPath();
+    for(let k=0;k<=240;k++){
+      const x=k/240;
+      const d=densidadeBeta(Math.min(0.9995,Math.max(0.0005,x)),a,b);
+      const X=px(x), Y=py(isFinite(d)?d:0);
+      if(k===0) ctx.moveTo(X,Y); else ctx.lineTo(X,Y);
+    }
+    ctx.strokeStyle=E1.cores[i]; ctx.lineWidth=(i===E1.vencedor)?2.6:1.8;
+    ctx.stroke();
+    ctx.lineTo(px(1),mT+alt); ctx.lineTo(px(0),mT+alt); ctx.closePath();
+    ctx.globalAlpha=0.09; ctx.fillStyle=E1.cores[i]; ctx.fill(); ctx.globalAlpha=1;
+  }
+
+  /* marcas dos θ verdadeiros */
+  if(E1.mostrarVerdade){
+    for(let i=0;i<3;i++){
+      const X=px(E1.thetas[i]), Y=mT+alt;
+      ctx.beginPath();
+      ctx.moveTo(X,Y+1); ctx.lineTo(X-4,Y+8); ctx.lineTo(X+4,Y+8); ctx.closePath();
+      ctx.fillStyle=E1.cores[i]; ctx.globalAlpha=.75; ctx.fill(); ctx.globalAlpha=1;
+    }
+  }
+
+  /* sorteio: pontos caindo sobre as curvas */
+  if(E1.amostras){
+    const f=E1.faseDrop;
+    for(let i=0;i<3;i++){
+      const x=E1.amostras[i];
+      const d=densidadeBeta(Math.min(0.9995,Math.max(0.0005,x)),E1.alfaAnim[i],E1.betaAnim[i]);
+      const alvoY=py(isFinite(d)?d:0);
+      const Y=mT+(alvoY-mT)*Math.min(1,f*1.0);
+      const X=px(x);
+      if(f>=0.999){
+        ctx.strokeStyle=E1.cores[i]; ctx.globalAlpha=.35; ctx.lineWidth=1;
+        ctx.setLineDash([3,3]);
+        ctx.beginPath(); ctx.moveTo(X,alvoY); ctx.lineTo(X,mT+alt); ctx.stroke();
+        ctx.setLineDash([]); ctx.globalAlpha=1;
+      }
+      const raio=(i===E1.vencedor&&f>=0.999)?5+2*Math.sin(E1.pulso*6):4;
+      ctx.beginPath(); ctx.arc(X,Y,raio,0,2*Math.PI);
+      ctx.fillStyle=E1.cores[i]; ctx.fill();
+      ctx.strokeStyle='#fff'; ctx.lineWidth=1.6; ctx.stroke();
+    }
+    if(f>=0.999&&E1.vencedor>=0){
+      const X=px(E1.amostras[E1.vencedor]);
+      ctx.fillStyle=E1.cores[E1.vencedor];
+      ctx.textAlign='center'; ctx.textBaseline='bottom';
+      ctx.font='600 11px '+getComputedStyle(document.body).fontFamily;
+      ctx.fillText('maior sorteio → puxa este',Math.min(Math.max(X,70),mE+larg-70),mT+12);
+    }
+  }
+}
+
+function e1Quadro(ts){
+  if(E1.faseDrop<1){
+    E1.faseDrop=Math.min(1,E1.faseDrop+0.055);
+    if(E1.faseDrop>=1){
+      E1.pulso=0;
+      E1.tempoMorf=setTimeout(()=>{ E1.alvoMorf=true; },260);
+    }
+  }
+  if(E1.faseDrop>=1) E1.pulso+=0.05;
+  if(E1.alvoMorf){
+    let pronto=true;
+    for(let i=0;i<3;i++){
+      E1.alfaAnim[i]+=(E1.alfa[i]-E1.alfaAnim[i])*0.22;
+      E1.betaAnim[i]+=(E1.beta[i]-E1.betaAnim[i])*0.22;
+      if(Math.abs(E1.alfa[i]-E1.alfaAnim[i])>0.01||Math.abs(E1.beta[i]-E1.betaAnim[i])>0.01) pronto=false;
+    }
+    if(pronto){ E1.alfaAnim=E1.alfa.slice(); E1.betaAnim=E1.beta.slice(); E1.alvoMorf=false; }
+  }
+  e1Pintar();
+  requestAnimationFrame(e1Quadro);
+}
+
+function e1MontarCampos(){
+  const c=$('#b1-campos');
+  c.className='campos'; c.style.margin='0';
+  c.innerHTML='';
+  for(let i=0;i<3;i++){
+    const l=document.createElement('label');
+    l.className='campo';
+    l.innerHTML='θ de '+E1.nomes[i]+
+      '<input type="number" min="0" max="1" step="0.05" value="'+E1.thetas[i]+'" data-i="'+i+'">';
+    l.querySelector('input').addEventListener('change',ev=>{
+      const v=parseFloat(ev.target.value);
+      if(isFinite(v)&&v>=0&&v<=1){ E1.thetas[i]=v; e1Zerar(); }
+      else ev.target.value=E1.thetas[i];
+    });
+    c.appendChild(l);
+  }
+}
+
+/* ============================================================
+   4. ESTAÇÃO 2 — A CORRIDA
+   ============================================================ */
+const ALGS=[
+  {id:'ts',   nome:'Thompson',    cor:CORES.laranja,   larg:2.6},
+  {id:'guloso',nome:'Guloso',     cor:CORES.cinza,     larg:1.8},
+  {id:'ucb',  nome:'UCB',         cor:CORES.azulClaro, larg:1.8},
+  {id:'eps',  nome:'ε-guloso',    cor:CORES.vermelho,  larg:1.8}
+];
+const E2={dados:null,logX:false,faixa:false,rodando:false};
+
+function e2Rodar(){
+  if(E2.rodando) return;
+  E2.rodando=true;
+  const T=Math.max(50,parseInt($('#c-T').value,10)||2000);
+  const Rpedido=Math.max(10,parseInt($('#c-R').value,10)||300);
+  const R=Math.max(20,Math.min(Rpedido,Math.floor(4e6/T)));   // teto de trabalho
+  const eps=parseFloat($('#c-eps').value);
+  $('#b2-aviso').textContent = (R<Rpedido)
+    ? 'Com T = '+num(T,0)+', o número de execuções foi reduzido para '+R+' para manter a página responsiva.'
+    : '';
+  const thetas=E1.thetas.slice(), melhor=Math.max.apply(null,thetas);
+  $('#b2-rodar').disabled=true; $('#b2-rodar').textContent='Rodando…';
+
+  /* pontos amostrados em escala logarítmica para não guardar T valores por execução */
+  const idx=[];
+  const nPts=70;
+  for(let k=0;k<nPts;k++){
+    const v=Math.round(Math.pow(T,k/(nPts-1)));
+    if(idx.length===0||v>idx[idx.length-1]) idx.push(Math.max(1,v));
+  }
+  if(idx[idx.length-1]!==T) idx.push(T);
+
+  const soma={}, todos={}, presas={};
+  for(const a of ALGS){ soma[a.id]=new Float64Array(idx.length); todos[a.id]=[]; presas[a.id]=0; }
+  const semente=a=>90000+ALGS.findIndex(x=>x.id===a.id)*1000003;
+
+  let feitas=0;
+  const lote=Math.max(1,Math.round(R/40));
+
+  function pedaco(){
+    const fim=Math.min(R,feitas+lote);
+    for(;feitas<fim;feitas++){
+      for(const a of ALGS){
+        const r=executar(a.id,thetas,T,criarRng(semente(a)+feitas*7),{eps:eps});
+        for(let k=0;k<idx.length;k++) soma[a.id][k]+=r.arrep[idx[k]-1];
+        todos[a.id].push(r.arrep[T-1]);
+        const iOtimo=thetas.indexOf(melhor);
+        if(r.puxadas[iOtimo]<0.5*T) presas[a.id]++;
+      }
+    }
+    $('#b2-prog').style.width=(100*feitas/R).toFixed(1)+'%';
+    if(feitas<R){ setTimeout(pedaco,0); return; }
+
+    const medias={};
+    for(const a of ALGS){
+      medias[a.id]=Array.from(soma[a.id]).map(v=>v/R);
+      todos[a.id].sort((x,y)=>x-y);
+    }
+    E2.dados={idx:idx,medias:medias,todos:todos,presas:presas,R:R,T:T};
+    e2Pintar(); e2Tabela();
+    $('#b2-rodar').disabled=false; $('#b2-rodar').textContent='Rodar a corrida';
+    $('#b2-prog').style.width='0%';
+    E2.rodando=false;
+  }
+  setTimeout(pedaco,10);
+}
+
+function e2Pintar(){
+  const cv=$('#tela2'); if(!cv.clientWidth) return;
+  const {ctx,L,A}=prepararTela(cv);
+  const mE=52,mD=88,mT=18,mB=38;
+  const larg=L-mE-mD, alt=A-mT-mB;
+  textoEixo(ctx);
+
+  if(!E2.dados){
+    ctx.fillStyle=CORES.cinza; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('Ajuste os parâmetros e clique em “Rodar a corrida”.',L/2,A/2);
+    return;
+  }
+  const D=E2.dados;
+  let yMax=0;
+  for(const a of ALGS) yMax=Math.max(yMax,D.medias[a.id][D.medias[a.id].length-1]);
+  if(E2.faixa) for(const a of ALGS) yMax=Math.max(yMax,quantil(D.todos[a.id],0.9));
+  yMax=Math.max(yMax*1.08,1);
+
+  const px=t=>E2.logX
+    ? mE+larg*(Math.log(Math.max(1,t))/Math.log(D.T))
+    : mE+larg*(t/D.T);
+  const py=v=>mT+alt-alt*(v/yMax);
+
+  /* grade */
+  ctx.strokeStyle=CORES.linha; ctx.lineWidth=1;
+  ctx.fillStyle=CORES.cinza; ctx.textAlign='right'; ctx.textBaseline='middle';
+  const passoY=escolherPasso(yMax);
+  for(let v=0;v<=yMax;v+=passoY){
+    ctx.beginPath(); ctx.moveTo(mE,py(v)); ctx.lineTo(mE+larg,py(v)); ctx.stroke();
+    ctx.fillText(num(v,0),mE-7,py(v));
+  }
+  ctx.textAlign='center'; ctx.textBaseline='top';
+  const marcasX=E2.logX?[1,10,100,1000,10000,D.T]:passosLineares(D.T);
+  for(const t of marcasX){
+    if(t>D.T) continue;
+    ctx.beginPath(); ctx.moveTo(px(t),mT+alt); ctx.lineTo(px(t),mT+alt+4);
+    ctx.strokeStyle=CORES.linha; ctx.stroke();
+    ctx.fillText(t>=1000?(t/1000)+'k':String(t),px(t),mT+alt+7);
+  }
+  ctx.fillText('passo t'+(E2.logX?' (escala logarítmica)':''),mE+larg/2,mT+alt+21);
+  ctx.save(); ctx.translate(13,mT+alt/2); ctx.rotate(-Math.PI/2);
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('arrependimento acumulado',0,0); ctx.restore();
+
+  /* faixa 10–90 no valor final */
+  if(E2.faixa){
+    for(const a of ALGS){
+      const q1=quantil(D.todos[a.id],0.1), q9=quantil(D.todos[a.id],0.9);
+      ctx.fillStyle=a.cor; ctx.globalAlpha=.13;
+      ctx.fillRect(px(D.T)-9,py(q9),18,Math.max(1,py(q1)-py(q9)));
+      ctx.globalAlpha=1;
+    }
+  }
+
+  /* curvas */
+  for(const a of ALGS){
+    ctx.beginPath();
+    for(let k=0;k<D.idx.length;k++){
+      const X=px(D.idx[k]), Y=py(D.medias[a.id][k]);
+      if(k===0) ctx.moveTo(X,Y); else ctx.lineTo(X,Y);
+    }
+    ctx.strokeStyle=a.cor; ctx.lineWidth=a.larg; ctx.stroke();
+    const yFim=py(D.medias[a.id][D.medias[a.id].length-1]);
+    ctx.fillStyle=a.cor; ctx.textAlign='left'; ctx.textBaseline='middle';
+    ctx.font=(a.id==='ts'?'600 ':'')+'11px '+getComputedStyle(document.body).fontFamily;
+    ctx.fillText(a.nome,mE+larg+8,yFim);
+  }
+}
+function quantil(v,q){ const i=Math.min(v.length-1,Math.max(0,Math.round(q*(v.length-1)))); return v[i]; }
+function escolherPasso(m){
+  const bruto=m/5, exp=Math.pow(10,Math.floor(Math.log10(bruto)));
+  const n=bruto/exp;
+  return (n<1.5?1:n<3.5?2:n<7.5?5:10)*exp;
+}
+function passosLineares(T){
+  const p=escolherPasso(T), a=[];
+  for(let v=0;v<=T;v+=p) a.push(v);
+  return a;
+}
+function e2Tabela(){
+  const D=E2.dados, corpo=$('#b2-tabela tbody');
+  corpo.innerHTML='';
+  if(!D) return;
+  for(const a of ALGS){
+    const fin=D.medias[a.id][D.medias[a.id].length-1];
+    const med=quantil(D.todos[a.id],0.5);
+    const q1=quantil(D.todos[a.id],0.1), q9=quantil(D.todos[a.id],0.9);
+    const tr=document.createElement('tr');
+    if(a.id==='ts') tr.className='destacada';
+    tr.innerHTML='<td><span class="chip" style="background:'+a.cor+'"></span>'+a.nome+'</td>'+
+      '<td>'+num(fin,1)+'</td><td>'+num(med,1)+'</td>'+
+      '<td>'+num(q1,1)+' – '+num(q9,1)+'</td>'+
+      '<td>'+num(100*D.presas[a.id]/D.R,0)+'%</td>';
+    corpo.appendChild(tr);
+  }
+}
+
+/* ============================================================
+   5. ESTAÇÃO 3 — QUANDO O PRIOR MENTE
+   ============================================================ */
+const E3={linhas:[],varredura:null,rodando:false};
+
+function e3Pintar(){
+  const cv=$('#tela3'); if(!cv.clientWidth) return;
+  const {ctx,L,A}=prepararTela(cv);
+  const mE=44,mD=16,mT=18,mB=34, larg=L-mE-mD, alt=A-mT-mB;
+  const a=parseFloat($('#c-a').value), b=parseFloat($('#c-b').value);
+  const tr=parseFloat($('#c-tr').value);
+  textoEixo(ctx);
+
+  const modo=(a>1&&b>1)?(a-1)/(a+b-2):(a>=b?0.999:0.001);
+  let pico=densidadeBeta(Math.min(0.999,Math.max(0.001,modo)),a,b);
+  if(!isFinite(pico)||pico<1) pico=1;
+  const eY=Math.min(pico,30)*1.12;
+  const px=x=>mE+x*larg, py=d=>mT+alt-Math.min(d/eY,1)*alt;
+
+  ctx.strokeStyle=CORES.linha; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(mE,mT+alt); ctx.lineTo(mE+larg,mT+alt); ctx.stroke();
+  ctx.fillStyle=CORES.cinza; ctx.textAlign='center'; ctx.textBaseline='top';
+  for(const g of [0,0.25,0.5,0.75,1]){
+    ctx.beginPath(); ctx.moveTo(px(g),mT+alt); ctx.lineTo(px(g),mT+alt+4); ctx.stroke();
+    ctx.fillText(num(g,2),px(g),mT+alt+7);
+  }
+  ctx.fillText('θ do braço ruim',mE+larg/2,mT+alt+20);
+
+  ctx.beginPath();
+  for(let k=0;k<=260;k++){
+    const x=k/260, d=densidadeBeta(Math.min(0.9995,Math.max(0.0005,x)),a,b);
+    const X=px(x), Y=py(isFinite(d)?d:0);
+    if(k===0) ctx.moveTo(X,Y); else ctx.lineTo(X,Y);
+  }
+  ctx.strokeStyle=CORES.vermelho; ctx.lineWidth=2.4; ctx.stroke();
+  ctx.lineTo(px(1),mT+alt); ctx.lineTo(px(0),mT+alt); ctx.closePath();
+  ctx.globalAlpha=.10; ctx.fillStyle=CORES.vermelho; ctx.fill(); ctx.globalAlpha=1;
+
+  /* verdade */
+  ctx.strokeStyle=CORES.verde; ctx.lineWidth=2; ctx.setLineDash([5,4]);
+  ctx.beginPath(); ctx.moveTo(px(tr),mT); ctx.lineTo(px(tr),mT+alt); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle=CORES.verde; ctx.textAlign=tr>0.6?'right':'left'; ctx.textBaseline='top';
+  ctx.font='600 11px '+getComputedStyle(document.body).fontFamily;
+  ctx.fillText(' verdade: θ = '+num(tr,2)+' ',px(tr)+(tr>0.6?-4:4),mT+2);
+
+  const media=a/(a+b);
+  ctx.fillStyle=CORES.cinza; ctx.textAlign='left'; ctx.textBaseline='top';
+  textoEixo(ctx);
+  ctx.fillText('prior Beta('+a+', '+b+') — média '+num(media,3),mE+4,mT+2);
+}
+
+function e3Rodar(){
+  if(E3.rodando) return;
+  E3.rodando=true;
+  const a=parseFloat($('#c-a').value), b=parseFloat($('#c-b').value);
+  const tr=parseFloat($('#c-tr').value), tb=parseFloat($('#c-tb').value);
+  const T=1000, R=300;
+  $('#b3-rodar').disabled=true;
+
+  function medir(pa,pb,cb){
+    let feitas=0,somaPux=0,somaArrep=0;
+    const lote=25;
+    (function pedaco(){
+      const fim=Math.min(R,feitas+lote);
+      for(;feitas<fim;feitas++){
+        const r=executar('ts',[tr,tb],T,criarRng(4000+feitas),
+          {priorA:[pa,1],priorB:[pb,1]});
+        somaPux+=r.puxadas[0]; somaArrep+=r.arrep[T-1];
+      }
+      $('#b3-prog').style.width=(100*feitas/R).toFixed(0)+'%';
+      if(feitas<R) setTimeout(pedaco,0);
+      else cb({pux:somaPux/R,arrep:somaArrep/R});
+    })();
+  }
+
+  medir(1,1,base=>{
+    medir(a,b,alvo=>{
+      E3.linhas=[
+        {rot:'Beta(1, 1) — uniforme',pux:base.pux,arrep:base.arrep,rel:1},
+        {rot:'Beta('+a+', '+b+')',pux:alvo.pux,arrep:alvo.arrep,rel:alvo.arrep/Math.max(base.arrep,1e-9)}
+      ];
+      e3Tabela();
+      $('#b3-rodar').disabled=false; $('#b3-prog').style.width='0%';
+      E3.rodando=false;
+    });
+  });
+}
+
+function e3Tabela(){
+  const corpo=$('#b3-tabela tbody'); corpo.innerHTML='';
+  for(const l of E3.linhas){
+    const tr=document.createElement('tr');
+    if(l.rel>1.5) tr.className='destacada';
+    tr.innerHTML='<td>'+l.rot+'</td><td>'+num(l.pux,1)+'</td>'+
+      '<td>'+num(l.arrep,1)+'</td><td>'+(l.rel>=1?num(l.rel,1)+'×':'—')+'</td>';
+    corpo.appendChild(tr);
+  }
+}
+
+function e3Varrer(){
+  if(E3.rodando) return;
+  E3.rodando=true;
+  $('#b3-varrer').disabled=true;
+  const tr=parseFloat($('#c-tr').value), tb=parseFloat($('#c-tb').value);
+  const b=parseFloat($('#c-b').value);
+  const alfas=[1,2,5,10,20,40,70,100,140,200];
+  const res=[]; let i=0;
+  const T=1000,R=120;
+  (function proximo(){
+    if(i>=alfas.length){
+      E3.varredura={alfas:alfas,arrep:res};
+      e3PintarVarredura();
+      $('#b3-varrer').disabled=false; $('#b3-prog').style.width='0%';
+      E3.rodando=false; return;
+    }
+    let soma=0;
+    for(let k=0;k<R;k++){
+      const r=executar('ts',[tr,tb],T,criarRng(6100+k),{priorA:[alfas[i],1],priorB:[b,1]});
+      soma+=r.arrep[T-1];
+    }
+    res.push(soma/R); i++;
+    $('#b3-prog').style.width=(100*i/alfas.length).toFixed(0)+'%';
+    e3PintarVarredura(alfas.slice(0,i),res);
+    setTimeout(proximo,0);
+  })();
+}
+
+function e3PintarVarredura(ax,ay){
+  const cv=$('#tela3b'); if(!cv.clientWidth) return;
+  const {ctx,L,A}=prepararTela(cv);
+  const mE=42,mD=12,mT=12,mB=30, larg=L-mE-mD, alt=A-mT-mB;
+  textoEixo(ctx);
+  const alfas=ax||(E3.varredura&&E3.varredura.alfas);
+  const arrep=ay||(E3.varredura&&E3.varredura.arrep);
+  if(!alfas||!alfas.length){
+    ctx.fillStyle=CORES.cinza; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('Sem varredura ainda.',L/2,A/2); return;
+  }
+  const yMax=Math.max.apply(null,arrep)*1.12||1;
+  const px=v=>mE+larg*(v-1)/199, py=v=>mT+alt-alt*(v/yMax);
+  ctx.strokeStyle=CORES.linha;
+  ctx.beginPath(); ctx.moveTo(mE,mT+alt); ctx.lineTo(mE+larg,mT+alt); ctx.stroke();
+  ctx.fillStyle=CORES.cinza; ctx.textAlign='center'; ctx.textBaseline='top';
+  for(const g of [1,50,100,150,200]) ctx.fillText(String(g),px(g),mT+alt+6);
+  ctx.fillText('α do prior',mE+larg/2,mT+alt+18);
+  ctx.textAlign='right'; ctx.textBaseline='middle';
+  const passo=escolherPasso(yMax);
+  for(let v=0;v<=yMax;v+=passo){
+    ctx.strokeStyle=CORES.linha;
+    ctx.beginPath(); ctx.moveTo(mE,py(v)); ctx.lineTo(mE+larg,py(v)); ctx.stroke();
+    ctx.fillText(num(v,0),mE-6,py(v));
+  }
+  ctx.beginPath();
+  for(let k=0;k<alfas.length;k++){
+    const X=px(alfas[k]),Y=py(arrep[k]);
+    if(k===0) ctx.moveTo(X,Y); else ctx.lineTo(X,Y);
+  }
+  ctx.strokeStyle=CORES.vermelho; ctx.lineWidth=2.2; ctx.stroke();
+  for(let k=0;k<alfas.length;k++){
+    ctx.beginPath(); ctx.arc(px(alfas[k]),py(arrep[k]),3,0,2*Math.PI);
+    ctx.fillStyle=CORES.vermelho; ctx.fill();
+  }
+}
+
+/* ============================================================
+   6. LIGAÇÕES
+   ============================================================ */
+document.querySelectorAll('nav button').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('nav button').forEach(b=>b.setAttribute('aria-selected','false'));
+    btn.setAttribute('aria-selected','true');
+    document.querySelectorAll('section.estacao').forEach(s=>s.hidden=true);
+    $('#'+btn.getAttribute('aria-controls')).hidden=false;
+    redesenhar();
+  });
+});
+
+$('#b1-passo').addEventListener('click',()=>{ pararAuto(); e1Passo(true); });
+$('#b1-vinte').addEventListener('click',()=>{
+  pararAuto();
+  for(let i=0;i<20;i++) e1Passo(false);
+  e1Pintar();
+});
+$('#b1-auto').addEventListener('click',()=>{
+  if(E1.auto){ pararAuto(); return; }
+  $('#b1-auto').textContent='Parar';
+  E1.auto=setInterval(()=>{ e1Passo(false); },90);
+});
+$('#b1-zerar').addEventListener('click',()=>{ pararAuto(); e1Zerar(); });
+$('#b1-verdade').addEventListener('change',e=>{ E1.mostrarVerdade=e.target.checked; e1Pintar(); });
+function pararAuto(){ if(E1.auto){ clearInterval(E1.auto); E1.auto=null; $('#b1-auto').textContent='Rodar continuamente'; } }
+
+$('#c-T').addEventListener('input',e=>{ $('#v-T').textContent=num(parseInt(e.target.value,10),0); });
+$('#c-R').addEventListener('input',e=>{ $('#v-R').textContent=e.target.value; });
+$('#c-eps').addEventListener('input',e=>{ $('#v-eps').textContent=num(parseFloat(e.target.value),2); });
+$('#b2-rodar').addEventListener('click',e2Rodar);
+$('#b2-escala').addEventListener('click',()=>{
+  E2.logX=!E2.logX;
+  $('#b2-escala').textContent='Eixo horizontal: '+(E2.logX?'logarítmico':'linear');
+  e2Pintar();
+});
+$('#b2-faixa').addEventListener('change',e=>{ E2.faixa=e.target.checked; e2Pintar(); });
+
+$('#c-a').addEventListener('input',e=>{ $('#v-a').textContent=e.target.value; e3Pintar(); });
+$('#c-b').addEventListener('input',e=>{ $('#v-b').textContent=e.target.value; e3Pintar(); });
+$('#c-tr').addEventListener('change',e3Pintar);
+$('#c-tb').addEventListener('change',e3Pintar);
+$('#b3-rodar').addEventListener('click',e3Rodar);
+$('#b3-varrer').addEventListener('click',e3Varrer);
+
+function redesenhar(){ e1Pintar(); e2Pintar(); e3Pintar(); e3PintarVarredura(); }
+window.addEventListener('resize',redesenhar);
+
+e1MontarCampos();
+e1Zerar();
+e3Pintar();
+e3PintarVarredura();
+requestAnimationFrame(e1Quadro);
+</script>
+</body>
+</html>
