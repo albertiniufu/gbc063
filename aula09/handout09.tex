@@ -1,0 +1,856 @@
+%% ============================================================
+%%  Handout — Aula 9: Aprendizagem por reforço eficiente em dados I
+%%  Bandidos multi-braços, arrependimento e otimismo
+%%  Curso de Aprendizagem por Reforço — UFU
+%%  Prof. Marcelo Keese Albertini
+%%  Adaptado e expandido de CS234 (Stanford), Emma Brunskill, Lecture 9
+%%  COMPILAR COM XeLaTeX (duas vezes)
+%% ============================================================
+\documentclass[11pt, a4paper]{article}
+
+\usepackage{handoutAprendizadoRL}
+\usepackage{babel}
+\babelprovide[import, main]{brazilian}
+
+\emergencystretch=1.2em   % evita transbordos horizontais em palavras longas
+\setaula{Aula 9 — Bandidos e arrependimento}
+\setprof{Prof. Marcelo Keese Albertini}
+
+%% Macros locais desta aula
+\newcommand{\Qhat}{\widehat{Q}}
+\newcommand{\muhat}{\hat{\mu}}
+\newcommand{\Nc}{N}
+\newcommand{\gap}{\Delta}
+\newcommand{\UCB}{\mathrm{UCB}}
+\newcommand{\LCB}{\mathrm{LCB}}
+\newcommand{\KL}{D_{\mathrm{KL}}}
+\newcommand{\one}{\mathbf{1}}
+\newcommand{\Reg}{L}
+\newcommand{\Ber}{\mathrm{Bernoulli}}
+\newcommand{\Bet}{\mathrm{Beta}}
+
+\begin{document}
+
+\capa{Aula 9: Aprendizagem eficiente em dados I}
+     {Bandidos multi-braços \textbullet\ Arrependimento \textbullet\ $\epsilon$-guloso \textbullet\ Otimismo e UCB}
+     {Prof. Marcelo Keese Albertini}
+     {Adaptado e expandido de Emma Brunskill, CS234: Reinforcement Learning, Stanford University \textbullet\ 2026}
+
+\paragraph{Do que trata esta aula.} Até agora perguntamos se um algoritmo
+\emph{converge} para a política ótima. Essa pergunta é surpreendentemente
+barata: um procedimento que teste cada ação um milhão de vezes e só depois
+passe a agir bem satisfaz o critério — e é inútil se cada teste custa um
+paciente, um cliente ou uma hora de robô. A partir de hoje o critério muda
+para algo mais exigente: \textbf{quantos erros o algoritmo comete no
+caminho?}
+
+Para atacar essa pergunta isolamos o ingrediente responsável por ela. Dos
+quatro elementos da aprendizagem por reforço — otimização, generalização,
+consequências adiadas e exploração — retiramos temporariamente as
+consequências adiadas. O que sobra é o \emph{bandido multi-braços}: simples
+o bastante para admitir análise exata, e rico o bastante para que as ideias
+sobrevivam intactas quando as consequências adiadas voltarem, na Aula 10.
+
+\section{O cenário: bandidos multi-braços}
+
+\begin{defbox}{Bandido multi-braços}
+Uma tupla $(\gA, \mathcal{R})$ em que $\gA$ é um conjunto \emph{conhecido}
+de $m$ ações (``braços'') e $\mathcal{R}_a(r) = \Prob[r \mid a]$ é uma
+distribuição de recompensas \emph{desconhecida}, uma para cada braço. A cada
+passo $t$ o agente escolhe $a_t \in \gA$ e o ambiente devolve
+$r_t \sim \mathcal{R}_{a_t}$. O objetivo é maximizar
+$\sum_{\tau=1}^{T} r_\tau$.
+\end{defbox}
+
+Um bandido é um MDP de \textbf{um único estado}: todas as ações levam de
+volta ao mesmo lugar. Não há dinâmica a aprender, não há desconto, não há
+crédito a atribuir ao longo do tempo. O único acoplamento entre passos é
+\textbf{informacional} — o que aprendi ontem muda o que escolho hoje, mas
+não muda o problema que enfrento hoje.
+
+Vale situar o objeto numa escala de generalidade:
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{Modelo} & \textbf{Estado} & \textbf{Consequência adiada} \\
+\midrule
+Bandido & inexistente & não \\
+Bandido contextual & sorteado i.i.d.\ a cada passo & não \\
+MDP & evolui em função da ação & sim \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+A exploração é difícil nos três casos, mas por razões distintas. No bandido,
+basta decidir \emph{o que testar}. No MDP é preciso decidir também
+\emph{como chegar} até onde vale a pena testar — o que se chama exploração
+profunda, e que é substancialmente mais difícil.
+
+\subsection*{Exemplo condutor}
+
+Decidir o melhor tratamento para pacientes com fratura de dedo do pé, com
+três opções: cirurgia ($a_1$), imobilização com esparadrapo no dedo vizinho
+($a_2$) e não fazer nada ($a_3$). O desfecho é binário — o dedo consolidou
+($+1$) ou não ($0$) após seis semanas, avaliado por radiografia. Cada braço
+é uma Bernoulli com parâmetro desconhecido $\theta_i$.
+
+\begin{alertabox}
+Exemplo \textbf{fictício}. Os valores $\theta = (0{,}95;\ 0{,}90;\ 0{,}10)$
+usados adiante não representam a eficácia real de nenhum tratamento
+ortopédico; servem apenas para que \emph{nós} possamos calcular quantidades
+que o algoritmo não conhece.
+\end{alertabox}
+
+\begin{discbox}
+Ao modelar isso como bandido de três braços, é verdade que ``puxar um braço
+corresponde a o dedo ter consolidado ou não''? E que ``o bandido é melhor
+que um MDP porque tratar cada paciente envolve múltiplas decisões''?
+
+\smallskip
+\emph{Direção da resposta:} as duas são falsas. Puxar o braço é
+\textbf{escolher o tratamento}; a consolidação é a \emph{recompensa}, não a
+ação — confundir os dois é o erro de modelagem mais comum entre iniciantes.
+E o bandido serve justamente porque cada paciente envolve \emph{uma única}
+decisão, sem estado que evolua. O que é verdade é que, com
+$\theta_i \in (0,1)$, o desfecho permanece aleatório mesmo com o tratamento
+fixado — é essa aleatoriedade que torna a estimação necessária.
+\end{discbox}
+
+\section{O algoritmo guloso e por que ele falha}
+
+\begin{algbox}{Guloso}
+Estime cada valor de ação por Monte Carlo e escolha o máximo:
+\[
+  \Qhat_t(a) = \frac{1}{\Nc_t(a)} \sum_{i=1}^{t} r_i\,\one(a_i = a)
+  \approx Q(a) = \E[R(a)],
+  \qquad
+  a_t = \argmax_{a \in \gA} \Qhat_{t-1}(a).
+\]
+Na forma incremental, sem armazenar o histórico:
+$\Qhat_t(a_t) = \Qhat_{t-1}(a_t) + \frac{1}{\Nc_t(a_t)}(r_t - \Qhat_{t-1}(a_t))$
+— o molde de sempre, com $\alpha = 1/\Nc$.
+\end{algbox}
+
+Considere a execução em que cada braço é amostrado uma vez e os resultados
+são $0$, $+1$, $0$, respectivamente. As estimativas ficam
+$\Qhat = (0,\,1,\,0)$, o máximo é único, e o guloso escolhe $a_2$ com
+probabilidade $1$. A partir daí, $\Qhat(a_2)$ converge para $0{,}9 > 0$
+enquanto os outros dois permanecem congelados em zero, porque nunca mais são
+testados.
+
+\begin{alertabox}
+\textbf{O guloso jamais encontrará o melhor braço.} A cirurgia — de fato
+superior — foi eliminada por um único paciente azarado. A falha não é de
+estimação: o estimador de Monte Carlo é não viesado. A falha é de
+\textbf{cobertura}. Ele é não viesado apenas para os braços que continuam
+sendo amostrados.
+\end{alertabox}
+
+\section{Arrependimento: o critério formal}
+
+\begin{defbox}{Arrependimento (\emph{regret})}
+Com $Q(a) = \E[r \mid a]$ e $V^{*} = Q(a^{*}) = \max_{a} Q(a)$, a perda de
+oportunidade de um passo é $\ell_t = \E[V^{*} - Q(a_t)]$, e o
+\textbf{arrependimento total} até $t$ é
+\[
+  \Reg_t = \E\Bigl[\sum_{\tau=1}^{t} V^{*} - Q(a_\tau)\Bigr].
+\]
+A esperança é tomada sobre a política de decisão usada para escolher $a_\tau$
+(e sobre a aleatoriedade das recompensas, que a alimenta).
+\end{defbox}
+
+Maximizar a recompensa acumulada e minimizar o arrependimento total são o
+mesmo objetivo: diferem por um sinal e pelo deslocamento constante $tV^{*}$.
+A vantagem de trabalhar com o arrependimento é que ele já vem descontado da
+dificuldade intrínseca do ambiente, e por isso é \textbf{comparável entre
+problemas}.
+
+\subsection*{A decomposição que organiza tudo}
+
+Agrupando os termos por ação em vez de por instante:
+\[
+  \Reg_t = \E\Bigl[\sum_{\tau=1}^{t} V^{*} - Q(a_\tau)\Bigr]
+         = \sum_{a \in \gA} \E[\Nc_t(a)]\,\bigl(V^{*} - Q(a)\bigr)
+         = \mdestaque{rlLaranja}{\sum_{a \in \gA} \E[\Nc_t(a)]\,\gap_a},
+\]
+onde $\Nc_t(a)$ é a contagem de escolhas de $a$ e $\gap_a = V^{*} - Q(a)$ é a
+\textbf{lacuna} do braço $a$.
+
+\begin{ideiabox}
+Um bom algoritmo mantém \textbf{contagens pequenas onde as lacunas são
+grandes}. O obstáculo é que as lacunas são exatamente o que não se sabe — se
+soubéssemos $\gap_a$, não haveria nada a aprender. Toda a dificuldade da
+exploração cabe nessa frase.
+
+Note também o que \emph{não} é preciso: estimar $Q$ com precisão em todo
+braço. Basta estimar bem o suficiente para \textbf{ordenar} — e ordenar
+exige poucas amostras onde a lacuna é grande, muitas onde ela é pequena.
+Essa assimetria reaparecerá literalmente na cota do UCB, como $1/\gap_i^2$.
+\end{ideiabox}
+
+\subsection*{Uma tabela e uma armadilha}
+
+Com $\theta = (0{,}95;\ 0{,}90;\ 0{,}10)$, temos
+$\gap = (0;\ 0{,}05;\ 0{,}85)$. Para uma sequência de cinco decisões:
+
+\begin{center}
+\begin{tabular}{ccccc}
+\toprule
+\textbf{Ação} & \textbf{Ação ótima} & \textbf{Recompensa obs.}
+  & \textbf{Arrepend. do passo} & \textbf{Acumulado} \\
+\midrule
+$a_1$ & $a_1$ & 0 & 0{,}00 & 0{,}00 \\
+$a_2$ & $a_1$ & 1 & 0{,}05 & 0{,}05 \\
+$a_3$ & $a_1$ & 0 & 0{,}85 & 0{,}90 \\
+$a_2$ & $a_1$ & 1 & 0{,}05 & 0{,}95 \\
+$a_2$ & $a_1$ & 0 & 0{,}05 & 1{,}00 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{alertabox}
+Olhe as linhas 2 e 4: \textbf{a recompensa observada foi $+1$ e mesmo assim
+houve arrependimento}. O arrependimento não compara com o que aconteceu, mas
+com o que aconteceria \emph{em média} sob a melhor ação. Um resultado feliz
+obtido com a ação errada continua sendo um erro — e é essa a razão de o
+arrependimento ser o critério certo para decisões repetidas.
+\end{alertabox}
+
+Se o guloso permanecer em $a_2$, cada passo adicional custa $0{,}05$ e
+$\Reg_T \approx 0{,}05\,T$: \textbf{arrependimento linear}, curva que nunca
+achata.
+
+\subsection*{O que se pode e o que não se pode medir}
+
+Em qualquer aplicação real \textbf{não é possível calcular o
+arrependimento}: ele exige conhecer a recompensa esperada da melhor ação,
+que é a incógnita. A tabela acima só pôde ser preenchida porque nós fixamos
+$\theta$. O que se faz em vez disso é demonstrar uma \textbf{cota superior}
+válida em \emph{qualquer} problema de uma dada classe. Há dois sabores:
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{Tipo de cota} & \textbf{Função de} & \textbf{Caráter} \\
+\midrule
+Independente do problema & $T$ e $m$ apenas, e.g.\ $O(\sqrt{mT\log T})$
+  & garantia de pior caso \\
+Dependente do problema & lacunas $\gap_a$, e.g.\ $O(\sum_a \log T/\gap_a)$
+  & afiada em problemas fáceis \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+O critério de qualidade é \textbf{sublinearidade}: $\Reg_T/T \to 0$, ou
+seja, a fração de decisões erradas tende a zero.
+
+\section{$\epsilon$-guloso: as duas formas de falhar}
+
+\begin{algbox}{$\epsilon$-guloso}
+Com probabilidade $1 - \epsilon$ escolha
+$a_t = \argmax_a \Qhat_t(a)$; com probabilidade $\epsilon$ escolha
+uniformemente ao acaso.
+\end{algbox}
+
+O algoritmo resolve o problema de cobertura: todo braço é amostrado
+infinitas vezes, logo $\Qhat_t(a) \to Q(a)$ para todo $a$. O preço é
+permanente. Retomando o exemplo, se as três primeiras puxadas derem
+$(+1, +1, 0)$ e $\epsilon = 0{,}1$, então (com empates resolvidos
+uniformemente)
+\[
+  \Prob(a_1) = \Prob(a_2) = \underbrace{\tfrac{0{,}9}{2}}_{\text{parte gulosa}}
+    + \underbrace{\tfrac{0{,}1}{3}}_{\text{parte aleatória}} = 0{,}4833,
+  \qquad
+  \Prob(a_3) = \tfrac{0{,}1}{3} = 0{,}0333.
+\]
+Cerca de um paciente em trinta receberá ``não fazer nada'' — um tratamento
+que já sabemos ser péssimo — e isso continuará valendo depois de dez mil
+pacientes.
+
+\begin{discbox}
+Assumindo que exista $a$ com $\gap_a > 0$: o $\epsilon$-guloso com
+$\epsilon = 0{,}1$ pode ter arrependimento linear? E com $\epsilon = 0$?
+
+\smallskip
+\emph{Direção da resposta:} as duas, e por motivos \emph{opostos} — que é o
+ponto da pergunta. Com $\epsilon = 0{,}1$ o algoritmo explora \textbf{demais},
+puxando braços ruins numa fração fixa $\epsilon/m$ dos passos para sempre, de
+modo que $\Reg_T \ge \frac{\epsilon}{m}(\sum_a \gap_a)\,T$. Com $\epsilon = 0$
+ele explora \textbf{de menos}: é o guloso, que trava. No exemplo dos dedos, a
+taxa com $\epsilon = 0{,}1$ é $\frac{0{,}1}{3}(0{,}05 + 0{,}85) = 0{,}03$ por
+passo.
+\end{discbox}
+
+\begin{teobox}{$\epsilon$ decrescente (Auer, Cesa-Bianchi e Fischer, 2002)}
+Seja $\gap = \min_{a\,:\,\gap_a>0} \gap_a$. Com o agendamento
+$\epsilon_t = \min\{1,\ c\,m/(\gap^2 t)\}$ para $c > 0$ apropriado, o
+$\epsilon_t$-guloso atinge arrependimento \textbf{logarítmico} em $T$.
+\end{teobox}
+
+\begin{alertabox}
+O agendamento ótimo depende de $\gap$, que é desconhecido — é a mesma
+quantidade que gostaríamos de estimar. Por isso o $\epsilon$-guloso
+decrescente é teoricamente correto mas praticamente frágil: erra-se o
+agendamento e volta-se a uma das duas falhas. Isso motiva procurar um método
+que se calibre sozinho.
+\end{alertabox}
+
+\subsection*{Interlúdio: explorar-depois-comprometer}
+
+O algoritmo mais simples com arrependimento sublinear puxa cada braço
+exatamente $k$ vezes e depois se compromete para sempre com o de maior média
+empírica. Com recompensas $1$-sub-gaussianas e dois braços,
+\[
+  \Reg_T \;\le\; \underbrace{k\gap}_{\text{custo pago de explorar}}
+    \;+\; \underbrace{(T-2k)\,\gap\exp\bigl(-k\gap^2/4\bigr)}_{\text{risco de comprometer-se errado}},
+\]
+e otimizando $k$ e depois o pior $\gap$ obtém-se $\Reg_T = O(T^{2/3})$.
+
+Sublinear, portanto ``bom'' pelo nosso critério — mas $T^{2/3}$ está longe de
+$\sqrt{T}$. A perda vem de \textbf{separar} exploração e explotação em fases
+estanques: o ETC não usa o que aprendeu \emph{durante} a exploração para
+abandonar cedo um braço obviamente ruim. A lição que organiza o resto da
+aula é que \textbf{exploração e explotação devem ser entrelaçadas, não
+sequenciadas}.
+
+\section{Quão bom é possível ser}
+
+\begin{teobox}{Teorema (Lai e Robbins, 1985)}
+Para qualquer algoritmo consistente, o arrependimento total assintótico é ao
+menos logarítmico:
+\[
+  \lim_{t\to\infty} \Reg_t \;\ge\; \log t
+    \sum_{a\,:\,\gap_a>0} \frac{\gap_a}{\KL(\mathcal{R}_a \,\|\, \mathcal{R}_{a^{*}})}.
+\]
+\end{teobox}
+
+A dificuldade de um problema de bandido é a \emph{semelhança} entre o braço
+ótimo e os demais: problemas difíceis têm braços que parecem iguais mas têm
+médias diferentes. A divergência $\KL$ mede exatamente quantas amostras são
+necessárias para distinguir duas distribuições.
+
+Para braços de Bernoulli,
+$\KL(\theta_a \| \theta_{*}) = \theta_a\log\frac{\theta_a}{\theta_{*}}
+ + (1-\theta_a)\log\frac{1-\theta_a}{1-\theta_{*}}$, o que nos dá, no
+exemplo:
+
+\begin{center}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Braço} & $\theta_a$ & $\gap_a$ & $\KL(\theta_a \| 0{,}95)$
+  & $\gap_a/\KL$ \\
+\midrule
+esparadrapo $a_2$ & 0{,}90 & 0{,}05 & 0{,}0207 & \textbf{2{,}42} \\
+nada $a_3$        & 0{,}10 & 0{,}85 & 2{,}3762 & 0{,}36 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{ideiabox}
+A inversão é o que vale reter: o braço \textbf{quase tão bom} ($a_2$, lacuna
+minúscula) contribui \emph{sete vezes mais} para o piso do que o braço
+obviamente ruim. Distinguir $0{,}90$ de $0{,}95$ custa muitas amostras;
+descartar $0{,}10$ custa poucas. Em $T = 1000$ o piso vale
+$(2{,}42 + 0{,}36)\log 1000 \approx 19$, contra $\approx 50$ do guloso e
+$\approx 30$ do $\epsilon$-guloso fixo. Há bastante espaço — e o limite
+inferior ser \emph{sublinear} é a boa notícia disfarçada de má.
+\end{ideiabox}
+
+\section{Otimismo diante da incerteza}
+
+\begin{defbox}{O princípio}
+Escolha ações que \textbf{poderiam} ter valor alto — não as que
+\emph{parecem} ter valor alto.
+\end{defbox}
+
+A justificativa é que só há dois desfechos possíveis, e ambos são bons. Se o
+braço de fato tem média alta, colhemos recompensa alta e não há
+arrependimento. Se tem média baixa, puxá-lo reduz em esperança tanto sua
+média estimada quanto a incerteza sobre ela — o braço é rebaixado e não volta
+a enganar.
+
+\begin{ideiabox}
+O otimismo é \textbf{autocorretivo}: só se pode estar excessivamente otimista
+sobre um braço por um número \emph{limitado} de puxadas, porque cada puxada
+corrige o excesso. Essa contagem — ``quantas vezes posso me enganar antes de
+ser desmentido?'' — é literalmente a demonstração da cota, como se verá.
+\end{ideiabox}
+
+\subsection*{De onde sai a largura da barra de confiança}
+
+\begin{defbox}{Variável $\sigma$-sub-gaussiana}
+$X$ com $\E[X] = 0$ é $\sigma$-sub-gaussiana se
+$\E[e^{\lambda X}] \le e^{\lambda^2\sigma^2/2}$ para todo $\lambda \in \R$;
+isto é, sua cauda decai ao menos tão rápido quanto a de uma gaussiana de
+desvio $\sigma$.
+\end{defbox}
+
+\begin{teobox}{Corolário 5.5 (Lattimore e Szepesvári, \emph{Bandit Algorithms})}
+Sejam $X_i - \mu$ independentes e $\sigma$-sub-gaussianas, e
+$\muhat = \frac1n\sum_{t=1}^{n} X_t$. Então, para todo $\varepsilon \ge 0$,
+\[
+  \Prob(\muhat \ge \mu + \varepsilon) \le \exp\Bigl(-\frac{n\varepsilon^2}{2\sigma^2}\Bigr),
+  \qquad
+  \Prob(\muhat \le \mu - \varepsilon) \le \exp\Bigl(-\frac{n\varepsilon^2}{2\sigma^2}\Bigr).
+\]
+\end{teobox}
+
+Recompensas em $[0,1]$ — como as do exemplo — são $\tfrac12$-sub-gaussianas
+pelo lema de Hoeffding; adotar $\sigma = 1$, como faremos, é apenas
+conservador: as barras saem mais largas que o necessário, nunca mais
+estreitas.
+
+A desigualdade responde ``qual a probabilidade de errar por
+$\varepsilon$?''. O que queremos é a pergunta operacional invertida: dado um
+risco $\delta$ que aceito correr, qual $\varepsilon$? Basta igualar e
+resolver:
+\[
+  \delta = \exp\Bigl(-\frac{n\varepsilon^2}{2\sigma^2}\Bigr)
+  \iff
+  \varepsilon = \sqrt{\frac{2\sigma^2\log(1/\delta)}{n}}
+  \quad\Longrightarrow\quad
+  \mu \le \muhat + \sqrt{\frac{2\sigma^2\log(1/\delta)}{n}}
+  \;\;\text{com prob.\ } \ge 1 - \delta.
+\]
+
+\begin{alertabox}
+Esta é uma cota \textbf{unilateral}. Para controlar $\abs{\muhat - \mu}$ é
+preciso aplicar as duas caudas com união de eventos: tomando
+$\delta' = \delta/2$, com probabilidade ao menos $1-\delta$ vale
+$\abs{\mu - \muhat} \le \sqrt{2\sigma^2\log(2/\delta)/n}$. Confundir as duas
+é o erro mais comum ao implementar intervalos de confiança em bandidos.
+\end{alertabox}
+
+\begin{algbox}{UCB1 (Auer, Cesa-Bianchi e Fischer, 2002)}
+Supondo recompensas $1$-sub-gaussianas,
+\[
+  a_t = \argmax_{a\in\gA}\Bigl[\underbrace{\Qhat(a)}_{\text{explotação}}
+    + \underbrace{\sqrt{\tfrac{2\log(1/\delta)}{\Nc_t(a)}}}_{\text{bônus de exploração}}\Bigr].
+\]
+Braços nunca testados têm bônus infinito, de modo que o algoritmo começa
+amostrando cada braço uma vez.
+\end{algbox}
+
+O bônus não é um parâmetro de ajuste: ele é \emph{deduzido} da desigualdade
+de concentração. Com $\delta$ fixo, porém, ele não encolhe com o tempo;
+tomando $\delta = 1/t^2$ obtém-se a versão \emph{anytime}
+$\Qhat(a) + \sqrt{4\log t/\Nc_t(a)}$, que é a fórmula clássica usada na
+prática.
+
+\subsection*{O UCB1 no exemplo, passo a passo}
+
+Com $\delta = 0{,}1$ o bônus vale $2{,}146/\sqrt{\Nc(a)}$. Partindo das três
+puxadas iniciais com resultados $(+1, +1, 0)$:
+
+\begin{center}
+\small
+\begin{tabular}{ccccccc}
+\toprule
+$t$ & $U(a_1)$ & $U(a_2)$ & $U(a_3)$ & \textbf{escolhe} & $r$
+  & \textbf{arrep.\ acum.} \\
+\midrule
+3 & \textbf{3,146} & 3,146 & 2,146 & $a_1$ & $+1$ & 0,90 \\
+4 & 2,517 & \textbf{3,146} & 2,146 & $a_2$ & $+1$ & 0,95 \\
+5 & \textbf{2,517} & 2,517 & 2,146 & $a_1$ & $+1$ & 0,95 \\
+6 & 2,239 & \textbf{2,517} & 2,146 & $a_2$ & $\;\;0$ & 1,00 \\
+7 & \textbf{2,239} & 1,906 & 2,146 & $a_1$ & $+1$ & 1,00 \\
+8 & 2,073 & 1,906 & \textbf{2,146} & $a_3$ & $\;\;0$ & 1,85 \\
+9 & \textbf{2,073} & 1,906 & 1,517 & $a_1$ & $+1$ & 1,85 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Duas linhas merecem atenção. Em $t = 8$ o braço $a_3$ é escolhido
+\emph{apesar} de $\Qhat(a_3) = 0$: seu bônus, intocado desde a primeira
+puxada, acabou ultrapassando os índices dos outros dois, que encolheram com
+as puxadas repetidas. O otimismo cobra a dívida de exploração — \emph{uma
+vez}. Em $t = 9$, com o resultado $0$, o índice de $a_3$ despenca para
+$1{,}517$ e o braço sai de cena. Compare com o $\epsilon$-guloso, que
+voltaria a $a_3$ em $3{,}3\%$ dos passos indefinidamente.
+
+\section{A cota de arrependimento do UCB}
+
+Antes da demonstração, um ponto técnico que costuma ser subestimado. A cota
+$\Prob(\mu > \muhat + \varepsilon) \le \delta$ vale para \emph{um} braço, em
+\emph{um} instante, com $n$ \emph{fixo}. O algoritmo, porém, consulta $m$
+braços a cada um de $n$ passos, e as contagens são aleatórias — escolhidas
+pelo próprio algoritmo. Precisamos que \emph{nenhuma} dessas cotas falhe, o
+que se obtém por união de eventos,
+$\Prob(\bigcup_i E_i) \le \sum_i \Prob(E_i)$.
+
+\begin{ideiabox}
+A união de eventos parece cara, mas não é: como $\delta$ entra na fórmula
+por meio de $\log(1/\delta)$, exigir $\delta/(mn)$ em vez de $\delta$ custa
+apenas $\log(mn)$ — \textbf{logarítmico no número de cotas}. É isso que
+torna a escolha $\delta = 1/n^2$ inofensiva: risco total $n \cdot 1/n^2 =
+1/n$, que se traduz em uma única puxada extra em esperança.
+\end{ideiabox}
+
+\begin{provabox}
+Sejam $\gap_i = \mu^{*} - \mu_i$ e $\Nc_i(n)$ o número de puxadas do braço
+$i$ até o passo $n$. Sabemos que
+$\Reg_n = \sum_{i:\gap_i>0} \gap_i\,\E[\Nc_i(n)]$, de modo que basta limitar
+as contagens.
+
+\smallskip
+\textbf{Bom evento.} Defina
+\[
+  G_i \defeq \Bigl\{\mu_i \le \min_t \UCB_i(t,\delta)\Bigr\}
+    \cap \Bigl\{\mu^{*} < \min_t \UCB_{a^{*}}(t,\delta)\Bigr\},
+  \qquad
+  \UCB_i(t,\delta) = \Qhat_i(t-1) + \sqrt{\tfrac{2\log(1/\delta)}{\Nc_{t-1}(i)}}.
+\]
+A estratégia é: \emph{no bom evento, limitar as puxadas por um argumento
+determinístico; fora dele, limitar por $n$ e mostrar que sua probabilidade é
+minúscula.} Formalmente,
+$\E[\Nc_i(n)] \le u_i + \Prob(G_i^{c})\,n$, com
+$u_i \defeq 2\log(1/\delta)/\gap_i^2$.
+
+\smallskip
+\textbf{Afirmação.} \emph{Se $G_i$ vale, o braço subótimo $i \ne a^{*}$ é
+puxado no máximo $u_i$ vezes.}
+
+\smallskip
+\textbf{Demonstração (por contradição).} Suponha $G_i$ e que
+$\Nc_t(i) > u_i$ em algum instante $t$ no qual $i$ seria escolhido. Como o
+bônus é decrescente em $\Nc$,
+\[
+  \UCB_i(t,\delta) \;\le\; \mu_i + \sqrt{\frac{2\log(1/\delta)}{u_i}}
+    \;=\; \mu_i + \sqrt{\gap_i^2} \;=\; \mu_i + \gap_i \;=\; \mu^{*}.
+\]
+Mas, por definição de $G_i$, tem-se $\mu^{*} < \UCB_{a^{*}}(t,\delta)$. Logo
+$\UCB_i(t,\delta) < \UCB_{a^{*}}(t,\delta)$ e o braço $i$ \emph{não pode} ser
+selecionado em $t$ — contradição. \hfill $\square$
+
+\smallskip
+\textbf{Fecho.} Tomando $\delta = 1/n^2$, a união sobre os $n$ instantes dá
+$\Prob(G_i^{c}) \le n\delta = 1/n$, e portanto
+\[
+  \E[\Nc_i(n)] \;\le\; \frac{2\log(n^2)}{\gap_i^2} + n\cdot\frac1n
+    \;=\; \frac{4\log n}{\gap_i^2} + 1
+  \quad\Longrightarrow\quad
+  \Reg_n \;\lesssim\; \sum_{i\,:\,\gap_i>0}\frac{4\log n}{\gap_i} + \sum_i \gap_i.
+\]
+\end{provabox}
+
+\begin{ideiabox}
+A conta em uma frase: \textbf{$u_i$ puxadas encolhem o bônus até ele caber
+exatamente dentro da lacuna}; a partir daí o otimismo já não consegue
+disfarçar a inferioridade do braço. E note $u_i \propto 1/\gap_i^2$ — braços
+quase tão bons quanto o ótimo são puxados \emph{muitas} vezes. Isso não é um
+defeito: errar entre eles custa pouco, e a cota de arrependimento envolve
+$\gap_i \cdot u_i \propto 1/\gap_i$, que continua controlado.
+\end{ideiabox}
+
+\subsection*{Da cota dependente à cota de pior caso}
+
+A cota acima é inútil quando alguma lacuna é minúscula, pois $1/\gap_i$
+explode. A saída é \textbf{partir os braços em dois grupos} num limiar
+$\gap$ escolhido por nós:
+\[
+  \Reg_n \;\le\;
+  \underbrace{n\gap}_{\substack{\text{braços com }\gap_i \le \gap:\\ \text{errar custa pouco}}}
+  \;+\;
+  \underbrace{\sum_{i\,:\,\gap_i > \gap}\frac{4\log n}{\gap_i}}_{\substack{\text{braços com }\gap_i > \gap:\\ \text{descartados rápido}}}
+  \;\le\; n\gap + \frac{4m\log n}{\gap}.
+\]
+Derivando em $\gap$ e igualando a zero obtém-se
+$\gap^{\star} = \sqrt{4m\log n/n}$, e portanto
+$\Reg_n \le 4\sqrt{m\,n\log n} = O(\sqrt{mn\log n})$.
+
+\begin{ideiabox}
+O piso minimax é $\Omega(\sqrt{mn})$: o UCB1 fica a um fator $\sqrt{\log n}$
+do ótimo, eliminável por variantes (MOSS, KL-UCB). E o mesmo algoritmo, sem
+alteração alguma, satisfaz \emph{as duas} cotas simultaneamente — ele se
+adapta sozinho à dificuldade do problema, o que é exatamente o que se pedia
+e o que nem o $\epsilon_t$-guloso nem o ETC entregam.
+\end{ideiabox}
+
+\subsection*{Uma comparação que precisa ser lida com cuidado}
+
+\begin{center}
+\begin{tabular}{lr}
+\toprule
+\textbf{Referência} ($m = 3$, $\gap = (0;\,0{,}05;\,0{,}85)$, $n = 1000$)
+  & $\Reg_{1000}$ \\
+\midrule
+Piso de Lai--Robbins & $\approx 19$ \\
+Cota do UCB, dependente do problema & $\approx 586$ \\
+Cota do UCB, independente do problema & $\approx 576$ \\
+Guloso, travado em $a_2$ (\emph{desempenho observado}) & $\approx 50$ \\
+$\epsilon$-guloso com $\epsilon = 0{,}1$ (\emph{desempenho observado}) & $\approx 30$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{alertabox}
+As cotas do UCB são \emph{piores} que o desempenho observado dos métodos
+ingênuos — e isso não é um erro, é o que significa uma cota de \textbf{pior
+caso}. Ela vale para todo bandido de três braços com estas lacunas, inclusive
+os construídos adversarialmente; os números do guloso valem para \emph{esta}
+realização particular. A comparação honesta é assintótica: em $n = 10^6$ o
+guloso paga $5\times10^4$ e o $\epsilon$-guloso $3\times10^4$, ambos
+crescendo linearmente, contra $\approx 1{,}2\times10^3$ da cota do UCB,
+crescendo como $\log n$. As curvas se cruzam e nunca mais se reencontram.
+\end{alertabox}
+
+\section{Duas variações que valem conhecer}
+
+\subsection*{Por que a cota inferior não serve}
+
+\begin{discbox}
+E se escolhêssemos sempre o braço de maior \emph{cota inferior},
+$a_t = \argmax_a[\Qhat(a) - \sqrt{2\log(1/\delta)/\Nc_t(a)}]$? Isso garante
+arrependimento baixo? Considere dois braços.
+
+\smallskip
+\emph{Direção da resposta:} não — é pior que o guloso. O bônus vira
+\textbf{penalidade} por incerteza, de modo que braços pouco testados ficam
+artificialmente ruins; e são justamente os que precisavam ser testados. Com
+$\mu_1 = 0{,}5$, $\mu_2 = 0{,}6$ e puxadas iniciais $r_1 = 1$, $r_2 = 0$,
+temos $\LCB_1 = 1 - c > \LCB_2 = -c$, e escolhe-se $a_1$. Cada nova puxada de
+$a_1$ \emph{encolhe} sua penalidade, e $\LCB_1 \to 0{,}5$; já $\LCB_2$
+permanece congelado em $-c$. O braço $2$ nunca mais é testado:
+arrependimento $0{,}1\,T$, linear. A assimetria é a lição --- \textbf{o
+otimismo é autocorretivo, o pessimismo é autoconfirmatório}. (O pessimismo
+tem seu lugar em RL \emph{offline}, onde não se pode testar hipóteses e
+evitar o desconhecido é precisamente o que se deseja.)
+\end{discbox}
+
+\subsection*{Amostragem de Thompson}
+
+\begin{defbox}{Arrependimento bayesiano}
+Com uma \emph{priori} $p(\theta)$ sobre os parâmetros do bandido,
+$\mathrm{BayesReg}_T = \E_{\theta\sim p}[\Reg_T(\theta)]$. Critério mais
+brando que o de pior caso, e que admite algoritmos notavelmente simples.
+\end{defbox}
+
+\begin{algbox}{Amostragem de Thompson (Thompson, 1933)}
+A cada passo: \textbf{(1)} amostre $\tilde\theta_a \sim p(\theta_a \mid
+\text{histórico})$ para cada braço; \textbf{(2)} aja \emph{como se}
+$\tilde\theta$ fosse a verdade, $a_t = \argmax_a Q_{\tilde\theta}(a)$;
+\textbf{(3)} observe $r_t$ e atualize a posteriori.
+\end{algbox}
+
+O nome vem da propriedade que a define: cada braço é escolhido com
+probabilidade igual à \emph{probabilidade posterior de ele ser o ótimo}. A
+exploração não é imposta por um bônus — emerge da incerteza da posteriori, e
+desaparece sozinha quando a incerteza some.
+
+Para braços de Bernoulli a priori conjugada é
+$\theta_a \sim \Bet(\alpha_a, \beta_a)$, e a atualização é contagem pura:
+$\alpha_a \leftarrow \alpha_a + r$ e $\beta_a \leftarrow \beta_a + (1-r)$.
+Com priori uniforme $\Bet(1,1)$ e as mesmas três primeiras puxadas
+$(+1,+1,0)$:
+
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Braço} & \textbf{Posteriori} & $\E[\theta]$
+  & $\Prob(\text{é o melhor})$ \\
+\midrule
+$a_1$ & $\Bet(2,1)$ & 0,667 & 0,467 \\
+$a_2$ & $\Bet(2,1)$ & 0,667 & 0,467 \\
+$a_3$ & $\Bet(1,2)$ & 0,333 & \textbf{0,066} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Compare com o $\epsilon$-guloso, que daria $3{,}3\%$ a $a_3$ \emph{para
+sempre}: Thompson dá $6{,}6\%$ \emph{agora}, quando ainda há dúvida legítima,
+e essa fração cai sozinha à medida que a posteriori se concentra. Note ainda
+que $\Prob(\text{é o melhor})$ não é a ordenação das médias — com uma única
+observação a cauda ainda é gorda.
+
+\begin{teobox}{Garantias}
+Arrependimento bayesiano $O(\sqrt{mT\log T})$. E, embora bayesiano por
+construção, Thompson satisfaz também cotas frequentistas
+$O(\sum_i \log T/\gap_i)$, sendo assintoticamente ótimo para braços de
+Bernoulli (Agrawal e Goyal, 2012; Kaufmann, Korda e Munos, 2012).
+\end{teobox}
+
+\begin{ideiabox}
+A simetria com o UCB é elegante: ambos escolhem por um valor
+\emph{plausível}, não pelo esperado. O UCB toma o \textbf{quantil superior}
+da incerteza; Thompson toma uma \textbf{amostra} dela. Empiricamente
+Thompson costuma vencer, porque o bônus do UCB é calibrado para o pior caso
+enquanto a posteriori usa a forma real da incerteza. Em compensação, o UCB
+dispensa escolher priori e amostrar dela. Há ainda uma vantagem prática
+subestimada de Thompson: em decisões \emph{em lote} (mil usuários atendidos
+com a mesma política), o UCB daria a todos o mesmo braço, enquanto Thompson
+diversifica automaticamente.
+\end{ideiabox}
+
+\section{Síntese}
+
+\begin{center}
+\small
+\begin{tabular}{lccl}
+\toprule
+\textbf{Algoritmo} & \textbf{Arrepend.} & \textbf{Parâmetro}
+  & \textbf{Por que falha ou funciona} \\
+\midrule
+Guloso & $\Theta(T)$ & --- & trava; nunca corrige um azar inicial \\
+$\epsilon$-guloso, $\epsilon$ fixo & $\Theta(T)$ & $\epsilon$
+  & explora uniformemente, para sempre \\
+$\epsilon_t$-guloso, $\epsilon_t \propto 1/t$ & $O(\log T)$ & $c,\ \gap$
+  & ótimo em taxa, mas exige conhecer $\gap$ \\
+ETC & $O(T^{2/3})$ & $k$ & separa as fases; não se adapta \\
+UCB1 & $O(\log T)$ & $\delta$ & bônus deduzido; adapta-se às lacunas \\
+Thompson & $O(\log T)$ & priori & explora na medida da dúvida posterior \\
+\midrule
+\emph{Piso (Lai--Robbins)} & $\Omega(\log T)$ & ---
+  & \emph{ninguém faz melhor} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{alertabox}
+\textbf{Cinco confusões a evitar.}
+\begin{enumerate}
+  \item Arrependimento não é ``recompensa que deixei de observar'': é
+        comparação com a \emph{média} da melhor ação. Ganhar $+1$ com a ação
+        errada ainda é arrependimento positivo.
+  \item Arrependimento não é computável em aplicações reais; o que se
+        computa são cotas.
+  \item Uma cota superior de pior caso pode ser numericamente pior que o
+        desempenho observado de um método ruim, em horizontes curtos. Isso
+        não invalida a cota.
+  \item A cota de concentração é unilateral; controlar $\abs{\muhat-\mu}$
+        exige $\log(2/\delta)$, não $\log(1/\delta)$.
+  \item $\delta$ fixo no UCB não é a versão \emph{anytime}. Sem
+        $\delta = 1/t^2$ (ou equivalente), o bônus não acompanha o
+        crescimento do número de cotas simultâneas.
+\end{enumerate}
+\end{alertabox}
+
+\section{Exercícios}
+
+\begin{exbox}{9.1 --- Decomposição do arrependimento}
+Demonstre a identidade
+$\E[\sum_{\tau=1}^{t}(V^{*}-Q(a_\tau))] = \sum_a \E[\Nc_t(a)]\gap_a$
+explicitando onde se usa linearidade da esperança e onde se usa a definição
+de $\Nc_t(a)$.
+\end{exbox}
+
+\begin{exbox}{9.2 --- Quando o guloso acerta}
+No exemplo dos dedos, estime por simulação a probabilidade de o guloso
+acabar travado em cada braço, partindo da rodada inicial de uma puxada por
+braço (empates resolvidos uniformemente). Antes de simular, escreva a
+probabilidade que você obteria supondo que o empate inicial se resolve de
+uma vez; compare com o valor simulado e explique a diferença. Por fim,
+comente por que uma probabilidade alta de acerto não salva o método.
+\end{exbox}
+
+\begin{exbox}{9.3 --- Taxa do $\epsilon$-guloso}
+Mostre que, se a parte gulosa do $\epsilon$-guloso identificar corretamente
+$a^{*}$ a partir de certo instante, então
+$\Reg_T \to \frac{\epsilon}{m}\bigl(\sum_a \gap_a\bigr)T$. Calcule a
+constante no exemplo com $\epsilon = 0{,}1$.
+\end{exbox}
+
+\begin{exbox}{9.4 --- Otimizando o ETC}
+A partir de $\Reg_T \le k\gap + T\gap e^{-k\gap^2/4}$, encontre o $k$ ótimo e
+mostre que, tomando o pior $\gap$, resulta $\Reg_T = O(T^{2/3})$.
+\end{exbox}
+
+\begin{exbox}{9.5 --- O bônus e a lacuna}
+Verifique que $u_i = 2\log(1/\delta)/\gap_i^2$ é exatamente o número de
+puxadas para o qual o bônus iguala a lacuna. Em seguida, calcule $u_2$ e
+$u_3$ do exemplo com $\delta = 1/n^2$ e $n = 1000$, e comente a diferença de
+ordem de grandeza.
+\end{exbox}
+
+\begin{exbox}{9.6 --- Implementação}
+Implemente guloso, $\epsilon$-guloso ($\epsilon$ fixo e $\epsilon_t \propto
+1/t$), UCB1 e Thompson para o bandido de três braços do exemplo. Rode $200$
+repetições de $T = 5000$ passos e trace o arrependimento médio acumulado em
+escala semilogarítmica no eixo horizontal. Confirme que as curvas do UCB e de
+Thompson ficam retas nessa escala, e as demais não.
+\end{exbox}
+
+\subsection*{Respostas resumidas}
+
+\textbf{9.1.} Escreva $V^{*}-Q(a_\tau) = \sum_a \one(a_\tau = a)\gap_a$;
+troque a ordem dos somatórios (finitos, logo lícito) e use a linearidade;
+reconheça $\sum_\tau \one(a_\tau = a) = \Nc_t(a)$. A esperança só pode entrar
+depois da troca, porque $\Nc_t(a)$ é aleatório.
+
+\textbf{9.2.} A conta ingênua --- repartir o empate inicial uniformemente e
+declarar o vencedor --- dá $\approx 0{,}50$ para $a_1$. A simulação
+($20\,000$ execuções) dá $\approx 0{,}76$ para $a_1$, $0{,}24$ para $a_2$ e
+$0{,}001$ para $a_3$. A diferença é instrutiva: \textbf{um empate em
+$\Qhat = 1$ não se resolve de uma vez}. O braço sorteado é puxado de novo e,
+se falhar, sua média cai abaixo da do outro empatado, devolvendo a vez a
+ele. O empate vira uma disputa que dura enquanto os dois seguirem
+acertando --- e essa disputa favorece quem tem o maior $\theta$, isto é,
+$a_1$. Ainda assim o método não se salva: em $\approx 24\%$ das execuções o
+arrependimento é linear, e é a \emph{esperança} do arrependimento, não a
+mediana, que a análise mede. Ela permanece $\Theta(T)$.
+
+\textbf{9.3.} A parte gulosa contribui $0$ e a aleatória escolhe cada braço
+com probabilidade $\epsilon/m$, custando $\gap_a$ cada. No exemplo,
+$\frac{0{,}1}{3}(0 + 0{,}05 + 0{,}85) = 0{,}03$ por passo.
+
+\textbf{9.4.} Derivando em $k$: $\gap = T\gap\frac{\gap^2}{4}e^{-k\gap^2/4}$,
+donde $k^{\star} = \frac{4}{\gap^2}\log\frac{T\gap^2}{4}$ e
+$\Reg_T = O\bigl(\frac{\log(T\gap^2)}{\gap}\bigr)$. Como o pior caso é
+$\gap \sim T^{-1/3}$, resulta $O(T^{2/3})$.
+
+\textbf{9.5.} Iguale $\sqrt{2\log(1/\delta)/u} = \gap$ e resolva. Com
+$\delta = 10^{-6}$, $2\log(1/\delta) = 27{,}6$: $u_2 = 27{,}6/0{,}05^2
+\approx 1{,}1\times10^4$ e $u_3 = 27{,}6/0{,}85^2 \approx 38$. O braço
+inequivocamente ruim é descartado em algumas dezenas de puxadas; o braço
+quase tão bom exigiria mais puxadas do que o horizonte — e é justamente por
+isso que confundi-lo custa pouco.
+
+\textbf{9.6.} Espera-se ver: guloso e $\epsilon$-guloso de $\epsilon$ fixo
+crescendo linearmente; UCB1 e Thompson formando retas na escala semilog, o
+que indica $\Theta(\log T)$; e Thompson tipicamente abaixo do UCB1 por um
+fator constante.
+
+\section{Notação e glossário}
+
+\begin{center}
+\small
+\begin{tabular}{lll}
+\toprule
+\textbf{Símbolo} & \textbf{Leitura} & \textbf{Inglês} \\
+\midrule
+$\Reg_T$ & arrependimento total até $T$ & (total) regret \\
+$\ell_t$ & arrependimento de um passo & per-step regret \\
+$\gap_a$ & lacuna do braço $a$, $V^{*}-Q(a)$ & gap \\
+$\Nc_t(a)$ & contagem de escolhas de $a$ até $t$ & count \\
+$U_t(a)$ & cota superior de confiança & upper confidence bound \\
+$\delta$ & risco tolerado por cota & confidence level \\
+$m$ & número de braços & number of arms \\
+$\KL(\cdot\|\cdot)$ & divergência de Kullback--Leibler & KL divergence \\
+\midrule
+--- & braço / bandido multi-braços & arm / multi-armed bandit \\
+--- & otimismo diante da incerteza & optimism in the face of uncertainty \\
+--- & casamento de probabilidade & probability matching \\
+--- & explorar-depois-comprometer & explore-then-commit \\
+--- & sub-gaussiana & sub-Gaussian \\
+--- & união de eventos & union bound \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{ideiabox}
+\textbf{Próxima aula.} As mesmas três ideias — arrependimento como critério,
+otimismo como abordagem, concentração como ferramenta — reaparecem em MDPs,
+onde é preciso decidir não só \emph{o que} testar, mas \emph{como chegar} ao
+lugar onde vale a pena testar. Veremos aprendizagem PAC, otimismo em modelos
+(\textsc{R-max}, UCRL) e cotas de complexidade amostral.
+\end{ideiabox}
+
+\paragraph{Leituras.} Lattimore \& Szepesvári, \emph{Bandit Algorithms}
+(Cambridge, 2020), capítulos 4 a 8 — referência central, com as
+demonstrações completas. Sutton \& Barto, \emph{Reinforcement Learning: An
+Introduction}, 2\textsuperscript{a} ed., capítulo 2. Artigos: Lai \& Robbins
+(1985); Auer, Cesa-Bianchi \& Fischer, \emph{Machine Learning} (2002);
+Thompson (1933); Agrawal \& Goyal (2012); Kaufmann, Korda \& Munos (2012);
+Russo \emph{et al.}, \emph{A Tutorial on Thompson Sampling} (2018).
+
+\end{document}
