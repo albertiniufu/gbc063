@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Q-Learning passo a passo — Sarsamax</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0E1320;
+    --panel:#161D2E;
+    --panel2:#1C2437;
+    --line:#2A3448;
+    --text:#E6EAF4;
+    --muted:#8B97B2;
+    --pos:#F0A93B;
+    --neg:#3C7FB1;
+    --hot:#FF6E9C;
+    --zero:#1A2233;
+    --radius:14px;
+    --sans:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    --serif:"EB Garamond",Georgia,"Times New Roman",serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(1200px 600px at 15% -10%, #1B2743 0%, transparent 60%),
+      var(--ink);
+    color:var(--text);
+    font-family:var(--sans);
+    font-size:15px;
+    line-height:1.5;
+    -webkit-text-size-adjust:100%;
+    padding:18px 14px 60px;
+  }
+  .wrap{max-width:1140px;margin:0 auto}
+
+  /* ---------- cabeçalho ---------- */
+  .head{margin-bottom:18px}
+  .eyebrow{
+    font-family:var(--mono);font-size:11px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--muted);margin-bottom:8px;
+  }
+  h1{
+    font-family:var(--serif);font-weight:500;font-size:clamp(28px,7vw,44px);
+    line-height:1.05;margin:0 0 8px;letter-spacing:-.01em;
+  }
+  h1 em{font-style:italic;color:var(--hot)}
+  .sub{color:var(--muted);margin:0;max-width:56ch;font-size:14.5px}
+  .readout{
+    display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;
+  }
+  .pill{
+    font-family:var(--mono);font-size:12px;
+    background:var(--panel);border:1px solid var(--line);
+    border-radius:999px;padding:5px 11px;color:var(--muted);
+    white-space:nowrap;
+  }
+  .pill b{color:var(--text);font-weight:500}
+
+  /* ---------- grade de cartões ---------- */
+  main{display:grid;gap:14px;margin-top:16px}
+  .card{
+    background:var(--panel);border:1px solid var(--line);
+    border-radius:var(--radius);padding:16px;min-width:0;
+  }
+  .card h2{
+    font-family:var(--mono);font-size:11px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--muted);
+    margin:0 0 14px;font-weight:500;
+  }
+
+  /* ---------- tabuleiro ---------- */
+  .board-wrap{position:relative}
+  svg.board{width:100%;height:auto;display:block;touch-action:manipulation}
+  .legend{
+    display:flex;flex-wrap:wrap;gap:10px 16px;margin-top:12px;
+    font-size:12px;color:var(--muted);font-family:var(--mono);
+  }
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .sw{width:11px;height:11px;border-radius:3px;display:inline-block}
+
+  .qrow{display:flex;gap:6px;margin-top:14px}
+  .qchip{
+    flex:1;min-width:0;background:var(--panel2);border:1px solid var(--line);
+    border-radius:9px;padding:7px 4px;text-align:center;
+  }
+  .qchip .a{font-size:15px;line-height:1.1;color:var(--muted)}
+  .qchip .v{font-family:var(--mono);font-size:12.5px;margin-top:2px}
+  .qchip.best{border-color:#4B5A7D}
+  .qchip.taken{border-color:var(--hot);box-shadow:0 0 0 1px var(--hot) inset}
+
+  .narr{
+    margin-top:14px;border-left:3px solid var(--hot);
+    background:var(--panel2);border-radius:0 10px 10px 0;
+    padding:11px 13px;font-size:14px;min-height:64px;
+  }
+  .narr .tag{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--hot);display:block;margin-bottom:3px;
+  }
+
+  /* ---------- controles ---------- */
+  .btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  button{
+    font-family:var(--sans);font-size:14px;font-weight:500;
+    background:var(--panel2);color:var(--text);
+    border:1px solid var(--line);border-radius:10px;
+    padding:12px 10px;cursor:pointer;
+    transition:background .15s,border-color .15s,transform .06s;
+  }
+  button:hover{background:#232C42;border-color:#3B4763}
+  button:active{transform:translateY(1px)}
+  button:focus-visible{outline:2px solid var(--hot);outline-offset:2px}
+  button.primary{
+    grid-column:1 / -1;background:var(--hot);color:#220713;
+    border-color:var(--hot);font-weight:600;font-size:15px;
+  }
+  button.primary:hover{background:#FF87AE;border-color:#FF87AE}
+  button[disabled]{opacity:.4;cursor:not-allowed}
+  button.on{border-color:var(--hot);color:var(--hot)}
+
+  .sliders{margin-top:16px;display:grid;gap:12px}
+  .slider label{
+    display:flex;justify-content:space-between;align-items:baseline;
+    font-size:13px;color:var(--muted);margin-bottom:5px;
+  }
+  .slider label b{font-family:var(--mono);color:var(--text);font-weight:500}
+  .slider .hint{display:block;font-size:11.5px;color:#66718C;margin-top:3px}
+  input[type=range]{
+    width:100%;-webkit-appearance:none;appearance:none;
+    background:transparent;height:22px;margin:0;
+  }
+  input[type=range]::-webkit-slider-runnable-track{
+    height:3px;background:var(--line);border-radius:2px;
+  }
+  input[type=range]::-moz-range-track{height:3px;background:var(--line);border-radius:2px}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:17px;height:17px;border-radius:50%;
+    background:var(--text);margin-top:-7px;border:none;cursor:pointer;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:17px;height:17px;border-radius:50%;background:var(--text);
+    border:none;cursor:pointer;
+  }
+  input[type=range]:focus-visible{outline:2px solid var(--hot);outline-offset:4px;border-radius:4px}
+
+  /* ---------- pseudocódigo ---------- */
+  .algo{
+    font-family:var(--serif);font-size:15.5px;line-height:1.62;
+    overflow-x:auto;
+  }
+  .algo .ln{
+    display:block;padding:2px 8px 2px 10px;border-left:3px solid transparent;
+    border-radius:0 6px 6px 0;white-space:nowrap;
+    transition:background .18s,border-color .18s,color .18s;
+    color:#C3CBDE;
+  }
+  .algo .ln.dim{color:#5C6884}
+  .algo .ln.active{background:rgba(255,110,156,.11);border-left-color:var(--hot);color:#fff}
+  .algo .kw{font-weight:600;color:#fff}
+  .algo .ln.dim .kw{color:#7F8BA6}
+  .algo i{font-style:italic}
+  .i1{padding-left:26px !important}
+  .i2{padding-left:44px !important}
+  .step{
+    font-family:var(--mono);font-size:10px;letter-spacing:.1em;
+    color:#7C88A5;border:1px solid var(--line);border-radius:5px;
+    padding:1px 5px;margin-left:8px;vertical-align:2px;
+  }
+  .ln.active .step{color:var(--hot);border-color:rgba(255,110,156,.5)}
+
+  /* ---------- equação ---------- */
+  .eq{
+    font-family:var(--serif);font-size:16px;line-height:1.7;
+    background:var(--panel2);border:1px solid var(--line);
+    border-radius:10px;padding:12px;overflow-x:auto;white-space:nowrap;
+  }
+  .eq.template{color:#98A3BC;font-size:15px;margin-bottom:8px}
+  .num{font-family:var(--mono);font-size:14px}
+  .t-q{color:#7FB6E0}
+  .t-r{color:var(--hot)}
+  .t-g{color:var(--pos)}
+  .breakdown{margin-top:12px;display:grid;gap:1px;background:var(--line);
+    border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .brow{
+    display:flex;justify-content:space-between;gap:10px;
+    background:var(--panel);padding:8px 11px;font-size:13px;
+  }
+  .brow span:first-child{color:var(--muted)}
+  .brow span:last-child{font-family:var(--mono);font-size:13px;text-align:right}
+  .brow.hi{background:#20293E}
+  .brow.hi span:last-child{color:var(--hot);font-weight:600}
+  .idle{color:#66718C;font-size:13.5px;font-family:var(--sans)}
+
+  /* ---------- gráfico ---------- */
+  canvas{width:100%;height:150px;display:block}
+  .chart-legend{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:8px}
+
+  @media (min-width:900px){
+    body{padding:32px 24px 80px}
+    main{grid-template-columns:1fr 1fr}
+    .card.board-card{grid-row:span 2}
+    .card.chart-card{grid-column:1 / -1}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{transition:none !important;animation:none !important}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="head">
+    <div class="eyebrow">Algoritmo 14 · Sarsamax</div>
+    <h1>Q-Learning, <em>um passo de cada vez</em></h1>
+    <p class="sub">Um agente aprende a atravessar uma grade 4×4 até o tesouro sem cair nos buracos. Cada clique executa exatamente uma linha do pseudocódigo — e você vê a tabela Q mudar por causa dela.</p>
+    <div class="readout">
+      <span class="pill">episódio <b id="r-ep">0</b>/<b id="r-eptot">150</b></span>
+      <span class="pill">t = <b id="r-t">0</b></span>
+      <span class="pill">ε = <b id="r-eps">1.00</b></span>
+      <span class="pill">retorno do episódio <b id="r-ret">0.0</b></span>
+    </div>
+  </header>
+
+  <main>
+    <!-- ======== TABULEIRO ======== -->
+    <section class="card board-card">
+      <h2>Mundo em grade · tabela Q</h2>
+      <div class="board-wrap">
+        <svg class="board" id="board" viewBox="0 0 400 400" role="img"
+             aria-label="Grade 4 por 4 com os valores Q de cada ação"></svg>
+      </div>
+      <div class="legend">
+        <span><i class="sw" style="background:#F0A93B"></i>Q positivo</span>
+        <span><i class="sw" style="background:#3C7FB1"></i>Q negativo</span>
+        <span><i class="sw" style="background:#FF6E9C;border-radius:50%"></i>agente</span>
+        <span>◆ tesouro +10</span>
+        <span>✕ buraco −10</span>
+        <span>passo −1</span>
+      </div>
+
+      <div class="qrow" id="qrow"></div>
+
+      <div class="narr" id="narr">
+        <span class="tag" id="narr-tag">pronto</span>
+        <span id="narr-txt">A tabela Q começa zerada: o agente não sabe nada. Toque em “Executar próxima linha” para começar.</span>
+      </div>
+    </section>
+
+    <!-- ======== CONTROLES ======== -->
+    <section class="card">
+      <h2>Controles</h2>
+      <div class="btns">
+        <button class="primary" id="b-step">Executar próxima linha</button>
+        <button id="b-trans">Transição inteira</button>
+        <button id="b-ep">Episódio inteiro</button>
+        <button id="b-auto">Rodar sozinho</button>
+        <button id="b-fast">Avançar 25 episódios</button>
+        <button id="b-reset" style="grid-column:1 / -1">Reiniciar aprendizado</button>
+      </div>
+
+      <div class="sliders">
+        <div class="slider">
+          <label for="s-alpha">taxa de aprendizado α <b id="v-alpha">0.20</b></label>
+          <input type="range" id="s-alpha" min="0.05" max="1" step="0.05" value="0.2">
+          <span class="hint">Quanto do erro de TD é incorporado a cada atualização.</span>
+        </div>
+        <div class="slider">
+          <label for="s-gamma">desconto γ <b id="v-gamma">0.90</b></label>
+          <input type="range" id="s-gamma" min="0" max="0.99" step="0.01" value="0.9">
+          <span class="hint">Quanto vale uma recompensa futura comparada a uma imediata.</span>
+        </div>
+        <div class="slider">
+          <label for="s-eps">ε inicial <b id="v-eps">1.00</b></label>
+          <input type="range" id="s-eps" min="0" max="1" step="0.05" value="1">
+          <span class="hint">Probabilidade de explorar. Cai 5% por episódio (condição GLIE), com piso de 0,02.</span>
+        </div>
+        <div class="slider">
+          <label for="s-speed">velocidade do modo automático <b id="v-speed">6</b>/s</label>
+          <input type="range" id="s-speed" min="1" max="30" step="1" value="6">
+        </div>
+      </div>
+    </section>
+
+    <!-- ======== PSEUDOCÓDIGO ======== -->
+    <section class="card">
+      <h2>Pseudocódigo ao vivo</h2>
+      <div class="algo" id="algo">
+        <span class="ln dim" id="L-in"><span class="kw">Entrada:</span> política π, <i>num_episodes</i>, fração α, GLIE {ε<sub>i</sub>}</span>
+        <span class="ln dim" id="L-out"><span class="kw">Saída:</span> função valor Q (≈ q<sub>π</sub>)</span>
+        <span class="ln" id="L-init">Inicialize Q (Q(s,a) = 0, Q(<i>terminal</i>,·) = 0)<span class="step">passo 1</span></span>
+        <span class="ln" id="L-for"><span class="kw">para</span> i ← 1 <span class="kw">até</span> <i>num_episodes</i> <span class="kw">faça</span></span>
+        <span class="ln i1" id="L-eps">ε ← ε<sub>i</sub></span>
+        <span class="ln i1" id="L-obs">Observe S<sub>0</sub></span>
+        <span class="ln i1" id="L-t0">t ← 0</span>
+        <span class="ln i1" id="L-rep"><span class="kw">repita</span></span>
+        <span class="ln i2" id="L-cho">Escolha A<sub>t</sub> com política derivada de Q (ε-greedy)<span class="step">passo 2</span></span>
+        <span class="ln i2" id="L-act">Execute A<sub>t</sub> e observe R<sub>t+1</sub>, S<sub>t+1</sub><span class="step">passo 3</span></span>
+        <span class="ln i2" id="L-upd">Q(S<sub>t</sub>,A<sub>t</sub>) ← Q(S<sub>t</sub>,A<sub>t</sub>) + α(R<sub>t+1</sub> + γ max<sub>a</sub> Q(S<sub>t+1</sub>,a) − Q(S<sub>t</sub>,A<sub>t</sub>))<span class="step">passo 4</span></span>
+        <span class="ln i2" id="L-tt">t ← t + 1</span>
+        <span class="ln i1" id="L-unt"><span class="kw">até</span> S<sub>t</sub> ser <i>terminal</i>;</span>
+        <span class="ln" id="L-end"><span class="kw">fim</span></span>
+        <span class="ln" id="L-ret"><span class="kw">retorne</span> Q</span>
+      </div>
+    </section>
+
+    <!-- ======== EQUAÇÃO ======== -->
+    <section class="card">
+      <h2>A atualização, com números</h2>
+      <div class="eq template">Q(S<sub>t</sub>,A<sub>t</sub>) ← <span class="t-q">Q(S<sub>t</sub>,A<sub>t</sub>)</span> + α(<span class="t-r">R<sub>t+1</sub></span> + γ·<span class="t-g">max<sub>a</sub> Q(S<sub>t+1</sub>,a)</span> − <span class="t-q">Q(S<sub>t</sub>,A<sub>t</sub>)</span>)</div>
+      <div class="eq" id="eq-live"><span class="idle">Nenhuma atualização ainda. Ela aparece aqui quando o passo 4 for executado.</span></div>
+      <div class="breakdown" id="breakdown" hidden>
+        <div class="brow"><span>Q antigo do par (S<sub>t</sub>, A<sub>t</sub>)</span><span id="bd-old">—</span></div>
+        <div class="brow"><span>recompensa R<sub>t+1</sub></span><span id="bd-r">—</span></div>
+        <div class="brow"><span>melhor Q do estado seguinte</span><span id="bd-max">—</span></div>
+        <div class="brow"><span>alvo TD = R + γ·max</span><span id="bd-target">—</span></div>
+        <div class="brow"><span>erro TD = alvo − Q antigo</span><span id="bd-err">—</span></div>
+        <div class="brow hi"><span>Q novo = antigo + α·erro</span><span id="bd-new">—</span></div>
+      </div>
+    </section>
+
+    <!-- ======== GRÁFICO ======== -->
+    <section class="card chart-card">
+      <h2>Retorno por episódio</h2>
+      <canvas id="chart"></canvas>
+      <div class="chart-legend">O melhor caminho possível rende +5. Enquanto ε é alto o agente erra de propósito; conforme ε cai, a curva sobe e estabiliza.</div>
+    </section>
+  </main>
+</div>
+
+<script>
+/* =========================================================
+   AMBIENTE
+   ========================================================= */
+const ROWS = 4, COLS = 4;
+// '.' livre · 'S' início · 'G' tesouro (+10) · 'H' buraco (−10)
+const MAP = [
+  ['.','.','.','G'],
+  ['.','H','.','H'],
+  ['.','.','.','.'],
+  ['S','H','.','.']
+];
+const START = 12;                 // linha 3, coluna 0
+const STEP_R = -1, GOAL_R = 10, HOLE_R = -10;
+const MAX_STEPS = 80;
+const NUM_EPISODES = 150;
+const EPS_DECAY = 0.95, EPS_MIN = 0.02;
+
+const ACT = ['↑','→','↓','←'];
+const ACT_NAME = ['cima','direita','baixo','esquerda'];
+const DR = [-1,0,1,0], DC = [0,1,0,-1];
+
+const idx = (r,c) => r*COLS + c;
+const rc  = s => [Math.floor(s/COLS), s%COLS];
+const cellOf = s => { const [r,c]=rc(s); return MAP[r][c]; };
+const isTerminal = s => cellOf(s)==='G' || cellOf(s)==='H';
+const label = s => { const [r,c]=rc(s); return `(${r},${c})`; };
+
+function stepEnv(s, a){
+  const [r,c] = rc(s);
+  let nr = r + DR[a], nc = c + DC[a];
+  if (nr<0 || nr>=ROWS || nc<0 || nc>=COLS){ nr=r; nc=c; }  // bate na parede e fica
+  const ns = idx(nr,nc);
+  const k = cellOf(ns);
+  if (k==='G') return {ns, r:GOAL_R,  done:true,  why:'chegou ao tesouro'};
+  if (k==='H') return {ns, r:HOLE_R,  done:true,  why:'caiu no buraco'};
+  return {ns, r:STEP_R, done:false, why: ns===s ? 'esbarrou na parede' : 'andou'};
+}
+
+/* =========================================================
+   ESTADO DO SIMULADOR
+   ========================================================= */
+let Q, ep, t, s, eps, ret, history, trail, phase, done, truncated;
+let last = null;          // dados da última transição
+let pending = null;       // ação escolhida, aguardando execução
+let inspect = null;       // célula tocada pelo usuário
+let autoTimer = null;
+
+let alpha = 0.2, gamma = 0.9, eps0 = 1.0, speed = 6;
+
+function reset(){
+  Q = Array.from({length: ROWS*COLS}, () => [0,0,0,0]);
+  ep = 0; t = 0; s = START; eps = eps0; ret = 0;
+  history = []; trail = [START];
+  phase = 'init'; done = false; truncated = false;
+  last = null; pending = null; inspect = null;
+  stopAuto();
+  narrate('pronto', 'A tabela Q começa zerada: o agente não sabe nada. Cada clique executa uma linha do pseudocódigo.');
+  highlight([]);
+  clearEquation();
+  render();
+}
+
+/* =========================================================
+   MÁQUINA DE PASSOS — cada chamada = uma linha do algoritmo
+   ========================================================= */
+function greedy(state){
+  const q = Q[state];
+  let best = 0;
+  for (let a=1;a<4;a++) if (q[a] > q[best]) best = a;
+  return best;
+}
+function maxQ(state){ return Math.max(...Q[state]); }
+
+function chooseAction(state, e){
+  const roll = Math.random();
+  if (roll < e){
+    const a = Math.floor(Math.random()*4);
+    return {a, explored:true, roll};
+  }
+  // desempate aleatório entre as melhores
+  const q = Q[state], m = Math.max(...q);
+  const ties = [0,1,2,3].filter(a => q[a] === m);
+  return {a: ties[Math.floor(Math.random()*ties.length)], explored:false, roll};
+}
+
+function micro(){
+  switch(phase){
+
+    case 'init':
+      highlight(['L-init']);
+      narrate('passo 1 · inicializar',
+        'Q(s,a) = 0 para todo estado e ação, e Q(terminal,·) = 0 por definição. Todas as fatias do tabuleiro estão neutras.');
+      phase = 'epStart';
+      break;
+
+    case 'epStart':
+      ep++;
+      eps = Math.max(EPS_MIN, eps0 * Math.pow(EPS_DECAY, ep-1));
+      s = START; t = 0; ret = 0; trail = [START]; truncated = false;
+      highlight(['L-for','L-eps','L-obs','L-t0','L-rep']);
+      narrate(`episódio ${ep} começa`,
+        `ε ← ${fmt(eps)}. O agente observa S₀ = ${label(START)} e zera o contador t. A cada episódio ε diminui: explora menos, confia mais na tabela Q.`);
+      phase = 'choose';
+      break;
+
+    case 'choose': {
+      const {a, explored, roll} = chooseAction(s, eps);
+      pending = {a, explored, roll};
+      highlight(['L-cho']);
+      narrate('passo 2 · escolher Aₜ',
+        explored
+          ? `Sorteio ${fmt(roll)} < ε = ${fmt(eps)} → EXPLORAR. Ação aleatória: ${ACT[a]} ${ACT_NAME[a]}.`
+          : `Sorteio ${fmt(roll)} ≥ ε = ${fmt(eps)} → APROVEITAR. Escolhe a ação de maior Q em ${label(s)}: ${ACT[a]} ${ACT_NAME[a]} (Q = ${fmt(Q[s][a])}).`);
+      phase = 'act';
+      break;
+    }
+
+    case 'act': {
+      const res = stepEnv(s, pending.a);
+      last = {s, a:pending.a, r:res.r, ns:res.ns, done:res.done, why:res.why,
+              explored:pending.explored, oldQ:Q[s][pending.a]};
+      ret += res.r;
+      trail.push(res.ns);
+      highlight(['L-act']);
+      narrate('passo 3 · executar e observar',
+        `Ação ${ACT[pending.a]} em ${label(s)} → o agente ${res.why}. Recebe R = ${res.r} e vai para S' = ${label(res.ns)}.` +
+        (res.done ? ' Estado terminal: o episódio acaba depois da atualização.' : ''));
+      phase = 'update';
+      break;
+    }
+
+    case 'update': {
+      const {s:st, a, r, ns} = last;
+      const mx = last.done ? 0 : maxQ(ns);
+      const target = r + gamma*mx;
+      const err = target - last.oldQ;
+      const nq = last.oldQ + alpha*err;
+      Q[st][a] = nq;
+      last.max = mx; last.target = target; last.err = err; last.newQ = nq;
+      last.bestNext = last.done ? null : greedy(ns);
+
+      showEquation(last);
+      highlight(['L-upd','L-tt']);
+      narrate('passo 4 · atualizar Q',
+        (last.done
+          ? `S' é terminal, então max Q(S',a) = 0 — não há futuro para descontar. `
+          : `O agente olha o melhor valor de S' (${fmt(mx)}, ação ${ACT[last.bestNext]}) mesmo sem ter escolhido essa ação — é isso que torna o Q-Learning off-policy. `) +
+        `Erro de TD = ${fmt(err)}, então Q${label(st)},${ACT[a]} vai de ${fmt(last.oldQ)} para ${fmt(nq)}.`);
+
+      s = ns; t++;
+      phase = (last.done || t >= MAX_STEPS) ? 'epEnd' : 'choose';
+      if (!last.done && t >= MAX_STEPS) truncated = true;
+      break;
+    }
+
+    case 'epEnd':
+      history.push(ret);
+      highlight(['L-unt','L-end']);
+      narrate(`episódio ${ep} termina`,
+        (truncated
+          ? `Limite de ${MAX_STEPS} passos atingido sem chegar a um estado terminal. `
+          : `Estado terminal alcançado em ${t} passos. `) +
+        `Retorno acumulado: ${fmt(ret)}. ${ep >= NUM_EPISODES ? 'Foi o último episódio.' : 'O laço reinicia com um ε menor.'}`);
+      phase = ep >= NUM_EPISODES ? 'finished' : 'epStart';
+      break;
+
+    case 'finished':
+      highlight(['L-ret']);
+      narrate('fim', `${NUM_EPISODES} episódios concluídos. A tabela Q retornada define a política: em cada célula, siga a fatia mais clara.`);
+      stopAuto();
+      done = true;
+      break;
+  }
+  render();
+}
+
+/* ---- execuções compostas ---- */
+function runTransition(){
+  const guard = 6;
+  for (let k=0;k<guard;k++){ micro(); if (phase==='choose'||phase==='epEnd'||phase==='finished') break; }
+}
+function runEpisode(){
+  const startEp = ep;
+  let guard = 0;
+  while (guard++ < 2000){
+    micro();
+    if (phase==='finished') break;
+    if (phase==='epStart' && ep > startEp) break;   // acabou de fechar um episódio
+    if (phase==='epStart' && startEp===0 && ep===0) continue;
+  }
+}
+function fastForward(n){
+  stopAuto();
+  // termina o episódio atual, depois roda n episódios sem narrar cada linha
+  let guard = 0;
+  while (phase !== 'epStart' && phase !== 'finished' && guard++ < 3000) micro();
+  for (let k=0;k<n && phase!=='finished';k++){
+    micro();                       // epStart
+    let g=0;
+    while (phase!=='epStart' && phase!=='finished' && g++<3000) micro();
+  }
+  render();
+}
+
+/* =========================================================
+   RENDERIZAÇÃO
+   ========================================================= */
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const board = document.getElementById('board');
+const fmt = v => (Math.round(v*100)/100).toFixed(2);
+
+function mix(a,b,t){
+  return `rgb(${Math.round(a[0]+(b[0]-a[0])*t)},${Math.round(a[1]+(b[1]-a[1])*t)},${Math.round(a[2]+(b[2]-a[2])*t)})`;
+}
+const C_ZERO=[26,34,51], C_POS=[240,169,59], C_NEG=[60,127,177];
+function valColor(v, scale){
+  const t = Math.min(1, Math.abs(v)/scale);
+  return v >= 0 ? mix(C_ZERO,C_POS,t) : mix(C_ZERO,C_NEG,t);
+}
+function el(tag, attrs, text){
+  const e = document.createElementNS(SVG_NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
+function drawBoard(){
+  board.innerHTML = '';
+  // qual fatia (estado, ação) recebe o contorno rosa nesta fase
+  const mark = (phase==='act' && pending) ? {s:s, a:pending.a}
+             : (last && !done) ? {s:last.s, a:last.a} : null;
+  const P = 100, G = 4;                    // passo da célula e folga
+  let scale = 1;
+  for (const row of Q) for (const v of row) scale = Math.max(scale, Math.abs(v));
+
+  // trilha do episódio
+  if (trail.length > 1){
+    const pts = trail.map(st => { const [r,c]=rc(st); return `${c*P+P/2},${r*P+P/2}`; }).join(' ');
+    board.appendChild(el('polyline',{points:pts, fill:'none', stroke:'rgba(255,110,156,.28)',
+      'stroke-width':3, 'stroke-linejoin':'round', 'stroke-linecap':'round'}));
+  }
+
+  for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++){
+    const st = idx(r,c), kind = MAP[r][c];
+    const x = c*P + G/2, y = r*P + G/2, S = P - G;
+    const g = el('g',{transform:`translate(${x},${y})`, style:'cursor:pointer'});
+    g.addEventListener('click', () => { inspect = (inspect===st?null:st); render(); });
+
+    if (isTerminal(st)){
+      const isGoal = kind==='G';
+      g.appendChild(el('rect',{width:S,height:S,rx:10,
+        fill:isGoal?'rgba(240,169,59,.14)':'rgba(60,127,177,.10)',
+        stroke:isGoal?'#F0A93B':'#3C7FB1','stroke-width':1.5}));
+      g.appendChild(el('text',{x:S/2,y:S/2+2,'text-anchor':'middle','dominant-baseline':'middle',
+        'font-size':30, fill:isGoal?'#F0A93B':'#3C7FB1'}, isGoal?'◆':'✕'));
+      g.appendChild(el('text',{x:S/2,y:S-13,'text-anchor':'middle','font-size':12,
+        'font-family':'IBM Plex Mono, monospace', fill:isGoal?'#F0A93B':'#3C7FB1'},
+        isGoal?'+10':'−10'));
+    } else {
+      const m = S/2, best = greedy(st);
+      const tri = [
+        `0,0 ${S},0 ${m},${m}`,        // ↑
+        `${S},0 ${S},${S} ${m},${m}`,  // →
+        `${S},${S} 0,${S} ${m},${m}`,  // ↓
+        `0,${S} 0,0 ${m},${m}`         // ←
+      ];
+      const cen = [[m,m*0.62],[m*1.38,m],[m,m*1.38],[m*0.62,m]];
+      for (let a=0;a<4;a++){
+        const isBest = Q[st].some(v=>v!==0) && a===best;
+        const isTaken = mark && mark.s===st && mark.a===a;
+        const isMaxNext = last && last.bestNext!==null && last.ns===st && a===last.bestNext
+                          && (phase==='choose'||phase==='epEnd');
+        const p = el('polygon',{points:tri[a], fill:valColor(Q[st][a], scale),
+          stroke: isTaken ? '#FF6E9C' : (isMaxNext ? '#F0A93B' : (isBest ? 'rgba(255,255,255,.30)' : 'rgba(255,255,255,.06)')),
+          'stroke-width': (isTaken||isMaxNext) ? 2.2 : 1});
+        g.appendChild(p);
+        g.appendChild(el('text',{x:cen[a][0], y:cen[a][1]+3,'text-anchor':'middle',
+          'font-size':10.5,'font-family':'IBM Plex Mono, monospace',
+          fill: Math.abs(Q[st][a])/scale > .55 ? '#0E1320' : 'rgba(230,234,244,.75)'},
+          Q[st][a]===0 ? '0' : fmt(Q[st][a]).replace('-','−')));
+      }
+      g.appendChild(el('rect',{width:S,height:S,rx:10,fill:'none',
+        stroke: st===s ? '#FF6E9C' : (st===inspect ? '#8B97B2' : 'rgba(255,255,255,.10)'),
+        'stroke-width': st===s ? 2.4 : 1}));
+      if (kind==='S')
+        g.appendChild(el('text',{x:7,y:15,'font-size':10,
+          'font-family':'IBM Plex Mono, monospace',fill:'#8B97B2'},'início'));
+    }
+    board.appendChild(g);
+  }
+
+  // agente
+  const [ar,ac] = rc(s);
+  const ag = el('g',{transform:`translate(${ac*100+50},${ar*100+50})`,
+    style:'transition:transform .28s cubic-bezier(.4,1.4,.5,1)'});
+  ag.appendChild(el('circle',{r:17,fill:'rgba(255,110,156,.22)'}));
+  ag.appendChild(el('circle',{r:10,fill:'#FF6E9C',stroke:'#FFD9E5','stroke-width':1.6}));
+  board.appendChild(ag);
+}
+
+function drawChips(){
+  const row = document.getElementById('qrow');
+  const st = inspect !== null ? inspect : s;
+  row.innerHTML = '';
+  const head = document.createElement('div');
+  head.style.cssText = 'flex:0 0 100%;font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:-6px';
+  head.textContent = (inspect!==null ? 'célula selecionada ' : 'estado atual ') + label(st) +
+                     (isTerminal(st) ? ' · terminal, Q = 0' : ' · Q(s,·)');
+  row.style.flexWrap = 'wrap';
+  row.appendChild(head);
+  const best = greedy(st);
+  for (let a=0;a<4;a++){
+    const d = document.createElement('div');
+    const marked = (phase==='act' && pending) ? (st===s && a===pending.a)
+                 : (last && !done && last.s===st && last.a===a);
+    d.className = 'qchip' + (!isTerminal(st) && Q[st].some(v=>v!==0) && a===best ? ' best':'') +
+                  (marked ? ' taken':'');
+    d.innerHTML = `<div class="a">${ACT[a]}</div><div class="v">${isTerminal(st)?'0.00':fmt(Q[st][a])}</div>`;
+    row.appendChild(d);
+  }
+}
+
+function highlight(ids){
+  document.querySelectorAll('#algo .ln').forEach(n => n.classList.remove('active'));
+  ids.forEach(i => { const n=document.getElementById(i); if(n) n.classList.add('active'); });
+}
+function narrate(tag, txt){
+  document.getElementById('narr-tag').textContent = tag;
+  document.getElementById('narr-txt').textContent = txt;
+}
+function clearEquation(){
+  document.getElementById('eq-live').innerHTML =
+    '<span class="idle">Nenhuma atualização ainda. Ela aparece aqui quando o passo 4 for executado.</span>';
+  document.getElementById('breakdown').hidden = true;
+}
+function showEquation(L){
+  const n = v => `<span class="num">${fmt(v).replace('-','−')}</span>`;
+  document.getElementById('eq-live').innerHTML =
+    `Q<span class="num">${label(L.s)}</span>,${ACT[L.a]} ← ` +
+    `<span class="t-q">${n(L.oldQ)}</span> + <span class="num">${fmt(alpha)}</span> × ( ` +
+    `<span class="t-r">${n(L.r)}</span> + <span class="num">${fmt(gamma)}</span>·<span class="t-g">${n(L.max)}</span> ` +
+    `− <span class="t-q">${n(L.oldQ)}</span> ) = <b class="num" style="color:#FF6E9C">${fmt(L.newQ).replace('-','−')}</b>`;
+  document.getElementById('breakdown').hidden = false;
+  const set = (id,v) => document.getElementById(id).innerHTML = v;
+  set('bd-old', fmt(L.oldQ).replace('-','−'));
+  set('bd-r', String(L.r).replace('-','−'));
+  set('bd-max', L.done ? '0.00 (S′ é terminal)' : `${fmt(L.max).replace('-','−')} → ${ACT[L.bestNext]}`);
+  set('bd-target', `${String(L.r).replace('-','−')} + ${fmt(gamma)}×${fmt(L.max).replace('-','−')} = ${fmt(L.target).replace('-','−')}`);
+  set('bd-err', fmt(L.err).replace('-','−'));
+  set('bd-new', `${fmt(L.oldQ).replace('-','−')} + ${fmt(alpha)}×${fmt(L.err).replace('-','−')} = ${fmt(L.newQ).replace('-','−')}`);
+}
+
+/* ---- gráfico ---- */
+const cv = document.getElementById('chart');
+function drawChart(){
+  const dpr = window.devicePixelRatio || 1;
+  const w = cv.clientWidth, h = cv.clientHeight;
+  cv.width = w*dpr; cv.height = h*dpr;
+  const x = cv.getContext('2d');
+  x.setTransform(dpr,0,0,dpr,0,0);
+  x.clearRect(0,0,w,h);
+  const pad = {l:34,r:8,t:10,b:18};
+  const W = w-pad.l-pad.r, H = h-pad.t-pad.b;
+
+  x.strokeStyle = '#2A3448'; x.lineWidth = 1;
+  x.beginPath(); x.moveTo(pad.l,pad.t); x.lineTo(pad.l,pad.t+H); x.lineTo(pad.l+W,pad.t+H); x.stroke();
+
+  if (!history.length){
+    x.fillStyle='#66718C'; x.font='12px "IBM Plex Mono", monospace';
+    x.fillText('Os retornos aparecem aqui a partir do primeiro episódio.', pad.l+8, pad.t+H/2);
+    return;
+  }
+  const lo = Math.min(-20, Math.min(...history)), hi = Math.max(10, Math.max(...history));
+  const X = i => pad.l + (history.length===1 ? W/2 : i/(history.length-1)*W);
+  const Y = v => pad.t + H - (v-lo)/(hi-lo)*H;
+
+  // linha do zero e do ótimo
+  [[0,'#2A3448','0'],[5,'rgba(240,169,59,.45)','+5 ótimo']].forEach(([v,col,txt])=>{
+    if (v<lo||v>hi) return;
+    x.strokeStyle=col; x.setLineDash([3,4]); x.beginPath();
+    x.moveTo(pad.l,Y(v)); x.lineTo(pad.l+W,Y(v)); x.stroke(); x.setLineDash([]);
+    x.fillStyle=col==='#2A3448'?'#66718C':'rgba(240,169,59,.8)';
+    x.font='10px "IBM Plex Mono", monospace'; x.fillText(txt, 2, Y(v)+3);
+  });
+
+  x.strokeStyle = '#FF6E9C'; x.lineWidth = 1.8; x.beginPath();
+  history.forEach((v,i)=> i? x.lineTo(X(i),Y(v)) : x.moveTo(X(i),Y(v)));
+  x.stroke();
+
+  x.fillStyle='#66718C'; x.font='10px "IBM Plex Mono", monospace';
+  x.fillText('1', pad.l, h-5);
+  x.fillText(String(history.length), pad.l+W-14, h-5);
+}
+
+function render(){
+  drawBoard(); drawChips(); drawChart();
+  document.getElementById('r-ep').textContent  = ep;
+  document.getElementById('r-t').textContent   = t;
+  document.getElementById('r-eps').textContent = fmt(eps);
+  document.getElementById('r-ret').textContent = fmt(ret);
+  const over = phase==='finished' && done;
+  ['b-step','b-trans','b-ep','b-fast','b-auto'].forEach(id=>{
+    document.getElementById(id).disabled = over;
+  });
+}
+
+/* =========================================================
+   CONTROLES
+   ========================================================= */
+function stopAuto(){
+  if (autoTimer){ clearInterval(autoTimer); autoTimer = null; }
+  const b = document.getElementById('b-auto');
+  b.classList.remove('on'); b.textContent = 'Rodar sozinho';
+}
+function toggleAuto(){
+  if (autoTimer){ stopAuto(); return; }
+  const b = document.getElementById('b-auto');
+  b.classList.add('on'); b.textContent = 'Pausar';
+  autoTimer = setInterval(() => { micro(); if (phase==='finished' && done) stopAuto(); }, 1000/speed);
+}
+
+document.getElementById('b-step').onclick  = () => { stopAuto(); micro(); };
+document.getElementById('b-trans').onclick = () => { stopAuto(); runTransition(); };
+document.getElementById('b-ep').onclick    = () => { stopAuto(); runEpisode(); };
+document.getElementById('b-fast').onclick  = () => fastForward(25);
+document.getElementById('b-auto').onclick  = toggleAuto;
+document.getElementById('b-reset').onclick = reset;
+
+const bind = (id, out, fn, fmtFn) => {
+  const el2 = document.getElementById(id);
+  el2.oninput = () => {
+    const v = parseFloat(el2.value);
+    fn(v);
+    document.getElementById(out).textContent = fmtFn ? fmtFn(v) : fmt(v);
+  };
+};
+bind('s-alpha','v-alpha', v => alpha = v);
+bind('s-gamma','v-gamma', v => gamma = v);
+bind('s-eps','v-eps', v => { eps0 = v; if (phase==='init'||ep===0) eps = v; render(); });
+bind('s-speed','v-speed', v => {
+  speed = v;
+  if (autoTimer){ stopAuto(); toggleAuto(); }
+}, v => String(v));
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight'){ e.preventDefault(); stopAuto(); micro(); }
+  if (e.key === ' ' && e.target === document.body){ e.preventDefault(); toggleAuto(); }
+});
+window.addEventListener('resize', drawChart);
+
+reset();
+</script>
+</body>
+</html>
