@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deep Q-Learning, linha por linha — poços, paredes e mapas de calor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#131A22;
+  --ink-soft:#4A5765;
+  --muted:#77828F;
+  --paper:#E4E8ED;
+  --panel:#FBFCFD;
+  --line:#CBD3DC;
+  --teal:#0F8A8D;
+  --teal-soft:#DDF0F0;
+  --violet:#6A2CC4;
+  --violet-soft:#EBE2FA;
+  --amber:#C8791A;
+  --red:#B03A3A;
+  --radius:3px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper);
+  background-image:
+    linear-gradient(to right, rgba(19,26,34,.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(19,26,34,.045) 1px, transparent 1px);
+  background-size:22px 22px;
+  color:var(--ink);
+  font-family:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
+  font-size:15px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1280px;margin:0 auto;padding:28px 20px 70px}
+
+header{border-bottom:2px solid var(--ink);padding-bottom:18px;margin-bottom:20px}
+.eyebrow{
+  font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 10px;
+}
+h1{
+  font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:clamp(30px,5vw,48px);
+  line-height:1.02;margin:0 0 10px;letter-spacing:-.015em;
+}
+h1 em{font-style:italic;font-weight:400}
+.dek{max-width:66ch;margin:0;color:var(--ink-soft);font-size:15.5px}
+
+.controls{
+  display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+  margin:20px 0 22px;padding:12px;background:var(--panel);
+  border:1px solid var(--line);border-radius:var(--radius);
+}
+button{
+  font-family:"IBM Plex Sans",sans-serif;font-size:13.5px;font-weight:500;
+  padding:8px 13px;border:1px solid var(--ink);background:var(--panel);color:var(--ink);
+  border-radius:var(--radius);cursor:pointer;transition:background .12s,color .12s;
+}
+button:hover{background:var(--ink);color:var(--panel)}
+button:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+button.primary{background:var(--ink);color:#fff}
+button.primary:hover{background:var(--teal);border-color:var(--teal)}
+button.ghost{border-color:var(--line);color:var(--ink-soft)}
+button.ghost:hover{background:var(--ink-soft);color:var(--panel);border-color:var(--ink-soft)}
+.spacer{flex:1 1 18px}
+.slider{display:flex;align-items:center;gap:8px;font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--muted);letter-spacing:.06em}
+input[type=range]{width:110px;accent-color:var(--teal)}
+.switch{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--ink-soft);cursor:pointer;user-select:none}
+input[type=checkbox]{accent-color:var(--violet);width:15px;height:15px;cursor:pointer}
+
+.grid2{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:980px){.grid2{grid-template-columns:1fr}}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius)}
+.panel-h{
+  display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+  padding:9px 13px;border-bottom:1px solid var(--line);
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);
+}
+.panel-h .val{letter-spacing:.02em;color:var(--ink);text-transform:none;font-size:12px}
+
+.code{padding:12px 12px 14px;font-family:"IBM Plex Mono",monospace;font-size:13px;line-height:1.35}
+.line{
+  padding:5px 8px 5px 26px;position:relative;border-radius:2px;
+  color:var(--ink-soft);transition:background .2s,color .2s;
+}
+.line.active{background:#FFF3D4;color:var(--ink);box-shadow:inset 3px 0 0 var(--amber)}
+.line.active::before{content:"▸";position:absolute;left:9px;color:var(--amber)}
+.line .kw{color:var(--ink);font-weight:600}
+.line sub{font-size:.72em}
+.indent1{margin-left:16px}
+.block{position:relative;border:1.5px solid;border-radius:2px;margin:2px 0 2px 30px;padding:2px 0}
+.block.sampling{border-color:var(--teal)}
+.block.training{border-color:var(--violet)}
+.block .tag{
+  position:absolute;right:8px;top:-9px;background:var(--panel);padding:0 6px;
+  font-size:10px;letter-spacing:.16em;text-transform:uppercase;font-weight:600;
+}
+.block.sampling .tag{color:var(--teal)}
+.block.training .tag{color:var(--violet)}
+.bind{
+  display:block;margin-top:4px;font-size:11.5px;color:var(--ink);
+  background:#fff;border:1px dashed var(--line);border-radius:2px;padding:3px 7px;
+}
+.bind b{color:var(--teal);font-weight:600}
+.bind i{font-style:normal;color:var(--violet);font-weight:600}
+
+.stack{display:flex;flex-direction:column;gap:18px}
+.pad{padding:14px}
+
+/* dicionário de símbolos */
+.gloss{padding:6px 14px 12px}
+.gloss .g{
+  display:grid;grid-template-columns:96px 1fr;gap:10px;align-items:baseline;
+  padding:7px 0;border-bottom:1px solid #EDF1F5;
+}
+.gloss .g:last-child{border-bottom:0}
+.gloss .sym{
+  font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:600;color:var(--ink);
+}
+.gloss .sym sub{font-size:.72em}
+.gloss .def{font-size:12.8px;color:var(--ink-soft);line-height:1.45}
+.gloss .def b{color:var(--ink);font-weight:600}
+.gloss .def .aqui{color:var(--teal);font-weight:600}
+.gloss .def .atari{color:var(--muted);font-style:italic}
+.gloss .gsec{
+  font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.15em;
+  text-transform:uppercase;color:var(--muted);padding:12px 0 3px;border-bottom:1px solid var(--line);
+}
+
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line)}
+.stat{background:var(--panel);padding:10px 8px;text-align:center}
+.stat .k{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
+.stat .v{font-family:"Fraunces",serif;font-size:23px;font-weight:600;line-height:1.15;margin-top:2px}
+
+.env{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
+.board{display:grid;grid-template-columns:repeat(5,38px);grid-auto-rows:38px;gap:3px}
+.cell{
+  background:#EDF1F5;border:1px solid #DDE3EA;border-radius:2px;position:relative;
+  display:flex;align-items:center;justify-content:center;font-size:16px;
+}
+.cell.trail{background:var(--teal-soft)}
+.cell.goal{background:#FFF0CE;border-color:#E8CE8E}
+.cell.pit{background:#F6E0E0;border-color:#E4BCBC;color:var(--red);font-size:14px}
+.cell.wall{
+  background:repeating-linear-gradient(45deg,#3C4652,#3C4652 4px,#4A5765 4px,#4A5765 8px);
+  border-color:#3C4652;
+}
+.cell.agent::after{
+  content:"";position:absolute;width:16px;height:16px;border-radius:50%;
+  background:var(--ink);box-shadow:0 0 0 3px rgba(15,138,141,.28);
+}
+.legend{font-size:12px;color:var(--muted);line-height:1.7}
+.legend b{color:var(--ink);font-weight:500}
+.legend .neg{color:var(--red);font-weight:600}
+.legend .pos{color:var(--amber);font-weight:600}
+
+/* heatmaps */
+.heatwrap{display:flex;gap:20px;flex-wrap:wrap}
+.heat{flex:0 0 auto}
+.heat h4{
+  margin:0 0 7px;font-family:"IBM Plex Mono",monospace;font-size:10.5px;
+  letter-spacing:.13em;text-transform:uppercase;font-weight:600;
+}
+.heat.hq h4{color:var(--teal)}
+.heat.hqhat h4{color:var(--violet)}
+.hgrid{display:grid;grid-template-columns:repeat(5,44px);grid-auto-rows:44px;gap:2px}
+.hcell{
+  border-radius:2px;position:relative;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;font-family:"IBM Plex Mono",monospace;
+  transition:background .3s;
+}
+.hcell .arrow{font-size:15px;line-height:1;font-weight:600}
+.hcell .hv{font-size:8.5px;line-height:1.2;opacity:.85}
+.hcell.hwall{
+  background:repeating-linear-gradient(45deg,#3C4652,#3C4652 4px,#4A5765 4px,#4A5765 8px)!important;
+}
+.hcell.hterm{font-size:13px;font-weight:600}
+.heatnote{font-size:12px;color:var(--muted);margin-top:10px;max-width:52ch}
+.hscale{display:flex;align-items:center;gap:6px;margin-top:8px;font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--muted)}
+.hbar{flex:0 0 130px;height:9px;border-radius:2px;border:1px solid var(--line);
+  background:linear-gradient(to right,#B03A3A,#F2E4E4 42%,#F3F5F2 50%,#DCEEEE 58%,#0F8A8D)}
+
+.qrow{display:grid;grid-template-columns:20px 1fr 62px;align-items:center;gap:8px;margin-bottom:7px}
+.qlabel{font-size:16px;text-align:center;color:var(--ink-soft)}
+.qtrack{position:relative;height:20px;background:#EDF1F5;border-radius:2px;overflow:hidden}
+.qtrack::before{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--line)}
+.qbar{position:absolute;top:3px;height:14px;background:var(--teal);transition:left .25s,width .25s}
+.qghost{position:absolute;top:1px;height:18px;border:1.5px dashed var(--violet);border-radius:2px;transition:left .25s,width .25s}
+.qnum{font-family:"IBM Plex Mono",monospace;font-size:11.5px;text-align:right;color:var(--ink-soft)}
+.qrow.chosen .qlabel{color:var(--ink);font-weight:600}
+.qrow.chosen .qnum{color:var(--ink);font-weight:600}
+
+.buffer{display:flex;flex-wrap:wrap;gap:3px}
+.slot{width:14px;height:14px;border-radius:2px;background:#E7ECF1;border:1px solid #DCE3EA;transition:background .2s,box-shadow .2s}
+.slot.filled{background:#C3D2DD;border-color:#B0C1CF}
+.slot.negslot{background:#DCA9A9;border-color:#C99}
+.slot.new{background:var(--teal);border-color:var(--teal)}
+.slot.picked{background:var(--violet);border-color:var(--violet);box-shadow:0 0 0 2px var(--violet-soft)}
+
+table.batch{width:100%;border-collapse:collapse;font-family:"IBM Plex Mono",monospace;font-size:11px}
+table.batch th{
+  text-align:left;font-weight:500;color:var(--muted);border-bottom:1px solid var(--line);
+  padding:4px 5px;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
+}
+table.batch td{padding:3px 5px;border-bottom:1px solid #EDF1F5;color:var(--ink-soft)}
+table.batch td.y{color:var(--violet);font-weight:600}
+table.batch tr.term-pos td{background:#FFF6E2}
+table.batch tr.term-neg td{background:#FDEDED}
+.empty{color:var(--muted);font-size:12.5px;font-style:italic;padding:6px 2px}
+
+.spark{width:100%;height:72px;display:block}
+
+.narr{
+  margin-top:18px;border:1px solid var(--ink);border-radius:var(--radius);
+  background:var(--panel);display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);
+}
+@media (max-width:820px){.narr{grid-template-columns:1fr}}
+.narr .main{padding:16px 18px}
+.narr .side{padding:16px 18px;border-left:1px solid var(--line);background:#F4F7F9}
+@media (max-width:820px){.narr .side{border-left:0;border-top:1px solid var(--line)}}
+.narr h3{
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 8px;font-weight:500;
+}
+.narr .say{font-family:"Fraunces",serif;font-size:19px;line-height:1.35;margin:0}
+.narr .say b{font-weight:600}
+.narr .why{font-size:13.5px;color:var(--ink-soft);margin:0}
+.narr .why strong{color:var(--ink);font-weight:600}
+.tagline{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:2px 6px;border-radius:2px;margin-bottom:8px}
+.tagline.sampling{background:var(--teal-soft);color:var(--teal)}
+.tagline.training{background:var(--violet-soft);color:var(--violet)}
+.tagline.init{background:#EDF1F5;color:var(--muted)}
+
+footer{margin-top:26px;font-size:12.5px;color:var(--muted);max-width:72ch}
+
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important;animation:none!important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Deep Q-Learning · Mnih et al., Nature 2015</p>
+  <h1>O algoritmo, <em>linha por linha</em></h1>
+  <p class="dek">O pseudocódigo à esquerda executa de verdade: uma rede neural minúscula aprende a atravessar um labirinto 5×5 com <b>paredes</b> (intransponíveis) e <b>poços ☠</b> — estados terminais com recompensa <b>−1</b>. A cada linha, os símbolos abstratos (φ, a<sub>t</sub>, r<sub>t</sub>, y<sub>j</sub>, θ⁻) aparecem preenchidos com os valores daquele instante, e os mapas de calor mostram os pesos sendo treinados: assista o teal se espalhar a partir da saída e o vermelho brotar ao redor dos poços.</p>
+</header>
+
+<div class="controls">
+  <button class="primary" id="btnPlay">▶ Executar</button>
+  <button id="btnStep">Próxima linha</button>
+  <button class="ghost" id="btnEp">Rodar 1 episódio</button>
+  <button class="ghost" id="btnFast">Treinar 60 episódios</button>
+  <button class="ghost" id="btnReset">Reiniciar</button>
+  <div class="spacer"></div>
+  <label class="switch"><input type="checkbox" id="chkDouble"> Double DQN</label>
+  <div class="slider"><span>Velocidade</span><input type="range" id="speed" min="80" max="1400" value="620" step="20"></div>
+</div>
+
+<div class="grid2">
+
+  <!-- ============ PSEUDOCÓDIGO + DICIONÁRIO ============ -->
+  <div class="stack">
+  <div class="panel">
+    <div class="panel-h"><span>Pseudocódigo em execução</span><span class="val" id="pcLabel">parado</span></div>
+    <div class="code" id="code">
+
+      <div class="line" data-id="initD"><span class="kw">Inicialize</span> a memória de replay <b>D</b> com capacidade <i>N</i> = 56
+        <span class="bind" data-bind="initD" hidden></span>
+      </div>
+      <div class="line" data-id="initQ"><span class="kw">Inicialize</span> a função Q com pesos aleatórios θ
+        <span class="bind" data-bind="initQ" hidden></span>
+      </div>
+      <div class="line" data-id="initT"><span class="kw">Inicialize</span> a função alvo Q̂ com pesos θ⁻ = θ
+        <span class="bind" data-bind="initT" hidden></span>
+      </div>
+
+      <div class="line" data-id="forEp"><span class="kw">Para</span> episódio = 1, M <span class="kw">faça</span>
+        <span class="bind" data-bind="forEp" hidden></span>
+      </div>
+      <div class="line indent1" data-id="initS"><span class="kw">Inicialize</span> a sequência s<sub>1</sub> e a pré-processada φ<sub>1</sub> = φ(s<sub>1</sub>)
+        <span class="bind" data-bind="initS" hidden></span>
+      </div>
+      <div class="line indent1" data-id="forT"><span class="kw">Para</span> t = 1, T <span class="kw">faça</span>
+        <span class="bind" data-bind="forT" hidden></span>
+      </div>
+
+      <div class="block sampling">
+        <span class="tag">Amostragem</span>
+        <div class="line" data-id="act">Com probabilidade ε escolha uma ação aleatória a<sub>t</sub>,<br>caso contrário a<sub>t</sub> = argmax<sub>a</sub> Q(φ(s<sub>t</sub>), a; θ)
+          <span class="bind" data-bind="act" hidden></span>
+        </div>
+        <div class="line" data-id="exec">Execute a<sub>t</sub> no emulador e observe a recompensa r<sub>t</sub> e a imagem x<sub>t+1</sub>
+          <span class="bind" data-bind="exec" hidden></span>
+        </div>
+        <div class="line" data-id="next">Faça s<sub>t+1</sub> = s<sub>t</sub>, a<sub>t</sub>, x<sub>t+1</sub> e pré-processe φ<sub>t+1</sub> = φ(s<sub>t+1</sub>)
+          <span class="bind" data-bind="next" hidden></span>
+        </div>
+        <div class="line" data-id="store">Guarde a transição (φ<sub>t</sub>, a<sub>t</sub>, r<sub>t</sub>, φ<sub>t+1</sub>) em <b>D</b>
+          <span class="bind" data-bind="store" hidden></span>
+        </div>
+      </div>
+
+      <div class="block training">
+        <span class="tag">Treino</span>
+        <div class="line" data-id="sample">Sorteie um minilote de transições (φ<sub>j</sub>, a<sub>j</sub>, r<sub>j</sub>, φ<sub>j+1</sub>) de <b>D</b>
+          <span class="bind" data-bind="sample" hidden></span>
+        </div>
+        <div class="line" data-id="yj" id="lineY">Faça y<sub>j</sub> = r<sub>j</sub> se o episódio terminar em j+1,<br>caso contrário y<sub>j</sub> = r<sub>j</sub> + γ · max<sub>a'</sub> Q̂(φ<sub>j+1</sub>, a'; θ⁻)
+          <span class="bind" data-bind="yj" hidden></span>
+        </div>
+        <div class="line" data-id="grad">Dê um passo de gradiente descendente em (y<sub>j</sub> − Q(φ<sub>j</sub>, a<sub>j</sub>; θ))² sobre θ
+          <span class="bind" data-bind="grad" hidden></span>
+        </div>
+        <div class="line" data-id="copy">A cada C = 25 passos, faça Q̂ = Q
+          <span class="bind" data-bind="copy" hidden></span>
+        </div>
+      </div>
+
+      <div class="line indent1" data-id="endT"><span class="kw">Fim Para</span></div>
+      <div class="line" data-id="endEp"><span class="kw">Fim Para</span></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-h"><span>Dicionário de símbolos</span><span class="val">o que cada letra significa aqui e no Atari</span></div>
+    <div class="gloss">
+
+      <div class="gsec">O mundo (amostragem)</div>
+      <div class="g"><span class="sym">s<sub>t</sub></span><span class="def"><b>Estado</b> no passo t — a situação completa do agente. <span class="aqui">Aqui:</span> a casa onde ele está, ex. (2,3). <span class="atari">No Atari: o histórico de telas e ações até agora.</span></span></div>
+      <div class="g"><span class="sym">x<sub>t</sub></span><span class="def"><b>Observação</b> que o emulador devolve — o que o agente "vê". <span class="aqui">Aqui:</span> a nova casa. <span class="atari">No Atari: um frame de pixels 210×160.</span></span></div>
+      <div class="g"><span class="sym">φ<sub>t</sub> = φ(s<sub>t</sub>)</span><span class="def"><b>Estado pré-processado</b> — o que a rede de fato recebe como entrada. <span class="aqui">Aqui:</span> vetor de 25 zeros com um único 1 na casa do agente (one-hot). <span class="atari">No Atari: 4 telas empilhadas, redimensionadas para 84×84 em cinza.</span></span></div>
+      <div class="g"><span class="sym">a<sub>t</sub></span><span class="def"><b>Ação</b> escolhida no passo t. <span class="aqui">Aqui:</span> ↑ → ↓ ←. <span class="atari">No Atari: os botões do joystick.</span></span></div>
+      <div class="g"><span class="sym">r<sub>t</sub></span><span class="def"><b>Recompensa</b> recebida pela ação. <span class="aqui">Aqui:</span> +1 saída, −1 poço, −0,02 por passo.</span></span></div>
+      <div class="g"><span class="sym">ε</span><span class="def"><b>Taxa de exploração</b>: probabilidade de agir ao acaso em vez de seguir a rede. Decai de 1,00 a 0,05 conforme os Q ficam confiáveis.</span></div>
+      <div class="g"><span class="sym">t, T</span><span class="def">Contador de passos <b>dentro do episódio</b> e seu limite (T = 40). <b>M</b> é o total de episódios do laço de fora.</span></div>
+
+      <div class="gsec">As redes</div>
+      <div class="g"><span class="sym">Q(φ, a; θ)</span><span class="def">A <b>rede principal</b>: recebe o estado e estima o valor de cada ação. <b>θ</b> são seus pesos (<span class="aqui">aqui, 700 números</span>) — é o que o gradiente ajusta e o mapa de calor da esquerda mostra.</span></div>
+      <div class="g"><span class="sym">Q̂, θ⁻</span><span class="def">A <b>rede alvo</b>: cópia congelada de Q, usada só para calcular y. θ⁻ recebe θ a cada <b>C</b> passos (<span class="aqui">aqui, 25</span>) — mapa de calor da direita.</span></div>
+
+      <div class="gsec">A memória e o treino</div>
+      <div class="g"><span class="sym">D, N</span><span class="def"><b>Memória de replay</b> e sua capacidade (<span class="aqui">N = 56</span>): guarda as transições (φ<sub>t</sub>, a<sub>t</sub>, r<sub>t</sub>, φ<sub>t+1</sub>) mais recentes.</span></div>
+      <div class="g"><span class="sym">j</span><span class="def">Índice de uma transição <b>sorteada</b> do lote. Atenção: <b>j não é t</b> — j aponta para uma jogada <i>antiga</i>, possivelmente de outro episódio. É por isso que as fórmulas do treino usam j, não t.</span></div>
+      <div class="g"><span class="sym">γ</span><span class="def"><b>Desconto</b> (<span class="aqui">0,95</span>): quanto o futuro vale em relação ao presente. Cada casa de distância da recompensa "apaga" 5% do valor — é o que cria o degradê nos mapas de calor.</span></div>
+      <div class="g"><span class="sym">y<sub>j</sub></span><span class="def">O <b>alvo</b>: a nota que a rede <i>deveria</i> ter dado a (φ<sub>j</sub>, a<sub>j</sub>). Se a transição é terminal, y = r (o ±1 seco); senão, y = r + γ·(melhor valor que Q̂ vê no estado seguinte).</span></div>
+      <div class="g"><span class="sym">(y<sub>j</sub> − Q)²</span><span class="def">A <b>perda</b>: quadrado do erro entre a nota dada e a devida. O gradiente descendente empurra θ na direção que reduz esse número.</span></div>
+
+    </div>
+  </div>
+  </div>
+
+  <!-- ============ ESTADO AO VIVO ============ -->
+  <div class="stack">
+
+    <div class="panel">
+      <div class="stats">
+        <div class="stat"><div class="k">Episódio</div><div class="v" id="sEp">0</div></div>
+        <div class="stat"><div class="k">Passo t</div><div class="v" id="sT">0</div></div>
+        <div class="stat"><div class="k">ε</div><div class="v" id="sEps">1.00</div></div>
+        <div class="stat"><div class="k">Q̂ em</div><div class="v" id="sC">25</div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-h"><span>Emulador · labirinto 5×5</span><span class="val" id="envLabel">—</span></div>
+      <div class="pad env">
+        <div class="board" id="board"></div>
+        <div class="legend">
+          <b>●</b> agente · <b>★</b> saída · <b>☠</b> poço · <b>▨</b> parede<br>
+          Saída: <span class="pos">+1</span>, termina<br>
+          Poço: <span class="neg">−1</span>, termina<br>
+          Passo: <b>−0,02</b> · bater na parede: fica parado<br>
+          Limite: <b>T = 40</b> passos
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-h"><span>Q(φ, ·; θ) para o estado atual</span><span class="val" id="qLabel">—</span></div>
+      <div class="pad" id="qbars"></div>
+      <div style="padding:0 14px 12px;font-size:12px;color:var(--muted)">
+        <span style="color:var(--teal);font-weight:600">▬</span> rede Q (θ, aprende a cada passo) &nbsp;&nbsp;
+        <span style="color:var(--violet);font-weight:600">▭</span> rede alvo Q̂ (θ⁻, congelada)
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-h"><span>Memória de replay D</span><span class="val" id="bufLabel">0 / 56</span></div>
+      <div class="pad">
+        <div class="buffer" id="buffer"></div>
+        <div style="font-size:11.5px;color:var(--muted);margin-top:8px">
+          slots <span style="color:#B07070;font-weight:600">avermelhados</span> guardam quedas em poço (r = −1) — repare como o sorteio roxo às vezes os revisita muito depois da queda.
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-h"><span>Minilote sorteado</span><span class="val" id="lossLabel">—</span></div>
+      <div class="pad" style="max-height:200px;overflow:auto" id="batchBox">
+        <p class="empty">Nada sorteado ainda. Rode até a linha roxa.</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-h"><span>Retorno por episódio</span><span class="val" id="retLabel">—</span></div>
+      <div class="pad"><svg class="spark" id="spark" viewBox="0 0 300 72" preserveAspectRatio="none"></svg></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============ MAPAS DE CALOR ============ -->
+<div class="panel" style="margin-top:18px">
+  <div class="panel-h"><span>Mapas de calor · V(s) = max<sub>a</sub> Q(s, a) e política gulosa</span><span class="val" id="heatLabel">atualiza a cada passo de gradiente</span></div>
+  <div class="pad heatwrap">
+    <div class="heat hq">
+      <h4>Rede Q (θ) — aprende a cada passo</h4>
+      <div class="hgrid" id="heatQ"></div>
+    </div>
+    <div class="heat hqhat">
+      <h4>Rede alvo Q̂ (θ⁻) — só muda a cada 25 passos</h4>
+      <div class="hgrid" id="heatT"></div>
+    </div>
+    <div style="flex:1 1 240px;min-width:220px">
+      <div class="hscale"><span>−1</span><div class="hbar"></div><span>+1</span></div>
+      <p class="heatnote">Cada casa mostra o <b>valor</b> que a rede dá a estar ali (cor + número) e a <b>seta</b> da ação de maior Q. Estes números <i>são</i> os pesos θ em ação: a cada passo de gradiente o mapa da esquerda se deforma; o da direita fica parado e <b>salta</b> quando θ⁻ ← θ. Com o treino, espere: teal escurecendo em ondas a partir da ★ (o γ = 0,95 desconta 5% por casa de distância), vermelho nas vizinhanças dos ☠, e setas formando um caminho que contorna poços e paredes.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============ NARRAÇÃO ============ -->
+<div class="narr">
+  <div class="main">
+    <span class="tagline init" id="phaseTag">Preparação</span>
+    <h3>O que acabou de acontecer</h3>
+    <p class="say" id="narrSay">Clique em <b>Próxima linha</b> para executar a primeira instrução.</p>
+  </div>
+  <div class="side">
+    <h3>Por que essa linha existe</h3>
+    <p class="why" id="narrWhy">O problema tem <strong>dois tipos de terminal</strong>: a saída (+1) e os poços (−1). A linha do y<sub>j</sub> trata os dois do mesmo jeito — "se termina, y = r" — e é assim que o medo do poço se propaga para trás pelo mapa.</p>
+  </div>
+</div>
+
+<footer>
+  Rede: one-hot de 25 casas → 24 tanh → 4 valores, gradiente em JavaScript. γ = 0,95 · lr = 0,035 · minilote = 8 · ε: 1,00 → 0,05.
+  Experimento sugerido: clique <b>Treinar 60 episódios</b> duas ou três vezes e observe o mapa de calor da esquerda antes e depois — e note que o da direita sempre parece uma "foto atrasada" do da esquerda.
+</footer>
+
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ================= ambiente: paredes e poços ================= */
+const S=5, TMAX=40;
+const GOAL={x:4,y:4};
+/* mapa:
+   y0: .  .  .  ☠  .
+   y1: .  ▨  .  ▨  .
+   y2: .  ▨  .  .  .
+   y3: .  .  ▨  ☠  .
+   y4: ☠  .  .  .  ★    */
+const WALLS=new Set([ (1)+(1)*S, (3)+(1)*S, (1)+(2)*S, (2)+(3)*S ]);
+const PITS =new Set([ (3)+(0)*S, (3)+(3)*S, (0)+(4)*S ]);
+const GI=GOAL.x+GOAL.y*S;
+
+const ACT=[[0,-1],[1,0],[0,1],[-1,0]];
+const ANAME=["↑","→","↓","←"];
+const idx=s=>s.y*S+s.x;
+const fmt=(v,n=2)=>(v<0?"−":"")+Math.abs(v).toFixed(n);
+const posStr=s=>"("+s.x+","+s.y+")";
+const isFree=k=>!WALLS.has(k)&&!PITS.has(k)&&k!==GI;
+
+function stepEnv(s,a){
+  const cx=s.x+ACT[a][0], cy=s.y+ACT[a][1];
+  let ns={x:s.x,y:s.y}, bumped=true;
+  if(cx>=0&&cx<S&&cy>=0&&cy<S&&!WALLS.has(cx+cy*S)){ ns={x:cx,y:cy}; bumped=false; }
+  const k=idx(ns);
+  if(k===GI)  return {ns,r: 1,done:true, kind:"goal",bumped};
+  if(PITS.has(k)) return {ns,r:-1,done:true, kind:"pit", bumped};
+  return {ns,r:-0.02,done:false,kind:"step",bumped};
+}
+function spawn(){
+  let k; do{k=(Math.random()*25)|0;}while(!isFree(k));
+  return {x:k%S,y:(k/S)|0};
+}
+
+/* ================= rede neural ================= */
+const NIN=25, NH=24, NOUT=4, GAMMA=0.95, LR=0.035, BATCH=8, CAP=56, CSTEPS=25;
+const zeros=(r,c)=>Array.from({length:r},()=>new Float64Array(c));
+function newNet(){
+  const n={W1:zeros(NIN,NH),b1:new Float64Array(NH),W2:zeros(NH,NOUT),b2:new Float64Array(NOUT)};
+  for(let i=0;i<NIN;i++)for(let j=0;j<NH;j++)n.W1[i][j]=(Math.random()*2-1)*0.30;
+  for(let j=0;j<NH;j++)for(let k=0;k<NOUT;k++)n.W2[j][k]=(Math.random()*2-1)*0.30;
+  return n;
+}
+function forward(n,i){
+  const h=new Float64Array(NH), q=new Float64Array(NOUT);
+  for(let j=0;j<NH;j++)h[j]=Math.tanh(n.W1[i][j]+n.b1[j]);
+  for(let k=0;k<NOUT;k++){let s=n.b2[k];for(let j=0;j<NH;j++)s+=n.W2[j][k]*h[j];q[k]=s;}
+  return {h,q};
+}
+const qOf=(n,i)=>forward(n,i).q;
+function argmax(q){let b=0;for(let k=1;k<q.length;k++)if(q[k]>q[b])b=k;return b;}
+function cloneNet(n){
+  const c={W1:zeros(NIN,NH),b1:Float64Array.from(n.b1),W2:zeros(NH,NOUT),b2:Float64Array.from(n.b2)};
+  for(let i=0;i<NIN;i++)c.W1[i].set(n.W1[i]);
+  for(let j=0;j<NH;j++)c.W2[j].set(n.W2[j]);
+  return c;
+}
+function trainOn(net,rows){
+  const gW1=zeros(NIN,NH), gb1=new Float64Array(NH), gW2=zeros(NH,NOUT), gb2=new Float64Array(NOUT);
+  let loss=0;
+  for(const row of rows){
+    const {h,q}=forward(net,row.i);
+    const e=q[row.a]-row.y; loss+=e*e;
+    const dq=2*e;
+    const dh=new Float64Array(NH);
+    for(let j=0;j<NH;j++){gW2[j][row.a]+=dq*h[j];dh[j]=net.W2[j][row.a]*dq;}
+    gb2[row.a]+=dq;
+    for(let j=0;j<NH;j++){const dp=dh[j]*(1-h[j]*h[j]);gW1[row.i][j]+=dp;gb1[j]+=dp;}
+  }
+  const s=LR/rows.length;
+  for(let i=0;i<NIN;i++)for(let j=0;j<NH;j++)net.W1[i][j]-=s*gW1[i][j];
+  for(let j=0;j<NH;j++)net.b1[j]-=s*gb1[j];
+  for(let j=0;j<NH;j++)for(let k=0;k<NOUT;k++)net.W2[j][k]-=s*gW2[j][k];
+  for(let k=0;k<NOUT;k++)net.b2[k]-=s*gb2[k];
+  return loss/rows.length;
+}
+
+/* ================= estado global ================= */
+let Q,Qhat,D,ep,t,eps,globalSteps,sinceCopy,state,nextState,lastA,lastR,lastDone,lastKind,
+    trail,ret,returns,batch,lastLoss,pc,running,timer,doubleDQN=false;
+
+const ORDER=["initD","initQ","initT","forEp","initS","forT","act","exec","next","store","sample","yj","grad","copy"];
+
+function reset(){
+  Q=newNet(); Qhat=cloneNet(Q); D=[]; ep=0; t=0; eps=1.0; globalSteps=0; sinceCopy=0;
+  state=spawn(); nextState=null; lastA=null; lastR=0; lastDone=false; lastKind="";
+  trail=[]; ret=0; batch=null; lastLoss=null; pc=0;
+  document.querySelectorAll(".bind").forEach(b=>{b.hidden=true;b.innerHTML="";});
+  document.getElementById("batchBox").innerHTML='<p class="empty">Nada sorteado ainda. Rode até a linha roxa.</p>';
+  say("Preparação","init","Clique em <b>Próxima linha</b> para executar a primeira instrução.",
+      "O problema tem <strong>dois tipos de terminal</strong>: a saída (+1) e os poços (−1). A linha do y<sub>j</sub> trata os dois do mesmo jeito — \"se termina, y = r\" — e é assim que o medo do poço se propaga para trás pelo mapa.");
+  render();
+}
+
+function say(tag,cls,main,why){
+  const el=document.getElementById("phaseTag");
+  el.textContent=tag; el.className="tagline "+cls;
+  document.getElementById("narrSay").innerHTML=main;
+  document.getElementById("narrWhy").innerHTML=why;
+}
+function bind(id,html){
+  const el=document.querySelector('.bind[data-bind="'+id+'"]');
+  if(!el)return; el.innerHTML=html; el.hidden=false;
+}
+function currentId(){return ORDER[pc];}
+
+/* ================= máquina de passos ================= */
+function execLine(){
+  const id=currentId();
+
+  if(id==="initD"){
+    D=[];
+    bind("initD","D vazia. Capacidade <b>56</b>; quando enche, a transição mais antiga é descartada.");
+    say("Preparação","init","A memória de replay nasce vazia.",
+        "Ela vai guardar tanto sucessos quanto <strong>quedas em poços</strong>. Reviver as quedas em lotes futuros é o que impede a rede de esquecer onde é perigoso.");
+    pc++;
+  }
+  else if(id==="initQ"){
+    Q=newNet();
+    bind("initQ","θ = 700 pesos sorteados. Neste momento o mapa de calor da esquerda é puro ruído.");
+    say("Preparação","init","A rede Q começa aleatória — olhe o mapa de calor: cores sem sentido, setas sem padrão.",
+        "Tudo que os mapas de calor vão mostrar daqui em diante é <strong>consequência do gradiente</strong> deformando esses 700 números.");
+    pc++;
+  }
+  else if(id==="initT"){
+    Qhat=cloneNet(Q); sinceCopy=0;
+    bind("initT","θ⁻ = fotocópia de θ. Os dois mapas de calor começam <b>idênticos</b>.");
+    say("Preparação","init","Q̂ é uma cópia congelada de Q — compare os dois mapas: iguais.",
+        "Nos próximos 25 passos, só o mapa da <strong>esquerda</strong> vai mudar. O da direita fica travado até θ⁻ ← θ.");
+    pc++;
+  }
+  else if(id==="forEp"){
+    ep++; t=0; ret=0; lastDone=false; lastKind=""; trail=[];
+    bind("forEp","Começando o episódio <b>"+ep+"</b>.");
+    say("Novo episódio","init","Episódio "+ep+" começa.",
+        "Um episódio termina de três jeitos: <strong>saída</strong> (+1), <strong>poço</strong> (−1) ou estouro dos 40 passos.");
+    pc++;
+  }
+  else if(id==="initS"){
+    state=spawn(); trail=[idx(state)];
+    bind("initS","s<sub>1</sub> = "+posStr(state)+" → φ<sub>1</sub> = one-hot na posição <b>"+idx(state)+"</b> de 25 (paredes e terminais nunca são ponto de partida).");
+    say("Novo episódio","init","O agente nasce em "+posStr(state)+".",
+        "φ é o pré-processamento: no Atari, 4 telas empilhadas; aqui, a casa vira um vetor de 25 zeros com um único 1.");
+    pc++;
+  }
+  else if(id==="forT"){
+    if(lastDone||t>=TMAX){
+      returns.push({ep,ret,steps:t,kind:lastKind});
+      const motivo=lastKind==="goal"?"achou a saída (+1)":lastKind==="pit"?"caiu num poço (−1)":"estourou os 40 passos";
+      bind("forT","Episódio "+ep+" encerrado: "+motivo+". Retorno = <b>"+fmt(ret)+"</b>.");
+      say("Fim do episódio","init","Episódio "+ep+" terminou: "+motivo+". Retorno "+fmt(ret)+".",
+          lastKind==="pit"
+            ? "A queda ficou gravada em D como transição terminal com r = −1. Nos próximos lotes ela vai <strong>puxar para baixo</strong> o Q da casa vizinha ao poço — veja o vermelho aparecer no mapa."
+            : "O retorno é a soma das recompensas da partida; é ele que aparece no gráfico.");
+      pc=ORDER.indexOf("forEp");
+    }else{
+      t++;
+      bind("forT","Passo <b>t = "+t+"</b> de no máximo 40.");
+      say("Amostragem","sampling","Passo "+t+" do episódio "+ep+".",
+          "Cada volta: <strong>uma jogada</strong> (bloco verde) e <strong>um ajuste de pesos</strong> (bloco roxo).");
+      pc++;
+    }
+  }
+  else if(id==="act"){
+    const i=idx(state), q=qOf(Q,i), greedy=argmax(q);
+    const dice=Math.random();
+    const explorou=dice<eps;
+    lastA=explorou?((Math.random()*4)|0):greedy;
+    bind("act","Sorteio "+dice.toFixed(2)+" vs ε "+eps.toFixed(2)+" → "+
+      (explorou?"<b>explorar</b>":"<b>aproveitar</b>")+
+      " · a<sub>t</sub> = <b>"+ANAME[lastA]+"</b> · Q(φ,·) = "+Array.from(q).map(v=>fmt(v)).join(" / "));
+    say("Amostragem","sampling","Ação: <b>"+ANAME[lastA]+"</b> — "+(explorou?"na sorte (exploração).":"a de maior Q (aproveitamento)."),
+        "Com poços no mapa, explorar tem preço: às vezes o sorteio manda o agente <strong>direto para o −1</strong>. Mas sem essas quedas, a rede jamais aprenderia onde não pisar.");
+    pc++;
+  }
+  else if(id==="exec"){
+    const out=stepEnv(state,lastA);
+    nextState=out.ns; lastR=out.r; lastDone=out.done; lastKind=out.kind;
+    ret+=out.r;
+    bind("exec","r<sub>t</sub> = <b>"+fmt(lastR)+"</b> · x<sub>t+1</sub> = "+posStr(nextState)+
+      (out.bumped?" · <b>bateu na parede</b>, ficou onde estava":"")+
+      (out.kind==="goal"?" · <b>saída!</b>":out.kind==="pit"?" · <b>☠ caiu no poço!</b>":""));
+    say("Amostragem","sampling",
+        out.kind==="pit"?"☠ Caiu no poço: recompensa <b>−1</b> e o episódio morre aqui."
+        :out.kind==="goal"?"★ Achou a saída: recompensa <b>+1</b>."
+        :out.bumped?"Bateu na parede — ficou em "+posStr(nextState)+" e ainda pagou −0,02."
+        :"Andou para "+posStr(nextState)+" ("+fmt(lastR)+").",
+        out.kind==="pit"
+          ? "O emulador não avisa \"isso era um poço\" — só entrega <strong>r = −1 e fim</strong>. Todo o significado de \"perigo\" terá que ser reconstruído pela rede a partir desse número."
+          : "O emulador é caixa-preta: só recompensa e próxima observação, nunca as regras.");
+    pc++;
+  }
+  else if(id==="next"){
+    state=nextState; trail.push(idx(state));
+    eps=Math.max(0.05,eps*0.992); globalSteps++;
+    bind("next","s<sub>t+1</sub> = "+posStr(state)+" → φ<sub>t+1</sub> = one-hot <b>"+idx(state)+"</b> · ε agora "+eps.toFixed(2));
+    say("Amostragem","sampling","O estado atual passa a ser "+posStr(state)+".",
+        "Mesmo quando o episódio morreu num poço, o φ<sub>t+1</sub> é registrado — ele entra na transição, mas como é terminal, <strong>ninguém fará bootstrap a partir dele</strong>.");
+    pc++;
+  }
+  else if(id==="store"){
+    const tr={i:trail[trail.length-2],a:lastA,r:lastR,ni:idx(state),done:lastDone,neg:lastKind==="pit"};
+    D.push(tr); if(D.length>CAP)D.shift();
+    bind("store","Guardado: (φ="+tr.i+", a="+ANAME[tr.a]+", r="+fmt(tr.r)+", φ'="+tr.ni+
+      (tr.done?(tr.neg?", <b>terminal −1</b>":", terminal +1"):"")+") · D: <b>"+D.length+"/56</b>");
+    say("Amostragem","sampling",
+        tr.neg?"A queda no poço foi arquivada — o slot dela fica avermelhado na memória."
+              :"A jogada foi arquivada em D.",
+        "<strong>Experience replay.</strong> Quedas em poço são raras e valiosas: guardadas, serão reamostradas dezenas de vezes, espalhando o −1 pelo mapa de calor muito depois do acidente.");
+    pc++;
+  }
+  else if(id==="sample"){
+    if(D.length<BATCH){
+      batch=null;
+      bind("sample","D só tem "+D.length+" transições; o lote precisa de 8. Treino pulado.");
+      say("Treino","training","Ainda não dá para treinar: menos de 8 transições em D.",
+          "O treino sempre lê de <strong>D</strong>, nunca da jogada recém-feita — isso quebra a correlação temporal.");
+      pc=ORDER.indexOf("forT");
+    }else{
+      batch=[];
+      const used=new Set();
+      while(batch.length<BATCH){
+        const k=(Math.random()*D.length)|0;
+        if(used.has(k)&&used.size<D.length)continue;
+        used.add(k); batch.push(Object.assign({slot:k},D[k]));
+      }
+      const nneg=batch.filter(b=>b.neg).length;
+      bind("sample","8 transições sorteadas das "+D.length+" guardadas"+(nneg?" — <b>"+nneg+"</b> dela(s) é/são queda(s) em poço":"")+".");
+      say("Treino","training","8 jogadas antigas sorteadas de D"+(nneg?", incluindo "+nneg+" queda(s) em poço":"")+".",
+          "Sorteio <strong>aleatório</strong>: o lote mistura episódios, regiões do mapa e até acidentes antigos. É essa mistura que estabiliza o gradiente.");
+      pc++;
+    }
+  }
+  else if(id==="yj"){
+    const rows=[];
+    for(const b of batch){
+      let y,how;
+      if(b.done){ y=b.r; how=b.neg?"terminal ☠":"terminal ★"; }
+      else if(doubleDQN){
+        const a2=argmax(qOf(Q,b.ni));
+        y=b.r+GAMMA*qOf(Qhat,b.ni)[a2];
+        how="Q escolhe "+ANAME[a2]+", Q̂ avalia";
+      }else{
+        const qn=qOf(Qhat,b.ni);
+        y=b.r+GAMMA*qn[argmax(qn)];
+        how="max de Q̂";
+      }
+      rows.push(Object.assign({},b,{y,how}));
+    }
+    batch=rows;
+    const nPos=rows.filter(r=>r.done&&!r.neg).length, nNeg=rows.filter(r=>r.neg).length;
+    bind("yj","8 alvos calculados"+
+      (nPos?" · "+nPos+" com y = <b>+1</b> (saída)":"")+
+      (nNeg?" · "+nNeg+" com y = <b>−1</b> (poço, sem bootstrap)":"")+
+      " · média y = <i>"+fmt(rows.reduce((s,r)=>s+r.y,0)/rows.length)+"</i>"+
+      (doubleDQN?" · <b>Double DQN</b>":""));
+    say("Treino","training","Cada transição ganhou seu alvo y<sub>j</sub>."+(nNeg?" As quedas recebem y = −1 seco.":""),
+        doubleDQN
+          ? "<strong>Double DQN:</strong> Q aponta a ação, Q̂ dá a nota. Com poços por perto isso importa mais — um max ruidoso adora superestimar justamente a casa ao lado do ☠."
+          : "Terminal <strong>positivo ou negativo</strong>, a regra é a mesma: y = r, sem olhar adiante. É por isso que o −1 do poço é uma âncora tão firme quanto o +1 da saída.");
+    renderBatch();
+    pc++;
+  }
+  else if(id==="grad"){
+    lastLoss=trainOn(Q,batch);
+    bind("grad","Erro quadrático médio = <b>"+lastLoss.toFixed(4)+"</b> · θ empurrado. Olhe o mapa de calor da <b>esquerda</b>: ele acabou de se deformar.");
+    say("Treino","training","θ ajustado (erro "+lastLoss.toFixed(4)+"). O mapa de calor da esquerda mudou; o da direita, não.",
+        "É literalmente isto que \"treinar os pesos\" significa: <strong>o mapa se deformando</strong> um pouquinho por lote, teal escorrendo da saída e vermelho escorrendo dos poços.");
+    pc++;
+  }
+  else if(id==="copy"){
+    sinceCopy++;
+    if(sinceCopy>=CSTEPS){
+      Qhat=cloneNet(Q); sinceCopy=0;
+      bind("copy","25 passos → <b>θ⁻ ← θ</b>. O mapa da direita acabou de <b>saltar</b> para ficar igual ao da esquerda.");
+      say("Treino","training","Q̂ atualizada: os dois mapas de calor voltaram a ser idênticos.",
+          "O alvo anda <strong>aos saltos</strong>, de 25 em 25 passos. Entre saltos, os mapas divergem — é a distância visível entre \"o que a rede acha agora\" e \"o alvo contra o qual ela treina\".");
+    }else{
+      bind("copy","Faltam <b>"+(CSTEPS-sinceCopy)+"</b> passos para θ⁻ ← θ. Compare os dois mapas: já estão diferentes.");
+      say("Treino","training","Ainda não é hora de copiar ("+(CSTEPS-sinceCopy)+" passos restantes).",
+          "Enquanto isso, o mapa da esquerda se afasta do da direita. <strong>Alvo fixo</strong> = aceitar essa defasagem em troca de estabilidade.");
+    }
+    pc=ORDER.indexOf("forT");
+  }
+
+  render();
+}
+
+/* ================= modo rápido ================= */
+function fastEpisodes(n){
+  for(let e=0;e<n;e++){
+    ep++; t=0; ret=0; state=spawn(); trail=[idx(state)];
+    let done=false, kind="";
+    while(!done&&t<TMAX){
+      t++;
+      const i=idx(state);
+      const a=(Math.random()<eps)?((Math.random()*4)|0):argmax(qOf(Q,i));
+      const out=stepEnv(state,a);
+      ret+=out.r; done=out.done; kind=out.kind;
+      D.push({i,a,r:out.r,ni:idx(out.ns),done,neg:out.kind==="pit"});
+      if(D.length>CAP)D.shift();
+      state=out.ns; trail.push(idx(state));
+      eps=Math.max(0.05,eps*0.992); globalSteps++;
+      if(D.length>=BATCH){
+        const rows=[];
+        for(let k=0;k<BATCH;k++){
+          const b=D[(Math.random()*D.length)|0];
+          let y;
+          if(b.done)y=b.r;
+          else if(doubleDQN)y=b.r+GAMMA*qOf(Qhat,b.ni)[argmax(qOf(Q,b.ni))];
+          else{const qn=qOf(Qhat,b.ni);y=b.r+GAMMA*qn[argmax(qn)];}
+          rows.push({i:b.i,a:b.a,y});
+        }
+        lastLoss=trainOn(Q,rows);
+        if(++sinceCopy>=CSTEPS){Qhat=cloneNet(Q);sinceCopy=0;}
+      }
+    }
+    returns.push({ep,ret,steps:t,kind});
+  }
+  batch=null;
+  document.getElementById("batchBox").innerHTML='<p class="empty">Modo rápido: o minilote não é exibido. Use "Próxima linha" para ver de novo.</p>';
+  pc=ORDER.indexOf("forEp");
+  document.querySelectorAll(".bind").forEach(b=>{b.hidden=true;});
+  const rec=returns.slice(-10);
+  const quedas=rec.filter(r=>r.kind==="pit").length;
+  say("Modo rápido","init",
+      n+" episódios rodados. ε = "+eps.toFixed(2)+" · nos últimos 10: "+quedas+" queda(s) em poço, retorno médio "+fmt(rec.reduce((s,r)=>s+r.ret,0)/rec.length)+".",
+      "Olhe o mapa de calor: no começo os poços quase não deixam marca (poucas quedas registradas); com o treino, o <strong>vermelho contorna os ☠</strong>, o <strong>teal forma um gradiente até a ★</strong> e as setas desviam sozinhas das paredes.");
+  render();
+}
+
+/* ================= renderização ================= */
+function heatColor(v){
+  const x=Math.max(-1,Math.min(1,v));
+  if(x>=0){
+    const t=x;
+    const r=Math.round(243+(15-243)*t), g=Math.round(245+(138-245)*t), b=Math.round(242+(141-242)*t);
+    return "rgb("+r+","+g+","+b+")";
+  }else{
+    const t=-x;
+    const r=Math.round(243+(176-243)*t), g=Math.round(245+(58-245)*t), b=Math.round(242+(58-242)*t);
+    return "rgb("+r+","+g+","+b+")";
+  }
+}
+function renderHeat(el,net){
+  if(!el.children.length){
+    for(let k=0;k<25;k++){
+      const c=document.createElement("div");c.className="hcell";
+      c.innerHTML='<span class="arrow"></span><span class="hv"></span>';
+      el.appendChild(c);
+    }
+  }
+  for(let k=0;k<25;k++){
+    const c=el.children[k];
+    if(WALLS.has(k)){c.className="hcell hwall";c.children[0].textContent="";c.children[1].textContent="";c.style.background="";continue;}
+    if(k===GI){c.className="hcell hterm";c.style.background=heatColor(1);c.children[0].textContent="★";c.children[1].textContent="+1";c.style.color="#fff";continue;}
+    if(PITS.has(k)){c.className="hcell hterm";c.style.background=heatColor(-1);c.children[0].textContent="☠";c.children[1].textContent="−1";c.style.color="#fff";continue;}
+    const q=qOf(net,k), b=argmax(q), v=q[b];
+    c.className="hcell";
+    c.style.background=heatColor(v);
+    const dark=Math.abs(v)>0.55;
+    c.style.color=dark?"#fff":"var(--ink)";
+    c.children[0].textContent=ANAME[b];
+    c.children[1].textContent=fmt(v);
+  }
+}
+
+function render(){
+  const id=currentId();
+  document.querySelectorAll(".line").forEach(el=>{
+    el.classList.toggle("active",el.dataset.id===id);
+  });
+  document.getElementById("pcLabel").textContent=running?"executando":(ep?"linha: "+id:"parado");
+
+  document.getElementById("sEp").textContent=ep;
+  document.getElementById("sT").textContent=t;
+  document.getElementById("sEps").textContent=eps.toFixed(2);
+  document.getElementById("sC").textContent=Math.max(0,CSTEPS-sinceCopy);
+
+  // tabuleiro
+  const board=document.getElementById("board");
+  if(!board.children.length){
+    for(let k=0;k<25;k++){const c=document.createElement("div");c.className="cell";board.appendChild(c);}
+  }
+  const trailSet=new Set(trail);
+  const ai=idx(state);
+  for(let k=0;k<25;k++){
+    const c=board.children[k];
+    let cls="cell";
+    if(WALLS.has(k))cls+=" wall";
+    else{
+      if(trailSet.has(k))cls+=" trail";
+      if(k===GI)cls+=" goal";
+      if(PITS.has(k))cls+=" pit";
+      if(k===ai)cls+=" agent";
+    }
+    c.className=cls;
+    c.textContent=WALLS.has(k)?"":(k===GI?"★":(PITS.has(k)?"☠":""));
+  }
+  document.getElementById("envLabel").textContent=posStr(state)+(lastA!==null?" · última ação "+ANAME[lastA]:"");
+
+  // barras Q do estado atual
+  const i=idx(state), q=qOf(Q,i), qh=qOf(Qhat,i);
+  let m=0.35; for(let k=0;k<4;k++){m=Math.max(m,Math.abs(q[k]),Math.abs(qh[k]));}
+  const box=document.getElementById("qbars");
+  if(box.children.length!==4){
+    box.innerHTML="";
+    for(let k=0;k<4;k++){
+      const row=document.createElement("div");
+      row.className="qrow";
+      row.innerHTML='<div class="qlabel">'+ANAME[k]+'</div><div class="qtrack"><div class="qghost"></div><div class="qbar"></div></div><div class="qnum"></div>';
+      box.appendChild(row);
+    }
+  }
+  const best=argmax(q);
+  for(let k=0;k<4;k++){
+    const row=box.children[k];
+    row.classList.toggle("chosen",k===best);
+    const setBar=(el,v)=>{
+      const w=Math.abs(v)/m*50;
+      el.style.width=w+"%";
+      el.style.left=(v>=0?50:50-w)+"%";
+    };
+    setBar(row.querySelector(".qbar"),q[k]);
+    setBar(row.querySelector(".qghost"),qh[k]);
+    row.querySelector(".qnum").textContent=fmt(q[k]);
+  }
+  document.getElementById("qLabel").textContent="φ = one-hot "+i+" · melhor: "+ANAME[best];
+
+  // buffer
+  const buf=document.getElementById("buffer");
+  if(!buf.children.length){
+    for(let k=0;k<CAP;k++){const s=document.createElement("div");s.className="slot";buf.appendChild(s);}
+  }
+  const picked=new Set(batch?batch.map(b=>b.slot):[]);
+  for(let k=0;k<CAP;k++){
+    const s=buf.children[k];
+    let cls="slot";
+    if(k<D.length)cls+=D[k].neg?" negslot":" filled";
+    if(k===D.length-1&&D.length)cls="slot new";
+    if(picked.has(k))cls="slot picked";
+    s.className=cls;
+  }
+  document.getElementById("bufLabel").textContent=D.length+" / "+CAP;
+  document.getElementById("lossLabel").textContent=lastLoss==null?"—":"erro "+lastLoss.toFixed(4);
+
+  // heatmaps
+  renderHeat(document.getElementById("heatQ"),Q);
+  renderHeat(document.getElementById("heatT"),Qhat);
+
+  renderSpark();
+}
+
+function renderBatch(){
+  const box=document.getElementById("batchBox");
+  if(!batch){box.innerHTML='<p class="empty">Nada sorteado ainda.</p>';return;}
+  let h='<table class="batch"><thead><tr><th>φⱼ</th><th>aⱼ</th><th>rⱼ</th><th>φⱼ₊₁</th><th>como</th><th>yⱼ</th></tr></thead><tbody>';
+  for(const b of batch){
+    const cls=b.done?(b.neg?"term-neg":"term-pos"):"";
+    h+='<tr class="'+cls+'"><td>'+b.i+'</td><td>'+ANAME[b.a]+'</td><td>'+fmt(b.r)+
+       '</td><td>'+(b.done?"—":b.ni)+'</td><td>'+(b.how||"")+'</td><td class="y">'+fmt(b.y)+'</td></tr>';
+  }
+  h+='</tbody></table>';
+  box.innerHTML=h;
+}
+
+function renderSpark(){
+  const svg=document.getElementById("spark");
+  const lab=document.getElementById("retLabel");
+  if(returns.length<2){svg.innerHTML='';lab.textContent="—";return;}
+  const recent=returns.slice(-90);
+  const vals=recent.map(r=>r.ret);
+  const mn=Math.min(...vals,-1.2), mx=Math.max(...vals,1);
+  const X=k=>k/(vals.length-1)*300;
+  const Y=v=>70-((v-mn)/(mx-mn))*66;
+  let d="";
+  vals.forEach((v,k)=>{d+=(k?"L":"M")+X(k).toFixed(1)+","+Y(v).toFixed(1);});
+  const zero=Y(0);
+  let dots="";
+  recent.forEach((r,k)=>{
+    if(r.kind==="pit")dots+='<circle cx="'+X(k).toFixed(1)+'" cy="'+Y(r.ret).toFixed(1)+'" r="2.2" fill="#B03A3A"/>';
+  });
+  svg.innerHTML='<line x1="0" y1="'+zero.toFixed(1)+'" x2="300" y2="'+zero.toFixed(1)+'" stroke="#CBD3DC" stroke-width="1" stroke-dasharray="3 3"/>'+
+    '<path d="'+d+'" fill="none" stroke="#0F8A8D" stroke-width="1.6" vector-effect="non-scaling-stroke"/>'+dots;
+  lab.textContent="últimos "+vals.length+" · pontos vermelhos = poço";
+}
+
+/* ================= controles ================= */
+const btnPlay=document.getElementById("btnPlay");
+function setRunning(v){
+  running=v;
+  btnPlay.textContent=v?"⏸ Pausar":"▶ Executar";
+  if(timer){clearInterval(timer);timer=null;}
+  if(v){
+    const ms=+document.getElementById("speed").value;
+    timer=setInterval(execLine,ms);
+  }
+  render();
+}
+btnPlay.onclick=()=>setRunning(!running);
+document.getElementById("btnStep").onclick=()=>{setRunning(false);execLine();};
+document.getElementById("speed").oninput=()=>{if(running)setRunning(true);};
+document.getElementById("btnEp").onclick=()=>{
+  setRunning(false);
+  const target=ep+1;
+  let guard=0;
+  do{execLine();guard++;}while(guard<6000&&!(ep===target&&currentId()==="forEp")&&ep<=target);
+};
+document.getElementById("btnFast").onclick=()=>{setRunning(false);fastEpisodes(60);};
+document.getElementById("btnReset").onclick=()=>{setRunning(false);returns=[];reset();};
+document.getElementById("chkDouble").onchange=e=>{
+  doubleDQN=e.target.checked;
+  document.getElementById("lineY").innerHTML= doubleDQN
+    ? 'Faça y<sub>j</sub> = r<sub>j</sub> se o episódio terminar em j+1,<br>caso contrário y<sub>j</sub> = r<sub>j</sub> + γ · Q̂(φ<sub>j+1</sub>, argmax<sub>a\'</sub> Q(φ<sub>j+1</sub>, a\'; θ); θ⁻)<span class="bind" data-bind="yj" hidden></span>'
+    : 'Faça y<sub>j</sub> = r<sub>j</sub> se o episódio terminar em j+1,<br>caso contrário y<sub>j</sub> = r<sub>j</sub> + γ · max<sub>a\'</sub> Q̂(φ<sub>j+1</sub>, a\'; θ⁻)<span class="bind" data-bind="yj" hidden></span>';
+  document.getElementById("lineY").dataset.id="yj";
+  say(doubleDQN?"Double DQN ligado":"DQN padrão","training",
+      doubleDQN?"A linha do y<sub>j</sub> mudou: Q escolhe a ação, Q̂ dá a nota."
+               :"De volta ao DQN do paper: Q̂ escolhe <i>e</i> avalia, com um único max.",
+      doubleDQN?"Perto dos poços isso é visível: o max único tende a manter casas vizinhas ao ☠ com valor inflado por mais tempo. Compare os mapas de calor treinando 60 episódios em cada modo."
+               :"Compare com o Double: treine 60 episódios em cada modo e olhe as casas vizinhas aos poços no mapa de calor.");
+  render();
+};
+document.addEventListener("keydown",e=>{
+  if(e.key===" "){e.preventDefault();setRunning(!running);}
+  if(e.key==="ArrowRight"){e.preventDefault();setRunning(false);execLine();}
+});
+
+returns=[];
+reset();
+})();
+</script>
+</body>
+</html>
