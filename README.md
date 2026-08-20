@@ -6,18 +6,18 @@ Repositório oficial de materiais da disciplina **GBC063 — Inteligência Artif
 
 ## Simuladores
 
-Simuladores interativos em HTML (abram o arquivo no navegador):
+Simuladores interativos — rodam direto no navegador:
 
-- [Q-Learning passo a passo — Sarsamax](simuladores/q-learning-simulador.html) — um agente aprende a atravessar uma grade 4×4 até o tesouro sem cair nos buracos; cada clique executa exatamente uma linha do pseudocódigo e você vê a tabela Q mudar por causa dela.
-- [Deep Q-Learning, linha por linha](simuladores/dqn.html) — o pseudocódigo do DQN (Mnih et al., Nature 2015) executa de verdade: uma rede neural minúscula aprende a atravessar um labirinto 5×5 com paredes e poços, com mapa de calor e opção Double DQN.
-- [Mars Rover — processo de recompensa de Markov](aula01/simulador-mars-rover.html) — a cadeia de estados do Mars Rover com função valor, equação de Bellman com os números de agora, velocidade de convergência e amostragem de episódios.
-- [Laboratório interativo — MDPs, Iteração de Valor e de Política](aula02/interativo-aula02.html) — companheiro dos slides da Aula 2: manipule o MDP, acompanhe a anatomia do backup, a convergência e os retornos amostrais (ponte para a Aula 3).
-- [Console do transecto — avaliação de política sem modelo](aula03/simulador-avaliacao.html) — três formas de avaliar a mesma política (Monte Carlo, diferença temporal e equivalência de certeza) sobre um transecto de 7 sítios de coleta, com RMSE por episódio.
-- [Caderno de demonstrações da Aula 4](aula04/aula04-demos.html) — quatro coisas que só se veem rodando: a tríade mortal, o viés de maximização virando curva, o exemplo A–B editável e a pegada de uma única atualização.
-- [Laboratório de gradiente de política](aula05/aula05-laboratorio-gradiente-de-politica.html) — a função escore empurrando a distribuição, onde mora a variância, REINFORCE aprendendo a ser aleatório e quanto viés vale a pena comprar em estimadores n-passos.
-- [Bandits bayesianos e amostragem de Thompson](aula11/interativo-aula11.html) — três estações para ver a exploração acontecer: um sorteio por passo, quatro algoritmos em muitas execuções e o que acontece quando o prior mente.
-- [MCTS ao vivo](aula13/lab13-mcts.html) — árvore sintética com ramificação e profundidade configuráveis, simulações UCT, árvore construída e estatísticas na raiz.
-- [Busca em árvore Monte Carlo — ingredientes do AlphaZero](aula14/laboratorio-mcts.html) — um Lig-4 movido pelos mesmos ingredientes do AlphaZero (PUCT, rede política–valor), com todos eles expostos.
+- [Q-Learning passo a passo — Sarsamax](https://albertiniufu.github.io/gbc063/simuladores/q-learning-simulador.html) — um agente aprende a atravessar uma grade 4×4 até o tesouro sem cair nos buracos; cada clique executa exatamente uma linha do pseudocódigo e você vê a tabela Q mudar por causa dela.
+- [Deep Q-Learning, linha por linha](https://albertiniufu.github.io/gbc063/simuladores/dqn.html) — o pseudocódigo do DQN (Mnih et al., Nature 2015) executa de verdade: uma rede neural minúscula aprende a atravessar um labirinto 5×5 com paredes e poços, com mapa de calor e opção Double DQN.
+- [Mars Rover — processo de recompensa de Markov](https://albertiniufu.github.io/gbc063/aula01/simulador-mars-rover.html) — a cadeia de estados do Mars Rover com função valor, equação de Bellman com os números de agora, velocidade de convergência e amostragem de episódios.
+- [Laboratório interativo — MDPs, Iteração de Valor e de Política](https://albertiniufu.github.io/gbc063/aula02/interativo-aula02.html) — companheiro dos slides da Aula 2: manipule o MDP, acompanhe a anatomia do backup, a convergência e os retornos amostrais (ponte para a Aula 3).
+- [Console do transecto — avaliação de política sem modelo](https://albertiniufu.github.io/gbc063/aula03/simulador-avaliacao.html) — três formas de avaliar a mesma política (Monte Carlo, diferença temporal e equivalência de certeza) sobre um transecto de 7 sítios de coleta, com RMSE por episódio.
+- [Caderno de demonstrações da Aula 4](https://albertiniufu.github.io/gbc063/aula04/aula04-demos.html) — quatro coisas que só se veem rodando: a tríade mortal, o viés de maximização virando curva, o exemplo A–B editável e a pegada de uma única atualização.
+- [Laboratório de gradiente de política](https://albertiniufu.github.io/gbc063/aula05/aula05-laboratorio-gradiente-de-politica.html) — a função escore empurrando a distribuição, onde mora a variância, REINFORCE aprendendo a ser aleatório e quanto viés vale a pena comprar em estimadores n-passos.
+- [Bandits bayesianos e amostragem de Thompson](https://albertiniufu.github.io/gbc063/aula11/interativo-aula11.html) — três estações para ver a exploração acontecer: um sorteio por passo, quatro algoritmos em muitas execuções e o que acontece quando o prior mente.
+- [MCTS ao vivo](https://albertiniufu.github.io/gbc063/aula13/lab13-mcts.html) — árvore sintética com ramificação e profundidade configuráveis, simulações UCT, árvore construída e estatísticas na raiz.
+- [Busca em árvore Monte Carlo — ingredientes do AlphaZero](https://albertiniufu.github.io/gbc063/aula14/laboratorio-mcts.html) — um Lig-4 movido pelos mesmos ingredientes do AlphaZero (PUCT, rede política–valor), com todos eles expostos.
 
 ## Aulas
 
