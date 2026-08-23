@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta charset="UTF-8">
+  <title>Crawler Bot - Q-Learning Simulation</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f0f0f0;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    #applet-container {
+      background-color: #55b572;
+      border: 4px solid #888;
+      border-radius: 8px;
+      padding: 10px;
+      width: 700px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+    .controls-row {
+      display: flex;
+      justify-content: space-around;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+    button {
+      padding: 6px 12px;
+      font-weight: bold;
+      cursor: pointer;
+      background: #e1e1e1;
+      border: 1px solid #777;
+      border-radius: 3px;
+    }
+    button:active {
+      background: #ccc;
+    }
+    .info-panel {
+      color: #111;
+      font-family: monospace;
+      font-size: 14px;
+      margin-bottom: 8px;
+      margin-left: 10px;
+    }
+    canvas {
+      background-color: #72ca8c;
+      border: 1px solid #333;
+      display: block;
+      margin: 0 auto;
+    }
+    .param-controls {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-top: 10px;
+    }
+    .param-group {
+      display: flex;
+      align-items: center;
+      background: #e1e1e1;
+      border: 1px solid #777;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    .param-group input {
+      width: 45px;
+      text-align: center;
+      margin: 0 4px;
+      border: 1px solid #aaa;
+      background: #fff;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+<div id="applet-container">
+  <div class="controls-row">
+    <button onclick="toggleRun()" id="btn-run">Pause</button>
+    <button onclick="skipSteps(1000000)">Skip 1000000 step</button>
+    <button onclick="stopSim()">Stop</button>
+    <button onclick="skipSteps(30000)">Skip 30000 steps</button>
+    <button onclick="resetSpeed()">Reset speed counter</button>
+    <button onclick="resetQ()">Reset Q</button>
+  </div>
+
+  <div class="info-panel">
+    average speed : <span id="speed-val">-1.2181945228901856</span>
+  </div>
+
+  <canvas id="canvas" width="680" height="260"></canvas>
+
+  <div class="param-controls">
+    <div class="param-group">
+      <button onclick="adjustParam('eps', -0.1)">eps--</button>
+      <input type="text" id="eps-val" value="0.4" readonly="readonly">
+      <button onclick="adjustParam('eps', 0.1)">eps++</button>
+    </div>
+    <div class="param-group">
+      <button onclick="adjustParam('gam', -0.1)">gam--</button>
+      <input type="text" id="gam-val" value="0.4" readonly="readonly">
+      <button onclick="adjustParam('gam', 0.1)">gam++</button>
+    </div>
+    <div class="param-group">
+      <button onclick="adjustParam('alpha', -0.1)">alpha--</button>
+      <input type="text" id="alpha-val" value="0.4" readonly="readonly">
+      <button onclick="adjustParam('alpha', 0.1)">alpha++</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+
+  // Parameters RL
+  let epsilon = 0.2;
+  let gamma = 0.9;
+  let alpha = 0.2;
+
+  // Discrete States for Arm Joints (Arm degrees: 0 to 4, Hand degrees: 0 to 4)
+  const NUM_ARM_STATES = 5;
+  const NUM_HAND_STATES = 5;
+  
+  // Actions: [delta_arm, delta_hand]
+  const ACTIONS = [
+    { arm: 1, hand: 0 },
+    { arm: -1, hand: 0 },
+    { arm: 0, hand: 1 },
+    { arm: 0, hand: -1 }
+  ];
+
+  // Q-Table initialization [armState][handState][actionIdx]
+  let Q = {};
+  function initQ() {
+    Q = {};
+    for (let a = 0; a < NUM_ARM_STATES; a++) {
+      for (let h = 0; h < NUM_HAND_STATES; h++) {
+        const key = `${a}_${h}`;
+        Q[key] = [0, 0, 0, 0];
+      }
+    }
+  }
+  initQ();
+
+  // Robot State
+  let armState = 2;   // 0 to 4
+  let handState = 2;  // 0 to 4
+  let bodyX = 200;
+  let totalDistance = 0;
+  let totalSteps = 0;
+  let isRunning = false;
+  let animationFrameId = null;
+
+  // Visual Geometry Constants
+  const groundY = 200;
+  const bodyWidth = 90;
+  const bodyHeight = 50;
+  const armLength = 45;
+  const handLength = 45;
+
+  function getJointAngles(aState, hState) {
+    // Map discrete states to physical angles (in radians)
+    const armAngle = (aState * 15 - 30) * Math.PI / 180;  // -30° to +30°
+    const handAngle = (hState * 20 - 60) * Math.PI / 180; // -60° to +20°
+    return { armAngle, handAngle };
+  }
+
+  function computeRobotGeometry(bX, aState, hState) {
+    const { armAngle, handAngle } = getJointAngles(aState, hState);
+    
+    // Arm attaches to bottom-right corner of body
+    const shoulderX = bX + bodyWidth;
+    const shoulderY = groundY - 15; // slightly above bottom of body
+
+    const elbowX = shoulderX + armLength * Math.cos(armAngle);
+    const elbowY = shoulderY + armLength * Math.sin(armAngle);
+
+    const absoluteHandAngle = armAngle + handAngle;
+    const handTipX = elbowX + handLength * Math.cos(absoluteHandAngle);
+    const handTipY = elbowY + handLength * Math.sin(absoluteHandAngle);
+
+    return { shoulderX, shoulderY, elbowX, elbowY, handTipX, handTipY };
+  }
+
+  function stepRL() {
+    const currentStateKey = `${armState}_${handState}`;
+    
+    // Valid actions filter
+    let validActionIndices = [];
+    ACTIONS.forEach((act, idx) => {
+      let nextA = armState + act.arm;
+      let nextH = handState + act.hand;
+      if (nextA >= 0 && nextA < NUM_ARM_STATES && nextH >= 0 && nextH < NUM_HAND_STATES) {
+        validActionIndices.push(idx);
+      }
+    });
+
+    // Epsilon-greedy selection
+    let actionIdx;
+    if (Math.random() < epsilon) {
+      actionIdx = validActionIndices[Math.floor(Math.random() * validActionIndices.length)];
+    } else {
+      let maxQ = -Infinity;
+      let bestActions = [];
+      validActionIndices.forEach(idx => {
+        let qVal = Q[currentStateKey][idx];
+        if (qVal > maxQ) {
+          maxQ = qVal;
+          bestActions = [idx];
+        } else if (qVal === maxQ) {
+          bestActions.push(idx);
+        }
+      });
+      actionIdx = bestActions[Math.floor(Math.random() * bestActions.length)];
+    }
+
+    const action = ACTIONS[actionIdx];
+    const nextArm = armState + action.arm;
+    const nextHand = handState + action.hand;
+
+    // Kinematics and physics simulation step
+    const oldGeom = computeRobotGeometry(bodyX, armState, handState);
+    const newGeom = computeRobotGeometry(bodyX, nextArm, nextHand);
+
+    let dx = 0;
+    // If hand tip goes below ground, push the robot body backward/forward
+    if (newGeom.handTipY > groundY) {
+      dx = groundY - newGeom.handTipY; // Displacement based on ground contact
+    }
+
+    // Update body position
+    bodyX += dx;
+    totalDistance += dx;
+    totalSteps++;
+
+    // Calculate Reward (displacement of the body)
+    const reward = dx;
+
+    // Q-Learning Update
+    const nextStateKey = `${nextArm}_${nextHand}`;
+    const maxNextQ = Math.max(...Q[nextStateKey]);
+    Q[currentStateKey][actionIdx] += alpha * (reward + gamma * maxNextQ - Q[currentStateKey][actionIdx]);
+
+    // Update state
+    armState = nextArm;
+    handState = nextHand;
+
+    // Keep body in canvas bounds visually
+    if (bodyX > 450) bodyX -= 300;
+    if (bodyX < 50) bodyX += 300;
+
+    updateUI();
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw Ground Line
+    ctx.beginPath();
+    ctx.moveTo(0, groundY);
+    ctx.lineTo(canvas.width, groundY);
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Compute positions
+    const geom = computeRobotGeometry(bodyX, armState, handState);
+
+    // Body baseline: adjust body vertical alignment to ground contact
+    let currentBodyY = groundY - bodyHeight;
+    if (geom.handTipY > groundY) {
+      currentBodyY -= (geom.handTipY - groundY);
+    }
+
+    // Draw Body Rectangle
+    ctx.strokeStyle = '#556b2f';
+    ctx.lineWidth = 2;
+    ctx.fillStyle = 'rgba(120, 160, 90, 0.2)';
+    ctx.fillRect(bodyX, currentBodyY, bodyWidth, bodyHeight);
+    ctx.strokeRect(bodyX, currentBodyY, bodyWidth, bodyHeight);
+
+    // Draw Arm
+    ctx.beginPath();
+    ctx.moveTo(geom.shoulderX, geom.shoulderY);
+    ctx.lineTo(geom.elbowX, geom.elbowY);
+    ctx.strokeStyle = '#d4a300';
+    ctx.lineWidth = 5;
+    ctx.stroke();
+
+    // Draw Hand
+    ctx.beginPath();
+    ctx.moveTo(geom.elbowX, geom.elbowY);
+    ctx.lineTo(geom.handTipX, geom.handTipY);
+    ctx.strokeStyle = '#d9381e';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    // Draw Joints
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.arc(geom.shoulderX, geom.shoulderY, 3, 0, Math.PI * 2);
+    ctx.arc(geom.elbowX, geom.elbowY, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function updateUI() {
+    const avgSpeed = totalSteps > 0 ? (totalDistance / totalSteps) : 0;
+    document.getElementById('speed-val').innerText = avgSpeed.toFixed(16);
+  }
+
+  function loop() {
+    if (isRunning) {
+      stepRL();
+      draw();
+      animationFrameId = requestAnimationFrame(loop);
+    }
+  }
+
+  function toggleRun() {
+    if (!isRunning) {
+      isRunning = true;
+      document.getElementById('btn-run').innerText = 'Pause';
+      loop();
+    } else {
+      stopSim();
+    }
+  }
+
+  function stopSim() {
+    isRunning = false;
+    document.getElementById('btn-run').innerText = 'Run';
+    if (animationFrameId) cancelAnimationFrame(animationFrameId);
+    draw();
+  }
+
+  function skipSteps(count) {
+    const wasRunning = isRunning;
+    isRunning = false;
+    if (animationFrameId) cancelAnimationFrame(animationFrameId);
+
+    for (let i = 0; i < count; i++) {
+      stepRL();
+    }
+
+    draw();
+    if (wasRunning) {
+      isRunning = true;
+      loop();
+    }
+  }
+
+  function resetSpeed() {
+    totalDistance = 0;
+    totalSteps = 0;
+    updateUI();
+  }
+
+  function resetQ() {
+    initQ();
+    resetSpeed();
+    draw();
+  }
+
+  function adjustParam(param, delta) {
+    if (param === 'eps') {
+      epsilon = Math.min(1.0, Math.max(0.0, parseFloat((epsilon + delta).toFixed(2))));
+      document.getElementById('eps-val').value = epsilon.toFixed(1);
+    } else if (param === 'gam') {
+      gamma = Math.min(1.0, Math.max(0.0, parseFloat((gamma + delta).toFixed(2))));
+      document.getElementById('gam-val').value = gamma.toFixed(1);
+    } else if (param === 'alpha') {
+      alpha = Math.min(1.0, Math.max(0.0, parseFloat((alpha + delta).toFixed(2))));
+      document.getElementById('alpha-val').value = alpha.toFixed(1);
+    }
+  }
+
+  // Initial render
+  draw();
+</script>
+
+
+</body></html>
