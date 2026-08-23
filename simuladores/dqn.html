@@ -39,6 +39,7 @@ body{
 }
 .wrap{max-width:1280px;margin:0 auto;padding:28px 20px 70px}
 
+/* ---------- header ---------- */
 header{border-bottom:2px solid var(--ink);padding-bottom:18px;margin-bottom:20px}
 .eyebrow{
   font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.16em;
@@ -49,8 +50,9 @@ h1{
   line-height:1.02;margin:0 0 10px;letter-spacing:-.015em;
 }
 h1 em{font-style:italic;font-weight:400}
-.dek{max-width:66ch;margin:0;color:var(--ink-soft);font-size:15.5px}
+.dek{max-width:70ch;margin:0;color:var(--ink-soft);font-size:15.5px}
 
+/* ---------- controls ---------- */
 .controls{
   display:flex;flex-wrap:wrap;gap:8px;align-items:center;
   margin:20px 0 22px;padding:12px;background:var(--panel);
@@ -72,7 +74,13 @@ button.ghost:hover{background:var(--ink-soft);color:var(--panel);border-color:va
 input[type=range]{width:110px;accent-color:var(--teal)}
 .switch{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--ink-soft);cursor:pointer;user-select:none}
 input[type=checkbox]{accent-color:var(--violet);width:15px;height:15px;cursor:pointer}
+select{
+  font-family:"IBM Plex Sans",sans-serif;font-size:13px;background:var(--panel);color:var(--ink);
+  border:1px solid var(--line);border-radius:var(--radius);padding:5px 6px;cursor:pointer;
+}
+select:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
 
+/* ---------- layout ---------- */
 .grid2{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:18px;align-items:start}
 @media (max-width:980px){.grid2{grid-template-columns:1fr}}
 
@@ -85,6 +93,7 @@ input[type=checkbox]{accent-color:var(--violet);width:15px;height:15px;cursor:po
 }
 .panel-h .val{letter-spacing:.02em;color:var(--ink);text-transform:none;font-size:12px}
 
+/* ---------- pseudocódigo ---------- */
 .code{padding:12px 12px 14px;font-family:"IBM Plex Mono",monospace;font-size:13px;line-height:1.35}
 .line{
   padding:5px 8px 5px 26px;position:relative;border-radius:2px;
@@ -94,6 +103,13 @@ input[type=checkbox]{accent-color:var(--violet);width:15px;height:15px;cursor:po
 .line.active::before{content:"▸";position:absolute;left:9px;color:var(--amber)}
 .line .kw{color:var(--ink);font-weight:600}
 .line sub{font-size:.72em}
+
+/* Q com chapéu legível (o caractere combinante U+0302 renderiza mal) */
+q-hat{position:relative;display:inline-block}
+q-hat::before{
+  content:"ˆ";position:absolute;left:50%;top:-0.52em;transform:translateX(-50%);
+  font-size:.95em;line-height:1;font-weight:600;
+}
 .indent1{margin-left:16px}
 .block{position:relative;border:1.5px solid;border-radius:2px;margin:2px 0 2px 30px;padding:2px 0}
 .block.sampling{border-color:var(--teal)}
@@ -110,29 +126,14 @@ input[type=checkbox]{accent-color:var(--violet);width:15px;height:15px;cursor:po
 }
 .bind b{color:var(--teal);font-weight:600}
 .bind i{font-style:normal;color:var(--violet);font-weight:600}
+.orig{
+  display:block;margin-top:3px;font-size:10.5px;color:var(--muted);font-style:italic;
+}
+.orig b{color:var(--ink-soft);font-weight:500;font-style:normal}
 
+/* ---------- coluna direita ---------- */
 .stack{display:flex;flex-direction:column;gap:18px}
 .pad{padding:14px}
-
-/* dicionário de símbolos */
-.gloss{padding:6px 14px 12px}
-.gloss .g{
-  display:grid;grid-template-columns:96px 1fr;gap:10px;align-items:baseline;
-  padding:7px 0;border-bottom:1px solid #EDF1F5;
-}
-.gloss .g:last-child{border-bottom:0}
-.gloss .sym{
-  font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:600;color:var(--ink);
-}
-.gloss .sym sub{font-size:.72em}
-.gloss .def{font-size:12.8px;color:var(--ink-soft);line-height:1.45}
-.gloss .def b{color:var(--ink);font-weight:600}
-.gloss .def .aqui{color:var(--teal);font-weight:600}
-.gloss .def .atari{color:var(--muted);font-style:italic}
-.gloss .gsec{
-  font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.15em;
-  text-transform:uppercase;color:var(--muted);padding:12px 0 3px;border-bottom:1px solid var(--line);
-}
 
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line)}
 .stat{background:var(--panel);padding:10px 8px;text-align:center}
@@ -161,7 +162,34 @@ input[type=checkbox]{accent-color:var(--violet);width:15px;height:15px;cursor:po
 .legend .neg{color:var(--red);font-weight:600}
 .legend .pos{color:var(--amber);font-weight:600}
 
-/* heatmaps */
+/* ---------- painel x -> s -> phi ---------- */
+.pipe .prow{display:grid;grid-template-columns:118px 1fr;gap:10px;align-items:center;margin:4px 0}
+.pipe .pk{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--teal);font-weight:600;line-height:1.2}
+.pipe .pk em{display:block;font-style:normal;font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;font-weight:500;margin-top:1px}
+.pipe .pv{font-size:13px;color:var(--ink)}
+.pipe .parrow{
+  font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--muted);
+  margin:2px 0 2px 30px;letter-spacing:.08em;text-transform:uppercase;
+}
+.hist{display:flex;gap:4px;overflow-x:auto;padding:4px 2px;scrollbar-width:thin}
+.hist .chip{
+  flex:0 0 auto;padding:2px 7px;border:1px solid var(--line);background:#fff;
+  border-radius:2px;font-family:"IBM Plex Mono",monospace;font-size:11px;
+  white-space:nowrap;color:var(--ink-soft);
+}
+.hist .chip.obs{border-color:var(--teal);color:var(--teal)}
+.hist .chip.actc{border-color:var(--amber);color:var(--amber)}
+.hist .chip.newest{background:var(--teal-soft)}
+.hist .more{flex:0 0 auto;color:var(--muted);font-family:"IBM Plex Mono",monospace;font-size:11px;align-self:center}
+.onehot{display:flex;flex-wrap:wrap;gap:2px;max-width:100%}
+.onehot .oh{
+  width:12px;height:12px;background:#fff;border:1px solid var(--line);border-radius:2px;
+}
+.onehot .oh.on{background:var(--teal);border-color:var(--teal)}
+.pipenote{font-size:12.5px;color:var(--ink-soft);margin:10px 0 0;line-height:1.45}
+.pipenote b{color:var(--ink);font-weight:600}
+
+/* ---------- heatmaps ---------- */
 .heatwrap{display:flex;gap:20px;flex-wrap:wrap}
 .heat{flex:0 0 auto}
 .heat h4{
@@ -187,6 +215,7 @@ input[type=checkbox]{accent-color:var(--violet);width:15px;height:15px;cursor:po
 .hbar{flex:0 0 130px;height:9px;border-radius:2px;border:1px solid var(--line);
   background:linear-gradient(to right,#B03A3A,#F2E4E4 42%,#F3F5F2 50%,#DCEEEE 58%,#0F8A8D)}
 
+/* ---------- barras Q ---------- */
 .qrow{display:grid;grid-template-columns:20px 1fr 62px;align-items:center;gap:8px;margin-bottom:7px}
 .qlabel{font-size:16px;text-align:center;color:var(--ink-soft)}
 .qtrack{position:relative;height:20px;background:#EDF1F5;border-radius:2px;overflow:hidden}
@@ -197,10 +226,11 @@ input[type=checkbox]{accent-color:var(--violet);width:15px;height:15px;cursor:po
 .qrow.chosen .qlabel{color:var(--ink);font-weight:600}
 .qrow.chosen .qnum{color:var(--ink);font-weight:600}
 
+/* ---------- memória ---------- */
 .buffer{display:flex;flex-wrap:wrap;gap:3px}
 .slot{width:14px;height:14px;border-radius:2px;background:#E7ECF1;border:1px solid #DCE3EA;transition:background .2s,box-shadow .2s}
 .slot.filled{background:#C3D2DD;border-color:#B0C1CF}
-.slot.negslot{background:#DCA9A9;border-color:#C99}
+.slot.negslot{background:#DCA9A9;border-color:#C99999}
 .slot.new{background:var(--teal);border-color:var(--teal)}
 .slot.picked{background:var(--violet);border-color:var(--violet);box-shadow:0 0 0 2px var(--violet-soft)}
 
@@ -217,6 +247,7 @@ table.batch tr.term-neg td{background:#FDEDED}
 
 .spark{width:100%;height:72px;display:block}
 
+/* ---------- narração ---------- */
 .narr{
   margin-top:18px;border:1px solid var(--ink);border-radius:var(--radius);
   background:var(--panel);display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);
@@ -238,7 +269,108 @@ table.batch tr.term-neg td{background:#FDEDED}
 .tagline.training{background:var(--violet-soft);color:var(--violet)}
 .tagline.init{background:#EDF1F5;color:var(--muted)}
 
-footer{margin-top:26px;font-size:12.5px;color:var(--muted);max-width:72ch}
+/* ---------- dicionário ---------- */
+.gloss{padding:6px 14px 12px}
+.gloss .g{
+  display:grid;grid-template-columns:96px 1fr;gap:10px;align-items:baseline;
+  padding:7px 0;border-bottom:1px solid #EDF1F5;
+}
+.gloss .g:last-child{border-bottom:0}
+.gloss .sym{
+  font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:600;color:var(--ink);
+}
+.gloss .sym sub{font-size:.72em}
+.gloss .def{font-size:12.8px;color:var(--ink-soft);line-height:1.45}
+.gloss .def b{color:var(--ink);font-weight:600}
+.gloss .def .aqui{color:var(--teal);font-weight:600}
+.gloss .def .atari{color:var(--muted);font-style:italic}
+.gloss .gsec{
+  font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.15em;
+  text-transform:uppercase;color:var(--muted);padding:12px 0 3px;border-bottom:1px solid var(--line);
+}
+
+footer{margin-top:26px;font-size:12.5px;color:var(--muted);max-width:76ch;line-height:1.5}
+footer b{color:var(--ink-soft)}
+
+/* ---------- abas ---------- */
+.tabs{display:flex;gap:4px;margin:0 0 20px;border-bottom:2px solid var(--ink)}
+.tab{
+  font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+  padding:9px 16px;border:1px solid var(--line);border-bottom:none;border-radius:3px 3px 0 0;
+  background:#EDF1F5;color:var(--muted);cursor:pointer;
+}
+.tab:hover{color:var(--ink)}
+.tab.on{background:var(--panel);color:var(--ink);font-weight:600;border-color:var(--ink);
+  position:relative;top:2px;padding-bottom:11px}
+.tabpane[hidden]{display:none}
+
+/* ---------- modo Atari (Catch) ---------- */
+.atari-grid{display:grid;grid-template-columns:minmax(0,auto) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:900px){.atari-grid{grid-template-columns:1fr}}
+.screenwrap{display:flex;flex-direction:column;gap:10px;align-items:center}
+canvas.pixel{
+  image-rendering:pixelated;border:6px solid #131A22;border-radius:6px;
+  box-shadow:0 4px 14px rgba(19,26,34,.25);background:#0B0F14;
+}
+.abtn{
+  font-size:15px;font-weight:600;padding:12px 22px;width:100%;
+}
+.seg{display:flex;width:100%;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.seg button{
+  flex:1;border:none;border-right:1px solid var(--line);border-radius:0;background:var(--panel);
+  color:var(--ink-soft);padding:8px 4px;font-size:12.5px;font-weight:600;line-height:1.2;
+}
+.seg button:last-child{border-right:none}
+.seg button small{display:block;font-size:9.5px;font-weight:400;color:var(--muted);margin-top:2px}
+.seg button:hover{background:#EDF1F5;color:var(--ink)}
+.seg button.on{background:var(--ink);color:#fff}
+.seg button.on small{color:#C9D0D9}
+.seglab{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);width:100%;margin-bottom:-4px}
+.ascore{display:flex;gap:1px;background:var(--line);width:100%}
+.ascore .stat{flex:1}
+.astates{display:grid;grid-auto-rows:36px;gap:2px}
+.acell{
+  border-radius:2px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-family:"IBM Plex Mono",monospace;transition:background .25s;
+}
+.acell .aa{font-size:13px;font-weight:600;line-height:1}
+.acell .av{font-size:8px;opacity:.85;line-height:1.2}
+.acell.lab{background:transparent;color:var(--muted);font-size:10px;font-weight:500}
+.acell.catchzone{outline:1.5px dashed var(--amber);outline-offset:-1.5px}
+.axlab{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--muted);letter-spacing:.05em;margin-top:6px}
+.anote{font-size:12.5px;color:var(--ink-soft);line-height:1.5}
+.anote b{color:var(--ink);font-weight:600}
+.flashgood{animation:fg .4s}
+.flashbad{animation:fb .4s}
+@keyframes fg{0%{box-shadow:0 0 0 4px rgba(15,138,141,.8)}100%{box-shadow:0 4px 14px rgba(19,26,34,.25)}}
+@keyframes fb{0%{box-shadow:0 0 0 4px rgba(176,58,58,.8)}100%{box-shadow:0 4px 14px rgba(19,26,34,.25)}}
+
+/* ---------- aba notebook PyTorch ---------- */
+.nbcell{margin-bottom:16px}
+pre.nbcode{
+  margin:0;padding:14px 16px;overflow-x:auto;
+  font-family:"IBM Plex Mono",monospace;font-size:12px;line-height:1.5;
+  background:#F5F7F9;color:var(--ink);border-radius:0 0 var(--radius) var(--radius);
+  tab-size:4;
+}
+pre.nbcode code{font-family:inherit}
+
+/* ---------- aba referências ---------- */
+.refsec{margin-bottom:18px}
+.ref{
+  display:grid;grid-template-columns:minmax(0,1fr);gap:2px;
+  padding:12px 14px;border-bottom:1px solid #EDF1F5;
+}
+.ref:last-child{border-bottom:0}
+.ref .rt{font-size:14.5px;font-weight:600}
+.ref .rt a{color:var(--ink);text-decoration:none;border-bottom:1.5px solid var(--teal)}
+.ref .rt a:hover{color:var(--teal)}
+.ref .rm{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--muted)}
+.ref .rd{font-size:12.8px;color:var(--ink-soft);line-height:1.45}
+.ref .rw{font-size:12px;color:var(--teal);margin-top:2px}
+.ref .rw b{font-weight:600}
+.ref .alt{font-size:11.5px;color:var(--muted)}
+.ref .alt a{color:var(--ink-soft)}
 
 @media (prefers-reduced-motion:reduce){
   *{transition:none!important;animation:none!important}
@@ -251,8 +383,17 @@ footer{margin-top:26px;font-size:12.5px;color:var(--muted);max-width:72ch}
 <header>
   <p class="eyebrow">Deep Q-Learning · Mnih et al., Nature 2015</p>
   <h1>O algoritmo, <em>linha por linha</em></h1>
-  <p class="dek">O pseudocódigo à esquerda executa de verdade: uma rede neural minúscula aprende a atravessar um labirinto 5×5 com <b>paredes</b> (intransponíveis) e <b>poços ☠</b> — estados terminais com recompensa <b>−1</b>. A cada linha, os símbolos abstratos (φ, a<sub>t</sub>, r<sub>t</sub>, y<sub>j</sub>, θ⁻) aparecem preenchidos com os valores daquele instante, e os mapas de calor mostram os pesos sendo treinados: assista o teal se espalhar a partir da saída e o vermelho brotar ao redor dos poços.</p>
+  <p class="dek">O pseudocódigo à esquerda executa de verdade: uma rede neural minúscula aprende a atravessar um labirinto 5×5 com <b>paredes</b> (intransponíveis) e <b>poços ☠</b> — estados terminais com recompensa <b>−1</b>. A cada linha, os símbolos abstratos (φ, a<sub>t</sub>, r<sub>t</sub>, y<sub>j</sub>, θ⁻) aparecem preenchidos com os valores daquele instante, e os mapas de calor mostram os pesos sendo treinados: assista o ciano se espalhar a partir da saída e o vermelho brotar ao redor dos poços.</p>
 </header>
+
+<div class="tabs">
+  <button class="tab on" id="tabBtnMaze">Labirinto · passo a passo</button>
+  <button class="tab" id="tabBtnAtari">Atari · aprendendo dos pixels</button>
+  <button class="tab" id="tabBtnTorch">Código · PyTorch</button>
+  <button class="tab" id="tabBtnRefs">Papers · fontes</button>
+</div>
+
+<div class="tabpane" id="paneMaze">
 
 <div class="controls">
   <button class="primary" id="btnPlay">▶ Executar</button>
@@ -262,6 +403,12 @@ footer{margin-top:26px;font-size:12.5px;color:var(--muted);max-width:72ch}
   <button class="ghost" id="btnReset">Reiniciar</button>
   <div class="spacer"></div>
   <label class="switch"><input type="checkbox" id="chkDouble"> Double DQN</label>
+  <label class="switch">C:&nbsp;<select id="selC">
+    <option value="1">1 · copia todo passo</option>
+    <option value="25" selected>25 · padrão</option>
+    <option value="200">200 · quase nunca</option>
+    <option value="inf">∞ · nunca copia</option>
+  </select></label>
   <div class="slider"><span>Velocidade</span><input type="range" id="speed" min="80" max="1400" value="620" step="20"></div>
 </div>
 
@@ -279,14 +426,15 @@ footer{margin-top:26px;font-size:12.5px;color:var(--muted);max-width:72ch}
       <div class="line" data-id="initQ"><span class="kw">Inicialize</span> a função Q com pesos aleatórios θ
         <span class="bind" data-bind="initQ" hidden></span>
       </div>
-      <div class="line" data-id="initT"><span class="kw">Inicialize</span> a função alvo Q̂ com pesos θ⁻ = θ
+      <div class="line" data-id="initT"><span class="kw">Inicialize</span> a função alvo <q-hat>Q</q-hat> com pesos θ⁻ = θ
         <span class="bind" data-bind="initT" hidden></span>
       </div>
 
       <div class="line" data-id="forEp"><span class="kw">Para</span> episódio = 1, M <span class="kw">faça</span>
         <span class="bind" data-bind="forEp" hidden></span>
       </div>
-      <div class="line indent1" data-id="initS"><span class="kw">Inicialize</span> a sequência s<sub>1</sub> e a pré-processada φ<sub>1</sub> = φ(s<sub>1</sub>)
+      <div class="line indent1" data-id="initS"><span class="kw">Comece</span> a história do episódio com a primeira observação, s<sub>1</sub> = ⟨x<sub>1</sub>⟩,<br>e comprima-a para a rede: φ<sub>1</sub> = φ(s<sub>1</sub>)
+        <span class="orig">no paper: <b>Initialize sequence s₁ = {x₁} and preprocessed sequence φ₁ = φ(s₁)</b></span>
         <span class="bind" data-bind="initS" hidden></span>
       </div>
       <div class="line indent1" data-id="forT"><span class="kw">Para</span> t = 1, T <span class="kw">faça</span>
@@ -301,7 +449,8 @@ footer{margin-top:26px;font-size:12.5px;color:var(--muted);max-width:72ch}
         <div class="line" data-id="exec">Execute a<sub>t</sub> no emulador e observe a recompensa r<sub>t</sub> e a imagem x<sub>t+1</sub>
           <span class="bind" data-bind="exec" hidden></span>
         </div>
-        <div class="line" data-id="next">Faça s<sub>t+1</sub> = s<sub>t</sub>, a<sub>t</sub>, x<sub>t+1</sub> e pré-processe φ<sub>t+1</sub> = φ(s<sub>t+1</sub>)
+        <div class="line" data-id="next"><span class="kw">Anexe</span> à história o que aconteceu: s<sub>t+1</sub> = ⟨ s<sub>t</sub>, a<sub>t</sub>, x<sub>t+1</sub> ⟩,<br>e comprima de novo: φ<sub>t+1</sub> = φ(s<sub>t+1</sub>)
+          <span class="orig">no paper: <b>Set s<sub>t+1</sub> = s<sub>t</sub>, a<sub>t</sub>, x<sub>t+1</sub></b> — a vírgula significa concatenar, não uma lista de igualdades</span>
           <span class="bind" data-bind="next" hidden></span>
         </div>
         <div class="line" data-id="store">Guarde a transição (φ<sub>t</sub>, a<sub>t</sub>, r<sub>t</sub>, φ<sub>t+1</sub>) em <b>D</b>
@@ -314,13 +463,14 @@ footer{margin-top:26px;font-size:12.5px;color:var(--muted);max-width:72ch}
         <div class="line" data-id="sample">Sorteie um minilote de transições (φ<sub>j</sub>, a<sub>j</sub>, r<sub>j</sub>, φ<sub>j+1</sub>) de <b>D</b>
           <span class="bind" data-bind="sample" hidden></span>
         </div>
-        <div class="line" data-id="yj" id="lineY">Faça y<sub>j</sub> = r<sub>j</sub> se o episódio terminar em j+1,<br>caso contrário y<sub>j</sub> = r<sub>j</sub> + γ · max<sub>a'</sub> Q̂(φ<sub>j+1</sub>, a'; θ⁻)
+        <div class="line" data-id="yj" id="lineY">Faça y<sub>j</sub> = r<sub>j</sub> se o episódio terminar em j+1,<br>caso contrário y<sub>j</sub> = r<sub>j</sub> + γ · max<sub>a'</sub> <q-hat>Q</q-hat>(φ<sub>j+1</sub>, a'; θ⁻)
           <span class="bind" data-bind="yj" hidden></span>
         </div>
         <div class="line" data-id="grad">Dê um passo de gradiente descendente em (y<sub>j</sub> − Q(φ<sub>j</sub>, a<sub>j</sub>; θ))² sobre θ
           <span class="bind" data-bind="grad" hidden></span>
         </div>
-        <div class="line" data-id="copy">A cada C = 25 passos, faça Q̂ = Q
+        <div class="line" data-id="copy">A cada C = <span id="cVal">25</span> passos, <span class="kw">sincronize</span> a rede alvo: <q-hat>Q</q-hat> ← Q<br>(copie os pesos aprendidos: θ⁻ ← θ)
+          <span class="orig">no paper: <b>Every C steps reset <q-hat>Q</q-hat> = Q</b> — "reset" aqui é re-sincronizar com Q, e não zerar ou reinicializar</span>
           <span class="bind" data-bind="copy" hidden></span>
         </div>
       </div>
@@ -335,9 +485,9 @@ footer{margin-top:26px;font-size:12.5px;color:var(--muted);max-width:72ch}
     <div class="gloss">
 
       <div class="gsec">O mundo (amostragem)</div>
-      <div class="g"><span class="sym">s<sub>t</sub></span><span class="def"><b>Estado</b> no passo t — a situação completa do agente. <span class="aqui">Aqui:</span> a casa onde ele está, ex. (2,3). <span class="atari">No Atari: o histórico de telas e ações até agora.</span></span></div>
-      <div class="g"><span class="sym">x<sub>t</sub></span><span class="def"><b>Observação</b> que o emulador devolve — o que o agente "vê". <span class="aqui">Aqui:</span> a nova casa. <span class="atari">No Atari: um frame de pixels 210×160.</span></span></div>
-      <div class="g"><span class="sym">φ<sub>t</sub> = φ(s<sub>t</sub>)</span><span class="def"><b>Estado pré-processado</b> — o que a rede de fato recebe como entrada. <span class="aqui">Aqui:</span> vetor de 25 zeros com um único 1 na casa do agente (one-hot). <span class="atari">No Atari: 4 telas empilhadas, redimensionadas para 84×84 em cinza.</span></span></div>
+      <div class="g"><span class="sym">x<sub>t</sub></span><span class="def"><b>Uma observação crua</b> — o que o emulador devolve num único instante. <span class="aqui">Aqui:</span> a casa onde o agente caiu. <span class="atari">No Atari: um frame de pixels — que, sozinho, não mostra para onde a bolinha se move.</span></span></div>
+      <div class="g"><span class="sym">s<sub>t</sub></span><span class="def"><b>A história do episódio</b> até o passo t: tudo que foi visto e feito, ⟨x<sub>1</sub>, a<sub>1</sub>, x<sub>2</sub>, …, x<sub>t</sub>⟩. Nasce com um item (s<sub>1</sub> = ⟨x<sub>1</sub>⟩) e <b>cresce dois itens por passo</b> — a vírgula do paper significa anexar. <span class="aqui">Aqui:</span> corresponde ao rastro ciano no tabuleiro.</span></div>
+      <div class="g"><span class="sym">φ<sub>t</sub> = φ(s<sub>t</sub>)</span><span class="def"><b>O resumo de tamanho fixo</b> da história — a única coisa que a rede vê, porque uma rede de entrada fixa não come uma história que cresce. <span class="aqui">Aqui:</span> a casa atual já diz tudo (labirinto markoviano), então φ descarta o passado: one-hot de 25 posições. <span class="atari">No Atari: as 4 últimas telas, 84×84 em cinza — passado suficiente para dar movimento.</span></span></div>
       <div class="g"><span class="sym">a<sub>t</sub></span><span class="def"><b>Ação</b> escolhida no passo t. <span class="aqui">Aqui:</span> ↑ → ↓ ←. <span class="atari">No Atari: os botões do joystick.</span></span></div>
       <div class="g"><span class="sym">r<sub>t</sub></span><span class="def"><b>Recompensa</b> recebida pela ação. <span class="aqui">Aqui:</span> +1 saída, −1 poço, −0,02 por passo.</span></span></div>
       <div class="g"><span class="sym">ε</span><span class="def"><b>Taxa de exploração</b>: probabilidade de agir ao acaso em vez de seguir a rede. Decai de 1,00 a 0,05 conforme os Q ficam confiáveis.</span></div>
@@ -345,13 +495,13 @@ footer{margin-top:26px;font-size:12.5px;color:var(--muted);max-width:72ch}
 
       <div class="gsec">As redes</div>
       <div class="g"><span class="sym">Q(φ, a; θ)</span><span class="def">A <b>rede principal</b>: recebe o estado e estima o valor de cada ação. <b>θ</b> são seus pesos (<span class="aqui">aqui, 700 números</span>) — é o que o gradiente ajusta e o mapa de calor da esquerda mostra.</span></div>
-      <div class="g"><span class="sym">Q̂, θ⁻</span><span class="def">A <b>rede alvo</b>: cópia congelada de Q, usada só para calcular y. θ⁻ recebe θ a cada <b>C</b> passos (<span class="aqui">aqui, 25</span>) — mapa de calor da direita.</span></div>
+      <div class="g"><span class="sym"><q-hat>Q</q-hat>, θ⁻</span><span class="def">A <b>rede alvo</b>: cópia congelada de Q, usada só para calcular y. A cada <b>C</b> passos (<span class="aqui">ajustável no seletor acima</span>) vem o "reset <q-hat>Q</q-hat> = Q" do paper — que <b>não zera nada</b>: é uma sincronização, θ⁻ ← θ, promovendo o que Q aprendeu a novo padrão de referência. Congelar estabiliza os alvos; copiar de tempos em tempos os deixa melhorar. Mapa de calor da direita.</span></div>
 
       <div class="gsec">A memória e o treino</div>
       <div class="g"><span class="sym">D, N</span><span class="def"><b>Memória de replay</b> e sua capacidade (<span class="aqui">N = 56</span>): guarda as transições (φ<sub>t</sub>, a<sub>t</sub>, r<sub>t</sub>, φ<sub>t+1</sub>) mais recentes.</span></div>
       <div class="g"><span class="sym">j</span><span class="def">Índice de uma transição <b>sorteada</b> do lote. Atenção: <b>j não é t</b> — j aponta para uma jogada <i>antiga</i>, possivelmente de outro episódio. É por isso que as fórmulas do treino usam j, não t.</span></div>
       <div class="g"><span class="sym">γ</span><span class="def"><b>Desconto</b> (<span class="aqui">0,95</span>): quanto o futuro vale em relação ao presente. Cada casa de distância da recompensa "apaga" 5% do valor — é o que cria o degradê nos mapas de calor.</span></div>
-      <div class="g"><span class="sym">y<sub>j</sub></span><span class="def">O <b>alvo</b>: a nota que a rede <i>deveria</i> ter dado a (φ<sub>j</sub>, a<sub>j</sub>). Se a transição é terminal, y = r (o ±1 seco); senão, y = r + γ·(melhor valor que Q̂ vê no estado seguinte).</span></div>
+      <div class="g"><span class="sym">y<sub>j</sub></span><span class="def">O <b>alvo</b>: a nota que a rede <i>deveria</i> ter dado a (φ<sub>j</sub>, a<sub>j</sub>). Se a transição é terminal, y = r (o ±1 seco); senão, y = r + γ·(melhor valor que <q-hat>Q</q-hat> vê no estado seguinte).</span></div>
       <div class="g"><span class="sym">(y<sub>j</sub> − Q)²</span><span class="def">A <b>perda</b>: quadrado do erro entre a nota dada e a devida. O gradiente descendente empurra θ na direção que reduz esse número.</span></div>
 
     </div>
@@ -366,7 +516,7 @@ footer{margin-top:26px;font-size:12.5px;color:var(--muted);max-width:72ch}
         <div class="stat"><div class="k">Episódio</div><div class="v" id="sEp">0</div></div>
         <div class="stat"><div class="k">Passo t</div><div class="v" id="sT">0</div></div>
         <div class="stat"><div class="k">ε</div><div class="v" id="sEps">1.00</div></div>
-        <div class="stat"><div class="k">Q̂ em</div><div class="v" id="sC">25</div></div>
+        <div class="stat"><div class="k"><q-hat>Q</q-hat> em</div><div class="v" id="sC">25</div></div>
       </div>
     </div>
 
@@ -385,11 +535,32 @@ footer{margin-top:26px;font-size:12.5px;color:var(--muted);max-width:72ch}
     </div>
 
     <div class="panel">
+      <div class="panel-h"><span>x → s → φ · o que a rede realmente vê</span><span class="val" id="pipeLabel">—</span></div>
+      <div class="pad pipe">
+        <div class="prow">
+          <span class="pk">x<sub>t+1</sub><em>observação crua</em></span>
+          <div class="pv" id="pipeX">—</div>
+        </div>
+        <div class="parrow">↓ anexada à história junto com a ação</div>
+        <div class="prow">
+          <span class="pk">s<sub>t+1</sub><em>história (cresce!)</em></span>
+          <div class="pv hist" id="pipeS"></div>
+        </div>
+        <div class="parrow">↓ φ comprime para tamanho fixo</div>
+        <div class="prow">
+          <span class="pk">φ<sub>t+1</sub><em>entrada da rede</em></span>
+          <div class="pv"><div class="onehot" id="pipePhi"></div></div>
+        </div>
+        <p class="pipenote">A história s ganha dois itens por passo — uma rede de entrada fixa jamais poderia comê-la inteira. <b>φ existe para resolver isso</b>: resume a história num vetor de tamanho constante. Aqui, a casa atual já diz tudo que importa (o labirinto é markoviano), então φ joga o passado fora e devolve um one-hot de 25 casas. No Atari, uma tela sozinha não mostra para onde a bolinha vai — por isso lá o φ guarda as <b>4 últimas telas</b>: passado suficiente para dar movimento, tamanho ainda fixo.</p>
+      </div>
+    </div>
+
+    <div class="panel">
       <div class="panel-h"><span>Q(φ, ·; θ) para o estado atual</span><span class="val" id="qLabel">—</span></div>
       <div class="pad" id="qbars"></div>
       <div style="padding:0 14px 12px;font-size:12px;color:var(--muted)">
         <span style="color:var(--teal);font-weight:600">▬</span> rede Q (θ, aprende a cada passo) &nbsp;&nbsp;
-        <span style="color:var(--violet);font-weight:600">▭</span> rede alvo Q̂ (θ⁻, congelada)
+        <span style="color:var(--violet);font-weight:600">▭</span> rede alvo <q-hat>Q</q-hat> (θ⁻, congelada)
       </div>
     </div>
 
@@ -398,7 +569,7 @@ footer{margin-top:26px;font-size:12.5px;color:var(--muted);max-width:72ch}
       <div class="pad">
         <div class="buffer" id="buffer"></div>
         <div style="font-size:11.5px;color:var(--muted);margin-top:8px">
-          slots <span style="color:#B07070;font-weight:600">avermelhados</span> guardam quedas em poço (r = −1) — repare como o sorteio roxo às vezes os revisita muito depois da queda.
+          slots <span style="color:#B03A3A;font-weight:600">avermelhados</span> guardam quedas em poço (r = −1) — repare como o sorteio roxo às vezes os revisita muito depois da queda.
         </div>
       </div>
     </div>
@@ -427,12 +598,12 @@ footer{margin-top:26px;font-size:12.5px;color:var(--muted);max-width:72ch}
       <div class="hgrid" id="heatQ"></div>
     </div>
     <div class="heat hqhat">
-      <h4>Rede alvo Q̂ (θ⁻) — só muda a cada 25 passos</h4>
+      <h4>Rede alvo <q-hat>Q</q-hat> (θ⁻) — só muda a cada C = <span id="hC">25</span> passos</h4>
       <div class="hgrid" id="heatT"></div>
     </div>
     <div style="flex:1 1 240px;min-width:220px">
       <div class="hscale"><span>−1</span><div class="hbar"></div><span>+1</span></div>
-      <p class="heatnote">Cada casa mostra o <b>valor</b> que a rede dá a estar ali (cor + número) e a <b>seta</b> da ação de maior Q. Estes números <i>são</i> os pesos θ em ação: a cada passo de gradiente o mapa da esquerda se deforma; o da direita fica parado e <b>salta</b> quando θ⁻ ← θ. Com o treino, espere: teal escurecendo em ondas a partir da ★ (o γ = 0,95 desconta 5% por casa de distância), vermelho nas vizinhanças dos ☠, e setas formando um caminho que contorna poços e paredes.</p>
+      <p class="heatnote">Cada casa mostra o <b>valor</b> que a rede dá a estar ali (cor + número) e a <b>seta</b> da ação de maior Q. Estes números <i>são</i> os pesos θ em ação: a cada passo de gradiente o mapa da esquerda se deforma; o da direita fica parado e <b>salta</b> quando θ⁻ ← θ. Com o treino, espere: ciano escurecendo em ondas a partir da ★ (o γ = 0,95 desconta 5% por casa de distância), vermelho nas vizinhanças dos ☠, e setas formando um caminho que contorna poços e paredes.</p>
     </div>
   </div>
 </div>
@@ -454,6 +625,541 @@ footer{margin-top:26px;font-size:12.5px;color:var(--muted);max-width:72ch}
   Rede: one-hot de 25 casas → 24 tanh → 4 valores, gradiente em JavaScript. γ = 0,95 · lr = 0,035 · minilote = 8 · ε: 1,00 → 0,05.
   Experimento sugerido: clique <b>Treinar 60 episódios</b> duas ou três vezes e observe o mapa de calor da esquerda antes e depois — e note que o da direita sempre parece uma "foto atrasada" do da esquerda.
 </footer>
+
+</div><!-- /paneMaze -->
+
+<!-- ============ ABA ATARI · CATCH ============ -->
+<div class="tabpane" id="paneAtari" hidden>
+
+  <div class="atari-grid">
+
+    <div class="stack">
+      <div class="panel">
+        <div class="panel-h"><span>Catch · a rede vê só os pixels</span><span class="val" id="aEnvLabel">parado</span></div>
+        <div class="pad screenwrap">
+          <canvas class="pixel" id="aScreen" width="6" height="6" style="width:264px;height:264px"></canvas>
+          <button class="primary abtn" id="aBtn">▶ Treinar e assistir</button>
+          <div class="seglab">Estratégia de treino (pode trocar ao vivo)</div>
+          <div class="seg" id="aStrat">
+            <button data-s="c1">C = 1<small>sem alvo fixo</small></button>
+            <button data-s="c150" class="on">C = 150<small>alvo fixo</small></button>
+            <button data-s="double">Double DQN<small>Q escolhe, <q-hat>Q</q-hat> avalia</small></button>
+          </div>
+          <div class="seglab">Memória de replay</div>
+          <div class="seg" id="aRep">
+            <button data-r="uni" class="on">Uniforme<small>todas com a mesma chance</small></button>
+            <button data-r="per">Priorizado (PER)<small>erros grandes voltam mais</small></button>
+          </div>
+          <div class="seglab">Arquitetura da rede (trocar reinicia os pesos)</div>
+          <div class="seg" id="aArch">
+            <button data-a="std" class="on">Padrão<small>Q direto por ação</small></button>
+            <button data-a="duel">Dueling<small>Q = V(s) + A(s,a)</small></button>
+          </div>
+          <button class="ghost" id="aReset" style="width:100%">Reiniciar do zero</button>
+        </div>
+        <div class="ascore">
+          <div class="stat"><div class="k">Episódios</div><div class="v" id="aEp">0</div></div>
+          <div class="stat"><div class="k">ε</div><div class="v" id="aEps">1.00</div></div>
+          <div class="stat"><div class="k">Pegou (últ. 100)</div><div class="v" id="aRate">—</div></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-h"><span>Taxa de acerto por episódio</span><span class="val" id="aSparkLabel">—</span></div>
+        <div class="pad"><svg class="spark" id="aSpark" viewBox="0 0 300 72" preserveAspectRatio="none"></svg></div>
+      </div>
+    </div>
+
+    <div class="stack">
+      <div class="panel">
+        <div class="panel-h"><span>Q de todas as situações, ao mesmo tempo</span><span class="val" id="aHeatLabel">—</span></div>
+        <div class="pad">
+          <div class="astates" id="aStates"></div>
+          <div class="axlab">← bola à esquerda da raquete &nbsp;·&nbsp; dx = coluna da bola − coluna esquerda da raquete &nbsp;·&nbsp; bola à direita →</div>
+          <div class="hscale" style="margin-top:10px"><span>V = −1</span><div class="hbar"></div><span>V = +1</span></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-h"><span>O que está acontecendo</span></div>
+        <div class="pad anote">
+          <p style="margin:0 0 8px">O jogo é o <b>Catch</b>: uma bola cai do topo em coluna aleatória; a raquete (2 pixels) escolhe ← · → a cada passo; pegar vale <b>+1</b>, deixar cair vale <b>−1</b>. É a miniatura clássica do Breakout — um jogo de verdade, com física própria rodando em tempo real, e não um cenário estático.</p>
+          <p style="margin:0 0 8px">A rede <b>não recebe coordenadas</b>: recebe os <b>36 pixels crus</b> da tela 6×6 (bola e raquete acesos), exatamente como o DQN original recebia a tela do emulador. φ aqui é a própria imagem binarizada. Arquitetura: 36 → 32 tanh → 3 valores de ação, com replay, rede alvo e ε-guloso — o mesmo algoritmo da outra aba.</p>
+          <p style="margin:0 0 8px">A grade ao lado é o <b>Q de todas as situações simultaneamente</b>: cada linha é uma altura da bola (de recém-lançada, no topo, a prestes a cair), cada coluna é a posição relativa bola−raquete. Cor = V(s) = max Q; seta = ação preferida. Aperte o botão e assista à onda: o ciano nasce na linha de baixo, nas colunas <b>0 e +1</b> (tracejadas: onde a bola cai na raquete), e sobe linha a linha, com γ = 0,9 descontando a cada altura — enquanto as setas passam a apontar para dentro da zona de captura.</p>
+          <p style="margin:0 0 8px"><b>Replay priorizado (PER):</b> em vez de sortear todas as memórias com a mesma chance, cada transição carrega uma prioridade proporcional ao <b>erro que a rede cometeu nela</b> — quem foi mal previsto volta com mais frequência, como revisar mais as questões que você errou. Para o sorteio enviesado não distorcer o aprendizado, cada amostra recebe um peso de importância que encolhe seu gradiente na medida exata do favorecimento (o expoente β cresce de 0,4 a 1 ao longo do treino).</p>
+          <p style="margin:0"><b>Dueling DQN:</b> muda a <b>cabeça</b> da rede, não o algoritmo. Em vez de estimar Q(s,a) direto, o tronco compartilhado alimenta dois ramos — V(s), "quanto vale estar aqui", e A(s,a), "quanto cada ação muda isso" — combinados como Q = V + A − média(A). A vantagem aparece nos estados onde a escolha quase não importa (bola no topo: qualquer ação serve): o ramo V aprende o valor da situação de uma vez, sem precisar reaprender por ação, e o A gasta capacidade só onde a decisão pesa — a linha de baixo da grade. As três chaves combinam: Double + PER + Dueling é o embrião do Rainbow.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div><!-- /paneAtari -->
+
+<!-- ============ ABA CÓDIGO · PYTORCH ============ -->
+<div class="tabpane" id="paneTorch" hidden>
+
+  <div class="panel" style="margin-bottom:18px">
+    <div class="panel-h"><span>Notebook · os mesmos experimentos em PyTorch</span>
+      <button class="ghost" id="nbCopyAll" style="font-size:11.5px;padding:4px 10px">Copiar tudo</button>
+    </div>
+    <div class="pad anote">
+      <p style="margin:0">Cole as células, em ordem, num Jupyter ou Google Colab (só precisa de <b>torch</b>, <b>numpy</b> e <b>matplotlib</b>). Os hiperparâmetros são <b>idênticos</b> aos do simulador — labirinto (paredes/poços, C = 25) e Catch dos pixels (C = 150, PER com α = 0,6 e β 0,4 → 1, dueling) — então os gráficos reproduzem o que você vê nas outras abas: o mapa de calor com política, a taxa de captura e a grade "Q de todas as situações". A célula 8 compara as cinco variantes com a mesma semente.</p>
+    </div>
+  </div>
+  <div class="panel nbcell">
+    <div class="panel-h"><span>Célula 1 · Setup</span>
+      <span style="display:flex;gap:10px;align-items:baseline">
+        <span class="val" style="color:var(--muted)">~5 s</span>
+        <button class="ghost nbcopy" data-cell="nb0" style="font-size:11.5px;padding:4px 10px">Copiar</button>
+      </span>
+    </div>
+    <pre class="nbcode" id="nb0"><code>import math, random, collections
+import numpy as np
+import torch, torch.nn as nn
+import matplotlib.pyplot as plt
+
+device = torch.device(&quot;cuda&quot; if torch.cuda.is_available() else &quot;cpu&quot;)
+torch.manual_seed(0); np.random.seed(0); random.seed(0)
+print(&quot;PyTorch&quot;, torch.__version__, &quot;·&quot;, device)</code></pre>
+  </div>
+  <div class="panel nbcell">
+    <div class="panel-h"><span>Célula 2 · Ambiente do labirinto 5×5 (paredes e poços)</span>
+      <span style="display:flex;gap:10px;align-items:baseline">
+        <span class="val" style="color:var(--muted)">instantâneo</span>
+        <button class="ghost nbcopy" data-cell="nb1" style="font-size:11.5px;padding:4px 10px">Copiar</button>
+      </span>
+    </div>
+    <pre class="nbcode" id="nb1"><code># Mesmo mapa da aba &quot;Labirinto&quot;: saída (4,4)=+1, poços=−1, passo=−0,02,
+# bater na parede = ficar parado, limite T=40, nascimento aleatório em casa livre.
+S = 5
+GOAL  = (4, 4)
+WALLS = {(1,1), (3,1), (1,2), (2,3)}
+PITS  = {(3,0), (3,3), (0,4)}
+ACOES = [(0,-1), (1,0), (0,1), (-1,0)]   # ↑ → ↓ ←
+ANOMES = &quot;↑→↓←&quot;
+T_MAX = 40
+
+def idx(s): return s[1]*S + s[0]
+def livre(c): return c not in WALLS and c not in PITS and c != GOAL
+
+def passo(s, a):
+    nx, ny = s[0]+ACOES[a][0], s[1]+ACOES[a][1]
+    ns = (nx, ny) if 0 &lt;= nx &lt; S and 0 &lt;= ny &lt; S and (nx, ny) not in WALLS else s
+    if ns == GOAL:   return ns,  1.0, True
+    if ns in PITS:   return ns, -1.0, True
+    return ns, -0.02, False
+
+def nascer():
+    while True:
+        c = (random.randrange(S), random.randrange(S))
+        if livre(c): return c
+
+def phi(s):
+    &quot;&quot;&quot;Pré-processamento: one-hot de 25 posições — a compressão da história.&quot;&quot;&quot;
+    v = torch.zeros(25); v[idx(s)] = 1.0
+    return v</code></pre>
+  </div>
+  <div class="panel nbcell">
+    <div class="panel-h"><span>Célula 3 · DQN do labirinto: treinar 300 episódios</span>
+      <span style="display:flex;gap:10px;align-items:baseline">
+        <span class="val" style="color:var(--muted)">~20 s na CPU</span>
+        <button class="ghost nbcopy" data-cell="nb2" style="font-size:11.5px;padding:4px 10px">Copiar</button>
+      </span>
+    </div>
+    <pre class="nbcode" id="nb2"><code># Hiperparâmetros idênticos aos do simulador:
+# rede 25→24 tanh→4 · γ=0.95 · lr=0.035 · lote=8 · memória=56 · C=25 · ε 1.0→0.05
+GAMMA, LR, BATCH, CAP, C = 0.95, 0.035, 8, 56, 25
+
+def nova_rede():
+    return nn.Sequential(nn.Linear(25, 24), nn.Tanh(), nn.Linear(24, 4)).to(device)
+
+Q    = nova_rede()
+Qhat = nova_rede(); Qhat.load_state_dict(Q.state_dict())   # θ⁻ = θ
+opt  = torch.optim.SGD(Q.parameters(), lr=LR)
+D    = collections.deque(maxlen=CAP)                       # memória de replay
+eps, desde_copia, retornos = 1.0, 0, []
+
+def treina_lote():
+    global desde_copia
+    if len(D) &lt; BATCH: return
+    lote = random.sample(list(D), BATCH)
+    x   = torch.stack([phi(b[0]) for b in lote]).to(device)
+    a   = torch.tensor([b[1] for b in lote], device=device)
+    r   = torch.tensor([b[2] for b in lote], device=device)
+    x2  = torch.stack([phi(b[3]) for b in lote]).to(device)
+    fim = torch.tensor([b[4] for b in lote], device=device)
+    with torch.no_grad():                                  # alvo fixo: y vem de Q̂
+        y = r + GAMMA * Qhat(x2).max(1).values * (~fim).float()
+    q = Q(x).gather(1, a.unsqueeze(1)).squeeze(1)
+    loss = ((y - q)**2).mean()
+    opt.zero_grad(); loss.backward(); opt.step()
+    desde_copia += 1
+    if desde_copia &gt;= C:                                   # sincronização θ⁻ ← θ
+        Qhat.load_state_dict(Q.state_dict()); desde_copia = 0
+
+for ep in range(300):
+    s, ret, fim = nascer(), 0.0, False
+    for t in range(T_MAX):
+        eps = max(0.05, eps*0.992)
+        with torch.no_grad():
+            a = random.randrange(4) if random.random() &lt; eps \
+                else Q(phi(s).to(device)).argmax().item()
+        ns, r, fim = passo(s, a)
+        D.append((s, a, r, ns, fim)); ret += r; s = ns
+        treina_lote()
+        if fim: break
+    retornos.append(ret)
+
+plt.figure(figsize=(5.4, 2.4))
+plt.plot(retornos, lw=0.9); plt.axhline(0, ls=&quot;:&quot;, c=&quot;gray&quot;)
+plt.title(&quot;Retorno por episódio (labirinto)&quot;); plt.tight_layout(); plt.show()</code></pre>
+  </div>
+  <div class="panel nbcell">
+    <div class="panel-h"><span>Célula 4 · Mapa de calor do labirinto: V(s) e política</span>
+      <span style="display:flex;gap:10px;align-items:baseline">
+        <span class="val" style="color:var(--muted)">instantâneo</span>
+        <button class="ghost nbcopy" data-cell="nb3" style="font-size:11.5px;padding:4px 10px">Copiar</button>
+      </span>
+    </div>
+    <pre class="nbcode" id="nb3"><code>with torch.no_grad():
+    todos = Q(torch.eye(25).to(device)).cpu()   # Q de todas as 25 casas de uma vez
+V = todos.max(1).values.reshape(S, S)           # idx = y*S + x → linha = y
+A = todos.argmax(1).reshape(S, S)
+
+fig, ax = plt.subplots(figsize=(4.8, 4.8))
+im = ax.imshow(V, vmin=-1, vmax=1, cmap=&quot;RdYlGn&quot;)
+for y in range(S):
+    for x in range(S):
+        c = (x, y)
+        if c in WALLS: ax.text(x, y, &quot;■&quot;,    ha=&quot;center&quot;, va=&quot;center&quot;, fontsize=13); continue
+        if c == GOAL:  ax.text(x, y, &quot;★ +1&quot;, ha=&quot;center&quot;, va=&quot;center&quot;, fontsize=9);  continue
+        if c in PITS:  ax.text(x, y, &quot;☠ −1&quot;, ha=&quot;center&quot;, va=&quot;center&quot;, fontsize=9);  continue
+        ax.text(x, y, f&quot;{ANOMES[A[y, x]]}\n{V[y, x]:+.2f}&quot;,
+                ha=&quot;center&quot;, va=&quot;center&quot;, fontsize=8)
+plt.colorbar(im, shrink=0.8)
+ax.set_title(&quot;V(s) = max Q e política gulosa&quot;); plt.tight_layout(); plt.show()</code></pre>
+  </div>
+  <div class="panel nbcell">
+    <div class="panel-h"><span>Célula 5 · Catch: o jogo de pixels</span>
+      <span style="display:flex;gap:10px;align-items:baseline">
+        <span class="val" style="color:var(--muted)">instantâneo</span>
+        <button class="ghost nbcopy" data-cell="nb4" style="font-size:11.5px;padding:4px 10px">Copiar</button>
+      </span>
+    </div>
+    <pre class="nbcode" id="nb4"><code># Tela 6×6; a bola cai em coluna aleatória; raquete de 2 pixels na base.
+# A rede recebe os 36 pixels crus — nunca coordenadas.
+W, H, PW = 6, 6, 2
+
+def tela(bx, by, px):
+    v = torch.zeros(H, W)
+    v[by, bx] = 1.0
+    v[H-1, px:px+PW] = 1.0
+    return v.flatten()</code></pre>
+  </div>
+  <div class="panel nbcell">
+    <div class="panel-h"><span>Célula 6 · Redes, PER e as estratégias de alvo</span>
+      <span style="display:flex;gap:10px;align-items:baseline">
+        <span class="val" style="color:var(--muted)">instantâneo</span>
+        <button class="ghost nbcopy" data-cell="nb5" style="font-size:11.5px;padding:4px 10px">Copiar</button>
+      </span>
+    </div>
+    <pre class="nbcode" id="nb5"><code>class Padrao(nn.Module):
+    &quot;&quot;&quot;36 → 32 tanh → 3 (Q direto por ação).&quot;&quot;&quot;
+    def __init__(self):
+        super().__init__()
+        self.f = nn.Sequential(nn.Linear(36, 32), nn.Tanh(), nn.Linear(32, 3))
+    def forward(self, x): return self.f(x)
+
+class Dueling(nn.Module):
+    &quot;&quot;&quot;Tronco compartilhado → V(s) e A(s,a); Q = V + A − média(A).&quot;&quot;&quot;
+    def __init__(self):
+        super().__init__()
+        self.tronco = nn.Sequential(nn.Linear(36, 32), nn.Tanh())
+        self.V = nn.Linear(32, 1)
+        self.A = nn.Linear(32, 3)
+    def forward(self, x):
+        h = self.tronco(x)
+        A = self.A(h)
+        return self.V(h) + A - A.mean(dim=-1, keepdim=True)
+
+class ReplayPER:
+    &quot;&quot;&quot;Prioritized Experience Replay (variante proporcional).
+    p_i = (|erro TD| + 0.01)^0.6 · sorteio ∝ p_i · pesos de importância com β 0.4→1.&quot;&quot;&quot;
+    def __init__(self, cap, alpha=0.6):
+        self.cap, self.alpha = cap, alpha
+        self.dados, self.pri, self.max_p = [], [], 1.0
+    def __len__(self): return len(self.dados)
+    def push(self, tr):
+        self.dados.append(tr); self.pri.append(self.max_p)  # novato = prioridade máxima
+        if len(self.dados) &gt; self.cap:
+            self.dados.pop(0); self.pri.pop(0)
+    def amostra(self, n, beta):
+        p = np.asarray(self.pri); P = p / p.sum()
+        ids = np.random.choice(len(self.dados), n, p=P)
+        w = (len(self.dados) * P[ids]) ** (-beta)
+        w = w / w.max()                                     # maior peso = 1
+        return ids, [self.dados[i] for i in ids], torch.tensor(w, dtype=torch.float32)
+    def atualiza(self, ids, erros):
+        for i, e in zip(ids, erros):
+            self.pri[i] = (abs(float(e)) + 0.01) ** self.alpha
+            self.max_p = max(self.max_p, self.pri[i])
+
+def treinar_catch(estrategia=&quot;c150&quot;, replay=&quot;uni&quot;, arquitetura=&quot;std&quot;,
+                  episodios=4000, C=150, gamma=0.9, lr=0.05, batch=16, cap=600):
+    &quot;&quot;&quot;estrategia: &#x27;c1&#x27; (sem alvo fixo) | &#x27;c150&#x27; (alvo fixo) | &#x27;double&#x27;
+       replay:     &#x27;uni&#x27; | &#x27;per&#x27;
+       arquitetura:&#x27;std&#x27; | &#x27;duel&#x27;
+       Hiperparâmetros idênticos aos da aba Atari do simulador.&quot;&quot;&quot;
+    Rede = Dueling if arquitetura == &quot;duel&quot; else Padrao
+    Q, Qhat = Rede(), Rede(); Qhat.load_state_dict(Q.state_dict())
+    opt = torch.optim.SGD(Q.parameters(), lr=lr)
+    per = ReplayPER(cap) if replay == &quot;per&quot; else None
+    D = collections.deque(maxlen=cap)
+    eps, beta, desde = 1.0, 0.4, 0
+    ultimos, curva = collections.deque(maxlen=100), []
+    px = (W - PW) // 2                       # a raquete persiste entre episódios
+
+    for ep in range(episodios):
+        bx, by, fim = random.randrange(W), 0, False
+        while not fim:
+            x = tela(bx, by, px)
+            eps = max(0.05, eps*0.9985); beta = min(1.0, beta + 2e-5)
+            with torch.no_grad():
+                a = random.randrange(3) if random.random() &lt; eps else Q(x).argmax().item()
+            px = min(max(px + a - 1, 0), W - PW)
+            by += 1
+            fim = (by == H - 1)
+            r = (1.0 if px &lt;= bx &lt; px + PW else -1.0) if fim else 0.0
+            tr = (x, a, r, tela(bx, by, px), fim)
+            per.push(tr) if per else D.append(tr)
+            if (len(per) if per else len(D)) &gt;= 64:
+                if per:
+                    ids, lote, w = per.amostra(batch, beta)
+                else:
+                    lote, w = random.sample(list(D), batch), torch.ones(batch)
+                xs   = torch.stack([b[0] for b in lote])
+                as_  = torch.tensor([b[1] for b in lote])
+                rs   = torch.tensor([b[2] for b in lote])
+                x2s  = torch.stack([b[3] for b in lote])
+                fims = torch.tensor([b[4] for b in lote])
+                with torch.no_grad():
+                    if estrategia == &quot;c1&quot;:         # a própria rede escolhe E avalia
+                        prox = Q(x2s).max(1).values
+                    elif estrategia == &quot;double&quot;:   # Q escolhe, Q̂ avalia
+                        a2 = Q(x2s).argmax(1, keepdim=True)
+                        prox = Qhat(x2s).gather(1, a2).squeeze(1)
+                    else:                          # DQN clássico: max único em Q̂
+                        prox = Qhat(x2s).max(1).values
+                    y = rs + gamma * prox * (~fims).float()
+                q = Q(xs).gather(1, as_.unsqueeze(1)).squeeze(1)
+                erros = y - q
+                loss = (w * erros**2).mean()       # w = pesos de importância (1 se uniforme)
+                opt.zero_grad(); loss.backward(); opt.step()
+                if per: per.atualiza(ids, erros.detach())
+                if estrategia != &quot;c1&quot;:
+                    desde += 1
+                    if desde &gt;= C:
+                        Qhat.load_state_dict(Q.state_dict()); desde = 0
+        ultimos.append(1 if r &gt; 0 else 0)
+        curva.append(sum(ultimos) / len(ultimos))
+    return Q, curva</code></pre>
+  </div>
+  <div class="panel nbcell">
+    <div class="panel-h"><span>Célula 7 · Treinar o Catch e ver o Q de todas as situações</span>
+      <span style="display:flex;gap:10px;align-items:baseline">
+        <span class="val" style="color:var(--muted)">~40 s na CPU</span>
+        <button class="ghost nbcopy" data-cell="nb6" style="font-size:11.5px;padding:4px 10px">Copiar</button>
+      </span>
+    </div>
+    <pre class="nbcode" id="nb6"><code>Qc, curva = treinar_catch(estrategia=&quot;c150&quot;, replay=&quot;uni&quot;, arquitetura=&quot;std&quot;,
+                          episodios=4000)
+
+plt.figure(figsize=(5.4, 2.4))
+plt.plot(curva, lw=1); plt.ylim(0, 1.02); plt.axhline(0.5, ls=&quot;:&quot;, c=&quot;gray&quot;)
+plt.title(&quot;Taxa de captura (média móvel de 100 episódios)&quot;)
+plt.tight_layout(); plt.show()
+
+# Grade dx × altura, média sobre as posições da raquete — a mesma da aba Atari
+DXS = list(range(-(W - PW), W))               # dx = bola − raquete ∈ [−4, 5]
+mapa  = np.full((H-1, len(DXS)), np.nan)
+setas = np.empty(mapa.shape, dtype=object)
+with torch.no_grad():
+    for yi, y in enumerate(range(H - 1)):
+        for di, dx in enumerate(DXS):
+            vs, votos = [], [0, 0, 0]
+            for p in range(W - PW + 1):
+                bx = p + dx
+                if not (0 &lt;= bx &lt; W): continue
+                q = Qc(tela(bx, y, p))
+                vs.append(q.max().item()); votos[q.argmax().item()] += 1
+            if vs:
+                mapa[yi, di]  = np.mean(vs)
+                setas[yi, di] = &quot;←·→&quot;[int(np.argmax(votos))]
+
+fig, ax = plt.subplots(figsize=(7, 3.2))
+im = ax.imshow(mapa, vmin=-1, vmax=1, cmap=&quot;RdYlGn&quot;)
+for yi in range(mapa.shape[0]):
+    for di in range(mapa.shape[1]):
+        if setas[yi, di]:
+            ax.text(di, yi, setas[yi, di], ha=&quot;center&quot;, va=&quot;center&quot;, fontsize=10)
+ax.set_xticks(range(len(DXS)), [f&quot;{d:+d}&quot; for d in DXS])
+ax.set_yticks(range(H-1), [&quot;topo&quot;, &quot;1&quot;, &quot;2&quot;, &quot;3&quot;, &quot;quase!&quot;])
+ax.set_xlabel(&quot;dx = coluna da bola − coluna esquerda da raquete&quot;)
+plt.colorbar(im, shrink=0.85)
+ax.set_title(&quot;Q de todas as situações (setas = ação preferida)&quot;)
+plt.tight_layout(); plt.show()</code></pre>
+  </div>
+  <div class="panel nbcell">
+    <div class="panel-h"><span>Célula 8 · Comparar as variantes</span>
+      <span style="display:flex;gap:10px;align-items:baseline">
+        <span class="val" style="color:var(--muted)">~2 min na CPU</span>
+        <button class="ghost nbcopy" data-cell="nb7" style="font-size:11.5px;padding:4px 10px">Copiar</button>
+      </span>
+    </div>
+    <pre class="nbcode" id="nb7"><code>experimentos = {
+    &quot;C=1 (sem alvo fixo)&quot;:     dict(estrategia=&quot;c1&quot;),
+    &quot;C=150 (alvo fixo)&quot;:       dict(estrategia=&quot;c150&quot;),
+    &quot;Double DQN&quot;:              dict(estrategia=&quot;double&quot;),
+    &quot;C=150 + PER&quot;:             dict(estrategia=&quot;c150&quot;, replay=&quot;per&quot;),
+    &quot;Double + PER + Dueling&quot;:  dict(estrategia=&quot;double&quot;, replay=&quot;per&quot;, arquitetura=&quot;duel&quot;),
+}
+
+plt.figure(figsize=(6.6, 3.4))
+for nome, cfg in experimentos.items():
+    torch.manual_seed(0); random.seed(0); np.random.seed(0)   # comparação justa
+    _, curva = treinar_catch(episodios=2500, **cfg)
+    plt.plot(curva, label=nome, lw=1.1)
+plt.ylim(0, 1.02); plt.axhline(0.5, ls=&quot;:&quot;, c=&quot;gray&quot;, lw=0.8)
+plt.legend(fontsize=8, loc=&quot;lower right&quot;)
+plt.title(&quot;Variantes do DQN no Catch (mesma semente)&quot;)
+plt.tight_layout(); plt.show()</code></pre>
+  </div>
+</div><!-- /paneTorch -->
+
+<!-- ============ ABA PAPERS · FONTES ============ -->
+<div class="tabpane" id="paneRefs" hidden>
+
+  <div class="panel refsec">
+    <div class="panel-h"><span>A base (antes do “deep”)</span></div>
+    <div>
+      <div class="ref">
+        <div class="rt"><a href="https://link.springer.com/article/10.1007/BF00992698" target="_blank" rel="noopener">Q-learning</a></div>
+        <div class="rm">Watkins &amp; Dayan · Machine Learning 8, 279–292 · 1992</div>
+        <div class="rd">A prova de convergência do Q-learning tabular: os valores de ação convergem para o ótimo desde que todo par (estado, ação) seja visitado infinitas vezes. É a tabela que a rede neural veio substituir.</div>
+        <div class="rw"><b>No simulador:</b> é o algoritmo por trás de tudo — a atualização y = r + γ·max Q é a regra de Watkins; a rede só troca a tabela por 700 pesos.</div>
+        <div class="alt">também: <a href="https://www.gatsby.ucl.ac.uk/~dayan/papers/cjch.pdf" target="_blank" rel="noopener">PDF gratuito na página do Dayan</a></div>
+      </div>
+      <div class="ref">
+        <div class="rt"><a href="https://link.springer.com/article/10.1007/BF00992699" target="_blank" rel="noopener">Self-improving reactive agents based on reinforcement learning, planning and teaching</a></div>
+        <div class="rm">Long-Ji Lin · Machine Learning 8, 293–321 · 1992</div>
+        <div class="rd">A origem do experience replay, duas décadas antes do DQN: guardar experiências e reaprender delas várias vezes para acelerar agentes conexionistas lentos.</div>
+        <div class="rw"><b>No simulador:</b> a memória D das abas Labirinto e Atari — os quadradinhos que enchem e são ressorteados.</div>
+        
+      </div>
+      <div class="ref">
+        <div class="rt"><a href="https://arxiv.org/abs/1207.4708" target="_blank" rel="noopener">The Arcade Learning Environment: an evaluation platform for general agents</a></div>
+        <div class="rm">Bellemare, Naddaf, Veness &amp; Bowling · JAIR 47 · 2013 · arXiv:1207.4708</div>
+        <div class="rd">A plataforma que empacota o emulador Stella de Atari 2600 como benchmark de pesquisa — o motivo de o pseudocódigo falar em “emulador” e chamar a observação de “imagem”.</div>
+        <div class="rw"><b>No simulador:</b> o painel “Emulador” da aba Labirinto e o Catch de pixels fazem o papel do ALE: caixa-preta que devolve só r e x.</div>
+        
+      </div>
+      <div class="ref">
+        <div class="rt"><a href="http://incompleteideas.net/book/the-book-2nd.html" target="_blank" rel="noopener">Reinforcement Learning: An Introduction (2ª ed.)</a></div>
+        <div class="rm">Sutton &amp; Barto · MIT Press · 2018 · livro completo gratuito</div>
+        <div class="rd">O livro-texto da área. Capítulo 6 cobre TD e Q-learning; o vocabulário formal de estado, retorno, γ e ε-guloso vem daqui.</div>
+        <div class="rw"><b>No simulador:</b> todo o dicionário de símbolos (γ, ε, retorno, política gulosa) segue a notação deste livro.</div>
+        
+      </div>
+
+    </div>
+  </div>
+
+  <div class="panel refsec">
+    <div class="panel-h"><span>O DQN — o pseudocódigo do simulador</span></div>
+    <div>
+      <div class="ref">
+        <div class="rt"><a href="https://arxiv.org/abs/1312.5602" target="_blank" rel="noopener">Playing Atari with Deep Reinforcement Learning</a></div>
+        <div class="rm">Mnih, Kavukcuoglu, Silver et al. (DeepMind) · NIPS Deep Learning Workshop · 2013 · arXiv:1312.5602</div>
+        <div class="rd">O primeiro DQN: rede convolucional lendo pixels crus + experience replay. Ainda <b>sem</b> rede alvo — o y era calculado pela própria rede em treino.</div>
+        <div class="rw"><b>No simulador:</b> é exatamente a opção <b>C = 1 · sem alvo fixo</b> do seletor da aba Atari (e o seletor C = 1 da aba Labirinto).</div>
+        
+      </div>
+      <div class="ref">
+        <div class="rt"><a href="https://www.nature.com/articles/nature14236" target="_blank" rel="noopener">Human-level control through deep reinforcement learning</a></div>
+        <div class="rm">Mnih et al. (DeepMind) · Nature 518, 529–533 · 2015 · doi:10.1038/nature14236</div>
+        <div class="rd">A versão da Nature que adiciona a <b>rede alvo <q-hat>Q</q-hat> com sincronização a cada C passos</b> e atinge nível humano em 49 jogos. O pseudocódigo da imagem que originou este simulador é o Algorithm 1 deste paper.</div>
+        <div class="rw"><b>No simulador:</b> é o algoritmo inteiro da aba Labirinto, linha por linha, e a opção <b>C = 150 · alvo fixo</b> da aba Atari.</div>
+        
+      </div>
+
+    </div>
+  </div>
+
+  <div class="panel refsec">
+    <div class="panel-h"><span>As variantes dos seletores</span></div>
+    <div>
+      <div class="ref">
+        <div class="rt"><a href="https://proceedings.neurips.cc/paper/3964-double-q-learning.pdf" target="_blank" rel="noopener">Double Q-learning</a></div>
+        <div class="rm">Hado van Hasselt · NeurIPS 23, 2613–2621 · 2010</div>
+        <div class="rd">Identifica a raiz da superestimação: usar o max de estimativas ruidosas como estimativa do max verdadeiro tem viés positivo. Propõe dois estimadores independentes, um escolhendo e outro avaliando — ainda no cenário tabular.</div>
+        <div class="rw"><b>No simulador:</b> é a teoria por trás do toggle Double: por que “um max único adora superestimar”.</div>
+        
+      </div>
+      <div class="ref">
+        <div class="rt"><a href="https://arxiv.org/abs/1509.06461" target="_blank" rel="noopener">Deep Reinforcement Learning with Double Q-learning</a></div>
+        <div class="rm">van Hasselt, Guez &amp; Silver (DeepMind) · AAAI · 2016 · arXiv:1509.06461</div>
+        <div class="rd">Leva a ideia de 2010 ao DQN sem rede extra: reutiliza a rede alvo como segundo estimador — Q escolhe a ação do próximo estado, <q-hat>Q</q-hat> dá a nota. Mostra que o DQN original superestimava sistematicamente nos jogos de Atari.</div>
+        <div class="rw"><b>No simulador:</b> a opção <b>Double DQN</b> nos dois seletores; ligar o toggle na aba Labirinto reescreve a linha do y<sub>j</sub> com esta fórmula.</div>
+        
+      </div>
+      <div class="ref">
+        <div class="rt"><a href="https://arxiv.org/abs/1511.05952" target="_blank" rel="noopener">Prioritized Experience Replay</a></div>
+        <div class="rm">Schaul, Quan, Antonoglou &amp; Silver (DeepMind) · ICLR · 2016 · arXiv:1511.05952</div>
+        <div class="rd">Sortear memórias proporcionalmente ao erro TD (|δ|+ε)^α em vez de uniformemente, corrigindo o viés com pesos de importância (N·P)^−β, β recozido até 1. Transições novas entram com prioridade máxima.</div>
+        <div class="rw"><b>No simulador:</b> a opção <b>Priorizado (PER)</b> da aba Atari e a classe ReplayPER da célula 6 do notebook — α = 0,6 e β 0,4 → 1 são os valores deste paper.</div>
+        
+      </div>
+      <div class="ref">
+        <div class="rt"><a href="https://arxiv.org/abs/1511.06581" target="_blank" rel="noopener">Dueling Network Architectures for Deep Reinforcement Learning</a></div>
+        <div class="rm">Wang, Schaul, Hessel, van Hasselt, Lanctot &amp; de Freitas · ICML · 2016 · arXiv:1511.06581</div>
+        <div class="rd">Separa a cabeça da rede em V(s) e A(s,a), combinadas como Q = V + A − média(A): o valor do estado é aprendido uma vez, sem repetir por ação, e a vantagem gasta capacidade só onde a escolha importa.</div>
+        <div class="rw"><b>No simulador:</b> a opção <b>Dueling</b> da aba Atari e a classe Dueling do notebook — a subtração da média é a eq. (9) do paper.</div>
+        
+      </div>
+      <div class="ref">
+        <div class="rt"><a href="https://arxiv.org/abs/1710.02298" target="_blank" rel="noopener">Rainbow: Combining Improvements in Deep Reinforcement Learning</a></div>
+        <div class="rm">Hessel et al. (DeepMind) · AAAI · 2018 · arXiv:1710.02298</div>
+        <div class="rd">Combina seis extensões do DQN (Double, PER, Dueling, n-step, distribucional C51, Noisy Nets) e mostra por ablação que elas são complementares.</div>
+        <div class="rw"><b>No simulador:</b> a combinação Double + PER + Dueling dos seletores é o “embrião do Rainbow” citado na nota da aba Atari — faltam as outras três peças.</div>
+        
+      </div>
+
+    </div>
+  </div>
+
+  <div class="panel refsec">
+    <div class="panel-h"><span>Fontes didáticas deste simulador</span></div>
+    <div>
+      <div class="ref">
+        <div class="rt"><a href="https://huggingface.co/learn/deep-rl-course/unit3/deep-q-algorithm" target="_blank" rel="noopener">Deep RL Course · Unit 3: The Deep Q-Learning Algorithm</a></div>
+        <div class="rm">Hugging Face · curso gratuito</div>
+        <div class="rd">A página que originou esta conversa: o pseudocódigo comentado, os dois laços (amostragem/treino) e as três correções — replay, alvo fixo e Double — com a metáfora do caubói e a vaca.</div>
+        <div class="rw"><b>No simulador:</b> a divisão em blocos ciano (Amostragem) e roxo (Treino) reproduz as caixas coloridas desta página.</div>
+        <div class="alt">também: <a href="https://huggingface.co/learn/deep-rl-course/unit3/introduction" target="_blank" rel="noopener">introdução da Unit 3</a>, que aponta PER e Dueling como leituras extras</div>
+      </div>
+
+      <div class="ref">
+        <div class="rt">Sobre o Catch</div>
+        <div class="rm">jogo didático · sem paper próprio</div>
+        <div class="rd">O Catch não tem um paper canônico: é uma miniatura de Breakout usada há anos em tutoriais e demonstrações como o menor ambiente honesto de “aprender dos pixels” — bola numa tela binária, três ações, recompensa ±1. A implementação da aba Atari segue essa tradição.</div>
+        <div class="rw"><b>No simulador:</b> o jogo inteiro da aba Atari.</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /paneRefs -->
+
 
 </div>
 
@@ -496,7 +1202,8 @@ function spawn(){
 }
 
 /* ================= rede neural ================= */
-const NIN=25, NH=24, NOUT=4, GAMMA=0.95, LR=0.035, BATCH=8, CAP=56, CSTEPS=25;
+const NIN=25, NH=24, NOUT=4, GAMMA=0.95, LR=0.035, BATCH=8, CAP=56;
+let cSteps=25; /* política de cópia da rede alvo: 1, 25, 200 ou Infinity */
 const zeros=(r,c)=>Array.from({length:r},()=>new Float64Array(c));
 function newNet(){
   const n={W1:zeros(NIN,NH),b1:new Float64Array(NH),W2:zeros(NH,NOUT),b2:new Float64Array(NOUT)};
@@ -540,14 +1247,14 @@ function trainOn(net,rows){
 
 /* ================= estado global ================= */
 let Q,Qhat,D,ep,t,eps,globalSteps,sinceCopy,state,nextState,lastA,lastR,lastDone,lastKind,
-    trail,ret,returns,batch,lastLoss,pc,running,timer,doubleDQN=false;
+    trail,ret,returns,batch,lastLoss,pc,running,timer,doubleDQN=false,histSeq=[];
 
 const ORDER=["initD","initQ","initT","forEp","initS","forT","act","exec","next","store","sample","yj","grad","copy"];
 
 function reset(){
   Q=newNet(); Qhat=cloneNet(Q); D=[]; ep=0; t=0; eps=1.0; globalSteps=0; sinceCopy=0;
   state=spawn(); nextState=null; lastA=null; lastR=0; lastDone=false; lastKind="";
-  trail=[]; ret=0; batch=null; lastLoss=null; pc=0;
+  trail=[]; ret=0; batch=null; lastLoss=null; pc=0; histSeq=[];
   document.querySelectorAll(".bind").forEach(b=>{b.hidden=true;b.innerHTML="";});
   document.getElementById("batchBox").innerHTML='<p class="empty">Nada sorteado ainda. Rode até a linha roxa.</p>';
   say("Preparação","init","Clique em <b>Próxima linha</b> para executar a primeira instrução.",
@@ -588,8 +1295,8 @@ function execLine(){
   else if(id==="initT"){
     Qhat=cloneNet(Q); sinceCopy=0;
     bind("initT","θ⁻ = fotocópia de θ. Os dois mapas de calor começam <b>idênticos</b>.");
-    say("Preparação","init","Q̂ é uma cópia congelada de Q — compare os dois mapas: iguais.",
-        "Nos próximos 25 passos, só o mapa da <strong>esquerda</strong> vai mudar. O da direita fica travado até θ⁻ ← θ.");
+    say("Preparação","init","<q-hat>Q</q-hat> é uma cópia congelada de Q — compare os dois mapas: iguais.",
+        "Até a próxima sincronização, só o mapa da <strong>esquerda</strong> vai mudar. O da direita fica travado até θ⁻ ← θ.");
     pc++;
   }
   else if(id==="forEp"){
@@ -601,9 +1308,10 @@ function execLine(){
   }
   else if(id==="initS"){
     state=spawn(); trail=[idx(state)];
-    bind("initS","s<sub>1</sub> = "+posStr(state)+" → φ<sub>1</sub> = one-hot na posição <b>"+idx(state)+"</b> de 25 (paredes e terminais nunca são ponto de partida).");
-    say("Novo episódio","init","O agente nasce em "+posStr(state)+".",
-        "φ é o pré-processamento: no Atari, 4 telas empilhadas; aqui, a casa vira um vetor de 25 zeros com um único 1.");
+    histSeq=[{k:"x",v:idx(state)}];
+    bind("initS","x<sub>1</sub> = casa <b>"+idx(state)+"</b> "+posStr(state)+" → s<sub>1</sub> = ⟨x<sub>1</sub>⟩ (história com 1 item) → φ<sub>1</sub> = one-hot na posição <b>"+idx(state)+"</b>. Acompanhe no painel <b>x → s → φ</b>.");
+    say("Novo episódio","init","O agente nasce em "+posStr(state)+". A história do episódio é inaugurada: s<sub>1</sub> = ⟨x<sub>1</sub>⟩, um item só.",
+        "O s<sub>1</sub> = {x<sub>1</sub>} do paper não é uma equação misteriosa: o <strong>estado é a história inteira</strong> do episódio, e no passo 1 essa história contém apenas a primeira observação. A cada passo ela ganhará dois itens — a ação tomada e a imagem seguinte.");
     pc++;
   }
   else if(id==="forT"){
@@ -620,7 +1328,7 @@ function execLine(){
       t++;
       bind("forT","Passo <b>t = "+t+"</b> de no máximo 40.");
       say("Amostragem","sampling","Passo "+t+" do episódio "+ep+".",
-          "Cada volta: <strong>uma jogada</strong> (bloco verde) e <strong>um ajuste de pesos</strong> (bloco roxo).");
+          "Cada volta: <strong>uma jogada</strong> (bloco ciano) e <strong>um ajuste de pesos</strong> (bloco roxo).");
       pc++;
     }
   }
@@ -650,15 +1358,16 @@ function execLine(){
         :"Andou para "+posStr(nextState)+" ("+fmt(lastR)+").",
         out.kind==="pit"
           ? "O emulador não avisa \"isso era um poço\" — só entrega <strong>r = −1 e fim</strong>. Todo o significado de \"perigo\" terá que ser reconstruído pela rede a partir desse número."
-          : "O emulador é caixa-preta: só recompensa e próxima observação, nunca as regras.");
+          : "x<sub>t+1</sub> é <strong>uma observação crua</strong>, recém-saída do emulador. Repare que ela ainda <strong>não</strong> entrou na história s nem virou φ — isso é a próxima linha.");
     pc++;
   }
   else if(id==="next"){
     state=nextState; trail.push(idx(state));
+    histSeq.push({k:"a",v:lastA},{k:"x",v:idx(state)});
     eps=Math.max(0.05,eps*0.992); globalSteps++;
-    bind("next","s<sub>t+1</sub> = "+posStr(state)+" → φ<sub>t+1</sub> = one-hot <b>"+idx(state)+"</b> · ε agora "+eps.toFixed(2));
-    say("Amostragem","sampling","O estado atual passa a ser "+posStr(state)+".",
-        "Mesmo quando o episódio morreu num poço, o φ<sub>t+1</sub> é registrado — ele entra na transição, mas como é terminal, <strong>ninguém fará bootstrap a partir dele</strong>.");
+    bind("next","s<sub>t+1</sub> = ⟨ …história anterior…, a<sub>t</sub>=<b>"+ANAME[lastA]+"</b>, x<sub>t+1</sub>=casa <b>"+idx(state)+"</b> ⟩ — agora com <b>"+histSeq.length+"</b> itens · φ<sub>t+1</sub> comprime tudo num one-hot na posição <b>"+idx(state)+"</b> · ε agora "+eps.toFixed(2));
+    say("Amostragem","sampling","A ação e a nova imagem foram <b>anexadas</b> à história (veja o painel x → s → φ crescer); φ comprimiu tudo de volta em 25 números.",
+        "A vírgula em s<sub>t+1</sub> = s<sub>t</sub>, a<sub>t</sub>, x<sub>t+1</sub> significa <strong>concatenar</strong>: história nova = história velha + ação + imagem nova. Como s cresce sem parar, a rede nunca come s — come φ(s), o resumo de tamanho fixo.");
     pc++;
   }
   else if(id==="store"){
@@ -702,11 +1411,11 @@ function execLine(){
       else if(doubleDQN){
         const a2=argmax(qOf(Q,b.ni));
         y=b.r+GAMMA*qOf(Qhat,b.ni)[a2];
-        how="Q escolhe "+ANAME[a2]+", Q̂ avalia";
+        how="Q escolhe "+ANAME[a2]+", <q-hat>Q</q-hat> avalia";
       }else{
         const qn=qOf(Qhat,b.ni);
         y=b.r+GAMMA*qn[argmax(qn)];
-        how="max de Q̂";
+        how="max de <q-hat>Q</q-hat>";
       }
       rows.push(Object.assign({},b,{y,how}));
     }
@@ -719,7 +1428,7 @@ function execLine(){
       (doubleDQN?" · <b>Double DQN</b>":""));
     say("Treino","training","Cada transição ganhou seu alvo y<sub>j</sub>."+(nNeg?" As quedas recebem y = −1 seco.":""),
         doubleDQN
-          ? "<strong>Double DQN:</strong> Q aponta a ação, Q̂ dá a nota. Com poços por perto isso importa mais — um max ruidoso adora superestimar justamente a casa ao lado do ☠."
+          ? "<strong>Double DQN:</strong> Q aponta a ação, <q-hat>Q</q-hat> dá a nota. Com poços por perto isso importa mais — um max ruidoso adora superestimar justamente a casa ao lado do ☠."
           : "Terminal <strong>positivo ou negativo</strong>, a regra é a mesma: y = r, sem olhar adiante. É por isso que o −1 do poço é uma âncora tão firme quanto o +1 da saída.");
     renderBatch();
     pc++;
@@ -728,20 +1437,26 @@ function execLine(){
     lastLoss=trainOn(Q,batch);
     bind("grad","Erro quadrático médio = <b>"+lastLoss.toFixed(4)+"</b> · θ empurrado. Olhe o mapa de calor da <b>esquerda</b>: ele acabou de se deformar.");
     say("Treino","training","θ ajustado (erro "+lastLoss.toFixed(4)+"). O mapa de calor da esquerda mudou; o da direita, não.",
-        "É literalmente isto que \"treinar os pesos\" significa: <strong>o mapa se deformando</strong> um pouquinho por lote, teal escorrendo da saída e vermelho escorrendo dos poços.");
+        "É literalmente isto que \"treinar os pesos\" significa: <strong>o mapa se deformando</strong> um pouquinho por lote, ciano escorrendo da saída e vermelho escorrendo dos poços.");
     pc++;
   }
   else if(id==="copy"){
     sinceCopy++;
-    if(sinceCopy>=CSTEPS){
+    if(cSteps===Infinity){
+      bind("copy","C = ∞: θ⁻ <b>nunca</b> recebe θ. Os alvos y continuam sendo calculados pela rede aleatória do início — repare que o mapa da direita segue sendo ruído.");
+      say("Treino","training","Com C = ∞, a sincronização nunca acontece.",
+          "É este o motivo de copiar: <strong>sem a cópia, o alvo nunca melhora</strong>. y = r + γ·max <q-hat>Q</q-hat> fica para sempre ancorado nos chutes aleatórios de θ⁻, e a rede aprende a imitar lixo. Congelar dá estabilidade; copiar de vez em quando é o que deixa o conhecimento entrar nos alvos.");
+    }else if(sinceCopy>=cSteps){
       Qhat=cloneNet(Q); sinceCopy=0;
-      bind("copy","25 passos → <b>θ⁻ ← θ</b>. O mapa da direita acabou de <b>saltar</b> para ficar igual ao da esquerda.");
-      say("Treino","training","Q̂ atualizada: os dois mapas de calor voltaram a ser idênticos.",
-          "O alvo anda <strong>aos saltos</strong>, de 25 em 25 passos. Entre saltos, os mapas divergem — é a distância visível entre \"o que a rede acha agora\" e \"o alvo contra o qual ela treina\".");
+      bind("copy",cSteps+" passo(s) completado(s) → <b>θ⁻ ← θ</b>. Nada foi zerado: os pesos aprendidos foram <b>promovidos</b> a régua de medir. O mapa da direita saltou para ficar igual ao da esquerda.");
+      say("Treino","training","<q-hat>Q</q-hat> sincronizada: os dois mapas de calor voltaram a ser idênticos.",
+          cSteps===1
+            ? "Com C = 1 o \"alvo fixo\" deixa de existir: <q-hat>Q</q-hat> é sempre igual a Q, e a rede volta a <strong>perseguir o próprio rabo</strong> — cada ajuste move o alvo junto. Treine 60 episódios assim e compare a estabilidade com C = 25."
+            : "\"Reset\" não zera nada — é uma <strong>promoção</strong>: tudo que Q aprendeu nos últimos "+cSteps+" passos vira o novo padrão de referência para calcular os y. O alvo fica parado (estável) e ainda assim melhora (aos saltos).");
     }else{
-      bind("copy","Faltam <b>"+(CSTEPS-sinceCopy)+"</b> passos para θ⁻ ← θ. Compare os dois mapas: já estão diferentes.");
-      say("Treino","training","Ainda não é hora de copiar ("+(CSTEPS-sinceCopy)+" passos restantes).",
-          "Enquanto isso, o mapa da esquerda se afasta do da direita. <strong>Alvo fixo</strong> = aceitar essa defasagem em troca de estabilidade.");
+      bind("copy","Faltam <b>"+(cSteps-sinceCopy)+"</b> passo(s) para θ⁻ ← θ. Compare os dois mapas: já estão diferentes.");
+      say("Treino","training","Ainda não é hora de sincronizar ("+(cSteps-sinceCopy)+" passo(s) restante(s)).",
+          "O alvo fixo vive dessa tensão: <strong>congelado</strong> entre cópias (para os y não dançarem a cada ajuste), mas <strong>promovido</strong> a cada C passos (para os y ficarem cada vez mais certos). Sem congelar: instável. Sem copiar: burro para sempre. Teste os extremos no seletor C.");
     }
     pc=ORDER.indexOf("forT");
   }
@@ -753,6 +1468,7 @@ function execLine(){
 function fastEpisodes(n){
   for(let e=0;e<n;e++){
     ep++; t=0; ret=0; state=spawn(); trail=[idx(state)];
+    histSeq=[{k:"x",v:idx(state)}];
     let done=false, kind="";
     while(!done&&t<TMAX){
       t++;
@@ -763,6 +1479,7 @@ function fastEpisodes(n){
       D.push({i,a,r:out.r,ni:idx(out.ns),done,neg:out.kind==="pit"});
       if(D.length>CAP)D.shift();
       state=out.ns; trail.push(idx(state));
+      histSeq.push({k:"a",v:a},{k:"x",v:idx(state)});
       eps=Math.max(0.05,eps*0.992); globalSteps++;
       if(D.length>=BATCH){
         const rows=[];
@@ -775,7 +1492,7 @@ function fastEpisodes(n){
           rows.push({i:b.i,a:b.a,y});
         }
         lastLoss=trainOn(Q,rows);
-        if(++sinceCopy>=CSTEPS){Qhat=cloneNet(Q);sinceCopy=0;}
+        if(cSteps!==Infinity && ++sinceCopy>=cSteps){Qhat=cloneNet(Q);sinceCopy=0;}
       }
     }
     returns.push({ep,ret,steps:t,kind});
@@ -788,20 +1505,51 @@ function fastEpisodes(n){
   const quedas=rec.filter(r=>r.kind==="pit").length;
   say("Modo rápido","init",
       n+" episódios rodados. ε = "+eps.toFixed(2)+" · nos últimos 10: "+quedas+" queda(s) em poço, retorno médio "+fmt(rec.reduce((s,r)=>s+r.ret,0)/rec.length)+".",
-      "Olhe o mapa de calor: no começo os poços quase não deixam marca (poucas quedas registradas); com o treino, o <strong>vermelho contorna os ☠</strong>, o <strong>teal forma um gradiente até a ★</strong> e as setas desviam sozinhas das paredes.");
+      "Olhe o mapa de calor: no começo os poços quase não deixam marca (poucas quedas registradas); com o treino, o <strong>vermelho contorna os ☠</strong>, o <strong>ciano forma um gradiente até a ★</strong> e as setas desviam sozinhas das paredes.");
   render();
 }
 
 /* ================= renderização ================= */
+function renderPipeline(){
+  const px=document.getElementById("pipeX"), ps=document.getElementById("pipeS"), pp=document.getElementById("pipePhi");
+  if(!px||!ps||!pp)return;
+
+  // x: última observação crua
+  const i=idx(state);
+  px.innerHTML="casa <b style='color:var(--teal)'>"+i+"</b> "+posStr(state)+
+    (histSeq.length<=1?" — primeira imagem do episódio":"");
+
+  // s: história como fichas ⟨x a x a x …⟩, mostrando as últimas 13
+  const MAXCHIPS=13;
+  const shown=histSeq.slice(-MAXCHIPS);
+  let h=histSeq.length>MAXCHIPS?'<span class="more">⟨ +'+(histSeq.length-MAXCHIPS)+' itens… </span>':'<span class="more">⟨</span>';
+  shown.forEach((it,k)=>{
+    const last=(k===shown.length-1)?" newest":"";
+    h+= it.k==="x"
+      ? '<span class="chip obs'+last+'">x:'+it.v+'</span>'
+      : '<span class="chip actc'+last+'">a:'+ANAME[it.v]+'</span>';
+  });
+  h+='<span class="more">⟩</span>';
+  ps.innerHTML=h;
+
+  // φ: one-hot de 25 posições
+  if(!pp.children.length){
+    for(let k=0;k<25;k++){const d=document.createElement("div");d.className="oh";d.title="posição "+k;pp.appendChild(d);}
+  }
+  for(let k=0;k<25;k++)pp.children[k].className="oh"+(k===i?" on":"");
+
+  document.getElementById("pipeLabel").textContent="história: "+histSeq.length+" item(ns) → φ: sempre 25 números";
+}
+
 function heatColor(v){
   const x=Math.max(-1,Math.min(1,v));
   if(x>=0){
     const t=x;
-    const r=Math.round(243+(15-243)*t), g=Math.round(245+(138-245)*t), b=Math.round(242+(141-242)*t);
+    const r=Math.round(12+(0-12)*t), g=Math.round(15+(229-15)*t), b=Math.round(30+(229-30)*t);
     return "rgb("+r+","+g+","+b+")";
   }else{
     const t=-x;
-    const r=Math.round(243+(176-243)*t), g=Math.round(245+(58-245)*t), b=Math.round(242+(58-242)*t);
+    const r=Math.round(12+(255-12)*t), g=Math.round(15+(75-15)*t), b=Math.round(30+(75-30)*t);
     return "rgb("+r+","+g+","+b+")";
   }
 }
@@ -821,8 +1569,7 @@ function renderHeat(el,net){
     const q=qOf(net,k), b=argmax(q), v=q[b];
     c.className="hcell";
     c.style.background=heatColor(v);
-    const dark=Math.abs(v)>0.55;
-    c.style.color=dark?"#fff":"var(--ink)";
+    c.style.color = Math.abs(v)>0.55 ? "#fff" : "#131A22";
     c.children[0].textContent=ANAME[b];
     c.children[1].textContent=fmt(v);
   }
@@ -838,7 +1585,8 @@ function render(){
   document.getElementById("sEp").textContent=ep;
   document.getElementById("sT").textContent=t;
   document.getElementById("sEps").textContent=eps.toFixed(2);
-  document.getElementById("sC").textContent=Math.max(0,CSTEPS-sinceCopy);
+  document.getElementById("sC").textContent=cSteps===Infinity?"∞":Math.max(0,cSteps-sinceCopy);
+  renderPipeline();
 
   // tabuleiro
   const board=document.getElementById("board");
@@ -941,9 +1689,9 @@ function renderSpark(){
   const zero=Y(0);
   let dots="";
   recent.forEach((r,k)=>{
-    if(r.kind==="pit")dots+='<circle cx="'+X(k).toFixed(1)+'" cy="'+Y(r.ret).toFixed(1)+'" r="2.2" fill="#B03A3A"/>';
+    if(r.kind==="pit")dots+='<circle cx="'+X(k).toFixed(1)+'" cy="'+Y(r.ret).toFixed(1)+'" r="2.2" fill="#FF4B4B"/>';
   });
-  svg.innerHTML='<line x1="0" y1="'+zero.toFixed(1)+'" x2="300" y2="'+zero.toFixed(1)+'" stroke="#CBD3DC" stroke-width="1" stroke-dasharray="3 3"/>'+
+  svg.innerHTML='<line x1="0" y1="'+zero.toFixed(1)+'" x2="300" y2="'+zero.toFixed(1)+'" stroke="#232B52" stroke-width="1" stroke-dasharray="3 3"/>'+
     '<path d="'+d+'" fill="none" stroke="#0F8A8D" stroke-width="1.6" vector-effect="non-scaling-stroke"/>'+dots;
   lab.textContent="últimos "+vals.length+" · pontos vermelhos = poço";
 }
@@ -971,15 +1719,32 @@ document.getElementById("btnEp").onclick=()=>{
 };
 document.getElementById("btnFast").onclick=()=>{setRunning(false);fastEpisodes(60);};
 document.getElementById("btnReset").onclick=()=>{setRunning(false);returns=[];reset();};
+document.getElementById("selC").onchange=e=>{
+  const v=e.target.value;
+  cSteps=(v==="inf")?Infinity:+v;
+  sinceCopy=0;
+  const label=(v==="inf")?"∞":v;
+  document.getElementById("cVal").textContent=label;
+  document.getElementById("hC").textContent=label;
+  say("Experimento com C","training",
+      cSteps===Infinity?"C = ∞: a sincronização <q-hat>Q</q-hat> ← Q está <b>desligada</b>."
+      :cSteps===1?"C = 1: <q-hat>Q</q-hat> vira uma cópia de Q a <b>cada passo</b> — o alvo fixo deixa de existir."
+      :"C = "+label+": <q-hat>Q</q-hat> será sincronizada a cada "+label+" passos.",
+      cSteps===Infinity?"Previsão: os y ficam ancorados para sempre nos pesos aleatórios do início, e o retorno não sobe. É a demonstração de <strong>por que a cópia existe</strong>: congelar sem nunca promover deixa o alvo burro."
+      :cSteps===1?"Previsão: os alvos passam a se mover a cada ajuste — a rede persegue o próprio rabo. Treine 60 episódios e compare a curva de retorno com C = 25."
+      :cSteps===200?"Previsão: muito estável, porém <strong>lento</strong> — o conhecimento novo demora 200 passos para virar alvo. C é sempre esse cabo de guerra entre estabilidade e velocidade."
+      :"O padrão do simulador: parado o bastante para dar estabilidade, frequente o bastante para o alvo melhorar.");
+  render();
+};
 document.getElementById("chkDouble").onchange=e=>{
   doubleDQN=e.target.checked;
   document.getElementById("lineY").innerHTML= doubleDQN
-    ? 'Faça y<sub>j</sub> = r<sub>j</sub> se o episódio terminar em j+1,<br>caso contrário y<sub>j</sub> = r<sub>j</sub> + γ · Q̂(φ<sub>j+1</sub>, argmax<sub>a\'</sub> Q(φ<sub>j+1</sub>, a\'; θ); θ⁻)<span class="bind" data-bind="yj" hidden></span>'
-    : 'Faça y<sub>j</sub> = r<sub>j</sub> se o episódio terminar em j+1,<br>caso contrário y<sub>j</sub> = r<sub>j</sub> + γ · max<sub>a\'</sub> Q̂(φ<sub>j+1</sub>, a\'; θ⁻)<span class="bind" data-bind="yj" hidden></span>';
+    ? 'Faça y<sub>j</sub> = r<sub>j</sub> se o episódio terminar em j+1,<br>caso contrário y<sub>j</sub> = r<sub>j</sub> + γ · <q-hat>Q</q-hat>(φ<sub>j+1</sub>, argmax<sub>a\'</sub> Q(φ<sub>j+1</sub>, a\'; θ); θ⁻)<span class="bind" data-bind="yj" hidden></span>'
+    : 'Faça y<sub>j</sub> = r<sub>j</sub> se o episódio terminar em j+1,<br>caso contrário y<sub>j</sub> = r<sub>j</sub> + γ · max<sub>a\'</sub> <q-hat>Q</q-hat>(φ<sub>j+1</sub>, a\'; θ⁻)<span class="bind" data-bind="yj" hidden></span>';
   document.getElementById("lineY").dataset.id="yj";
   say(doubleDQN?"Double DQN ligado":"DQN padrão","training",
-      doubleDQN?"A linha do y<sub>j</sub> mudou: Q escolhe a ação, Q̂ dá a nota."
-               :"De volta ao DQN do paper: Q̂ escolhe <i>e</i> avalia, com um único max.",
+      doubleDQN?"A linha do y<sub>j</sub> mudou: Q escolhe a ação, <q-hat>Q</q-hat> dá a nota."
+               :"De volta ao DQN do paper: <q-hat>Q</q-hat> escolhe <i>e</i> avalia, com um único max.",
       doubleDQN?"Perto dos poços isso é visível: o max único tende a manter casas vizinhas ao ☠ com valor inflado por mais tempo. Compare os mapas de calor treinando 60 episódios em cada modo."
                :"Compare com o Double: treine 60 episódios em cada modo e olhe as casas vizinhas aos poços no mapa de calor.");
   render();
@@ -990,6 +1755,382 @@ document.addEventListener("keydown",e=>{
 });
 
 returns=[];
+reset();
+})();
+</script>
+<script>
+/* ================= abas ================= */
+(function(){
+"use strict";
+const abas=[
+  {b:document.getElementById("tabBtnMaze"),  p:document.getElementById("paneMaze")},
+  {b:document.getElementById("tabBtnAtari"), p:document.getElementById("paneAtari")},
+  {b:document.getElementById("tabBtnTorch"), p:document.getElementById("paneTorch")},
+  {b:document.getElementById("tabBtnRefs"),  p:document.getElementById("paneRefs")}
+];
+abas.forEach((t,i)=>{
+  t.b.onclick=()=>abas.forEach((o,j)=>{o.p.hidden=(j!==i);o.b.classList.toggle("on",j===i);});
+});
+
+/* botões de copiar do notebook */
+function copiar(texto,btn){
+  const feito=()=>{const t=btn.textContent;btn.textContent="Copiado ✓";setTimeout(()=>btn.textContent=t,1400);};
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(texto).then(feito).catch(()=>fallback());
+  }else fallback();
+  function fallback(){
+    const ta=document.createElement("textarea");
+    ta.value=texto;document.body.appendChild(ta);ta.select();
+    try{document.execCommand("copy");feito();}catch(e){}
+    document.body.removeChild(ta);
+  }
+}
+document.querySelectorAll(".nbcopy").forEach(b=>{
+  b.onclick=()=>copiar(document.getElementById(b.dataset.cell).textContent,b);
+});
+const all=document.getElementById("nbCopyAll");
+if(all)all.onclick=()=>{
+  const partes=[...document.querySelectorAll(".nbcode")].map(p=>p.textContent);
+  copiar(partes.join("\n\n# %%\n\n"),all);
+};
+})();
+
+/* ================= aba Atari · Catch, DQN sobre pixels ================= */
+(function(){
+"use strict";
+const W=6,H=6,PW=2,NPIX=W*H;           /* tela 6×6, raquete de 2 pixels */
+const NIN=NPIX,NH=32,NOUT=3;            /* rede: 36 pixels -> 32 tanh -> 3 ações */
+const GAMMA=0.9,LR=0.05,BATCH=16,CAP=600,CSTEPS=150,STEPS_PER_FRAME=14;
+const AMOVE=[-1,0,1],ANAME=["←","·","→"];
+const fmt=v=>(v<0?"−":"")+Math.abs(v).toFixed(2);
+
+/* ---- rede densa (entrada não é one-hot: são os 36 pixels) ----
+   arquitetura padrão:  36 -> 32 tanh -> 3 (Q direto)
+   arquitetura dueling: 36 -> 32 tanh -> { V (1) , A (3) },  Q = V + A − média(A) */
+const zeros=(r,c)=>Array.from({length:r},()=>new Float64Array(c));
+function newNet(duel){
+  const n={duel:!!duel,W1:zeros(NIN,NH),b1:new Float64Array(NH),W2:zeros(NH,NOUT),b2:new Float64Array(NOUT)};
+  for(let i=0;i<NIN;i++)for(let j=0;j<NH;j++)n.W1[i][j]=(Math.random()*2-1)*0.25;
+  for(let j=0;j<NH;j++)for(let k=0;k<NOUT;k++)n.W2[j][k]=(Math.random()*2-1)*0.25;
+  if(duel){
+    n.Wv=new Float64Array(NH);n.bv=0;
+    for(let j=0;j<NH;j++)n.Wv[j]=(Math.random()*2-1)*0.25;
+  }
+  return n;
+}
+function cloneNet(n){
+  const c={duel:n.duel,W1:zeros(NIN,NH),b1:Float64Array.from(n.b1),W2:zeros(NH,NOUT),b2:Float64Array.from(n.b2)};
+  for(let i=0;i<NIN;i++)c.W1[i].set(n.W1[i]);
+  for(let j=0;j<NH;j++)c.W2[j].set(n.W2[j]);
+  if(n.duel){c.Wv=Float64Array.from(n.Wv);c.bv=n.bv;}
+  return c;
+}
+function forward(n,x){
+  const h=new Float64Array(NH),q=new Float64Array(NOUT);
+  for(let j=0;j<NH;j++){
+    let s=n.b1[j];
+    for(let i=0;i<NIN;i++)if(x[i])s+=n.W1[i][j]; /* pixels binários: soma só os acesos */
+    h[j]=Math.tanh(s);
+  }
+  if(n.duel){
+    let V=n.bv;for(let j=0;j<NH;j++)V+=n.Wv[j]*h[j];
+    const A=new Float64Array(NOUT);let mean=0;
+    for(let k=0;k<NOUT;k++){let s=n.b2[k];for(let j=0;j<NH;j++)s+=n.W2[j][k]*h[j];A[k]=s;mean+=s;}
+    mean/=NOUT;
+    for(let k=0;k<NOUT;k++)q[k]=V+A[k]-mean;
+    return {h,q};
+  }
+  for(let k=0;k<NOUT;k++){let s=n.b2[k];for(let j=0;j<NH;j++)s+=n.W2[j][k]*h[j];q[k]=s;}
+  return {h,q};
+}
+function argmax(q){let b=0;for(let k=1;k<q.length;k++)if(q[k]>q[b])b=k;return b;}
+/* treina um lote; cada linha pode ter peso de importância w (PER);
+   devolve os |erros| pré-atualização, usados para reatribuir prioridades */
+function trainOn(net,rows){
+  const gW1=zeros(NIN,NH),gb1=new Float64Array(NH),gW2=zeros(NH,NOUT),gb2=new Float64Array(NOUT);
+  const gWv=net.duel?new Float64Array(NH):null;let gbv=0;
+  const deltas=new Array(rows.length);
+  rows.forEach((row,ri)=>{
+    const {h,q}=forward(net,row.x);
+    const delta=q[row.a]-row.y;
+    deltas[ri]=Math.abs(delta);
+    const dq=2*delta*(row.w!==undefined?row.w:1);
+    const dh=new Float64Array(NH);
+    if(net.duel){
+      /* Q(a)=V+A(a)−média(A): dV=dq ; dA(k)=dq·([k=a]−1/3) */
+      for(let j=0;j<NH;j++){gWv[j]+=dq*h[j];dh[j]=net.Wv[j]*dq;}
+      gbv+=dq;
+      for(let k=0;k<NOUT;k++){
+        const dA=dq*((k===row.a?1:0)-1/NOUT);
+        gb2[k]+=dA;
+        for(let j=0;j<NH;j++){gW2[j][k]+=dA*h[j];dh[j]+=net.W2[j][k]*dA;}
+      }
+    }else{
+      for(let j=0;j<NH;j++){gW2[j][row.a]+=dq*h[j];dh[j]=net.W2[j][row.a]*dq;}
+      gb2[row.a]+=dq;
+    }
+    for(let j=0;j<NH;j++){
+      const dp=dh[j]*(1-h[j]*h[j]);
+      gb1[j]+=dp;
+      for(let i=0;i<NIN;i++)if(row.x[i])gW1[i][j]+=dp;
+    }
+  });
+  const s=LR/rows.length;
+  for(let i=0;i<NIN;i++)for(let j=0;j<NH;j++)net.W1[i][j]-=s*gW1[i][j];
+  for(let j=0;j<NH;j++)net.b1[j]-=s*gb1[j];
+  for(let j=0;j<NH;j++)for(let k=0;k<NOUT;k++)net.W2[j][k]-=s*gW2[j][k];
+  for(let k=0;k<NOUT;k++)net.b2[k]-=s*gb2[k];
+  if(net.duel){for(let j=0;j<NH;j++)net.Wv[j]-=s*gWv[j];net.bv-=s*gbv;}
+  return deltas;
+}
+
+/* ---- o jogo ---- */
+function pixels(bx,by,px){
+  const v=new Uint8Array(NPIX);
+  v[by*W+bx]=1;
+  v[(H-1)*W+px]=1; v[(H-1)*W+px+1]=1;
+  return v;
+}
+function newBall(){return {bx:(Math.random()*W)|0, by:0};}
+
+let Q,Qhat,D,eps,steps,sinceCopy,ep,ball,px,outcomes,rateHist,running=false,raf=null,lastFlash=0;
+let strat="c150";     /* alvo: "c1" | "c150" | "double" */
+let repMode="uni";    /* replay: "uni" | "per" */
+let archMode="std";   /* rede:   "std" | "duel" */
+const PER_ALPHA=0.6, PER_EPS=0.01;
+let beta=0.4, maxPr=1;
+
+function reset(){
+  Q=newNet(archMode==="duel");Qhat=cloneNet(Q);D=[];eps=1.0;steps=0;sinceCopy=0;ep=0;
+  ball=newBall();px=((W-PW)/2)|0;outcomes=[];rateHist=[];beta=0.4;maxPr=1;
+  drawScreen();renderStates();renderStats();renderSpark();
+}
+
+function envStep(){
+  const x=pixels(ball.bx,ball.by,px);
+  const a=(Math.random()<eps)?((Math.random()*3)|0):argmax(forward(Q,x).q);
+  px=Math.max(0,Math.min(W-PW,px+AMOVE[a]));
+  ball.by++;
+  let r=0,done=false;
+  if(ball.by===H-1){
+    done=true;
+    r=(ball.bx>=px&&ball.bx<px+PW)?1:-1;
+  }
+  const x2=pixels(ball.bx,ball.by,px);
+  D.push({x,a,r,x2,done,pr:maxPr}); /* transição nova entra com prioridade máxima */
+  if(D.length>CAP)D.shift();
+  eps=Math.max(0.05,eps*0.9985);steps++;
+  beta=Math.min(1,beta+2e-5);
+
+  if(D.length>=64){
+    const rows=[];
+    if(repMode==="per"){
+      /* sorteio proporcional à prioridade + pesos de importância */
+      let total=0;for(const b of D)total+=b.pr;
+      let wmax=0;
+      for(let k=0;k<BATCH;k++){
+        let rr=Math.random()*total,idx=0;
+        while(idx<D.length-1&&(rr-=D[idx].pr)>0)idx++;
+        const b=D[idx];
+        const w=Math.pow(D.length*(b.pr/total),-beta);
+        if(w>wmax)wmax=w;
+        rows.push({x:b.x,a:b.a,y:target(b),w,ref:b});
+      }
+      for(const row of rows)row.w/=wmax; /* normaliza para o maior peso = 1 */
+    }else{
+      for(let k=0;k<BATCH;k++){
+        const b=D[(Math.random()*D.length)|0];
+        rows.push({x:b.x,a:b.a,y:target(b),w:1});
+      }
+    }
+    const deltas=trainOn(Q,rows);
+    if(repMode==="per"){
+      rows.forEach((row,i)=>{
+        row.ref.pr=Math.pow(deltas[i]+PER_EPS,PER_ALPHA);
+        if(row.ref.pr>maxPr)maxPr=row.ref.pr;
+      });
+    }
+    if(strat!=="c1" && ++sinceCopy>=CSTEPS){Qhat=cloneNet(Q);sinceCopy=0;}
+  }
+
+  if(done){
+    ep++;outcomes.push(r>0?1:0);
+    if(outcomes.length>100)outcomes.shift();
+    rateHist.push(outcomes.reduce((s,v)=>s+v,0)/outcomes.length);
+    lastFlash=r>0?1:-1;
+    ball=newBall();
+  }
+}
+/* alvo y de uma transição, conforme a estratégia ativa */
+function target(b){
+  if(b.done)return b.r;
+  if(strat==="c1"){const qn=forward(Q,b.x2).q;return b.r+GAMMA*qn[argmax(qn)];}
+  if(strat==="double"){const a2=argmax(forward(Q,b.x2).q);return b.r+GAMMA*forward(Qhat,b.x2).q[a2];}
+  const qn=forward(Qhat,b.x2).q;return b.r+GAMMA*qn[argmax(qn)];
+}
+
+/* ---- render: tela ---- */
+const cv=document.getElementById("aScreen"),ctx=cv.getContext("2d");
+function drawScreen(){
+  ctx.fillStyle="#0B0F14";ctx.fillRect(0,0,W,H);
+  ctx.fillStyle="#131A22";
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++)if((x+y)%2)ctx.fillRect(x,y,1,1);
+  ctx.fillStyle="#C8791A";ctx.fillRect(ball.bx,ball.by,1,1);
+  ctx.fillStyle="#0F8A8D";ctx.fillRect(px,H-1,PW,1);
+  if(lastFlash){
+    cv.classList.remove("flashgood","flashbad");
+    void cv.offsetWidth;
+    cv.classList.add(lastFlash>0?"flashgood":"flashbad");
+    lastFlash=0;
+  }
+}
+
+/* ---- render: Q de todas as situações ---- */
+function heatColor(v){
+  const x=Math.max(-1,Math.min(1,v));
+  if(x>=0){const t=x;return "rgb("+Math.round(243+(15-243)*t)+","+Math.round(245+(138-245)*t)+","+Math.round(242+(141-242)*t)+")";}
+  const t=-x;return "rgb("+Math.round(243+(176-243)*t)+","+Math.round(245+(58-245)*t)+","+Math.round(242+(58-242)*t)+")";
+}
+const DXMIN=-(W-PW),DXMAX=W-1;              /* dx = bx - px ∈ [-4, 5] */
+const NDX=DXMAX-DXMIN+1,NY=H-1;             /* 10 colunas × 5 alturas   */
+const grid=document.getElementById("aStates");
+grid.style.gridTemplateColumns="52px repeat("+NDX+",36px)";
+function buildStates(){
+  grid.innerHTML="";
+  for(let y=0;y<NY;y++){
+    const lab=document.createElement("div");
+    lab.className="acell lab";
+    lab.textContent=(y===0?"topo":y===NY-1?"quase!":"alt. "+y);
+    grid.appendChild(lab);
+    for(let d=0;d<NDX;d++){
+      const c=document.createElement("div");
+      c.className="acell";
+      c.innerHTML='<span class="aa"></span><span class="av"></span>';
+      grid.appendChild(c);
+    }
+  }
+  const corner=document.createElement("div");corner.className="acell lab";corner.textContent="dx →";
+  grid.appendChild(corner);
+  for(let d=0;d<NDX;d++){
+    const c=document.createElement("div");
+    c.className="acell lab";
+    const dx=DXMIN+d;
+    c.textContent=(dx>0?"+":"")+dx;
+    grid.appendChild(c);
+  }
+}
+buildStates();
+function renderStates(){
+  const kids=grid.children;
+  for(let y=0;y<NY;y++){
+    for(let d=0;d<NDX;d++){
+      const dx=DXMIN+d;
+      /* média sobre todas as posições concretas (px, bx=px+dx) válidas */
+      let sv=0,n=0;const votes=[0,0,0];
+      for(let p=0;p<=W-PW;p++){
+        const bx=p+dx;
+        if(bx<0||bx>=W)continue;
+        const q=forward(Q,pixels(bx,y,p)).q;
+        const b=argmax(q);
+        sv+=q[b];votes[b]++;n++;
+      }
+      const cell=kids[y*(NDX+1)+1+d];
+      if(!n){cell.style.background="transparent";cell.children[0].textContent="";cell.children[1].textContent="";cell.className="acell";continue;}
+      const v=sv/n,best=votes.indexOf(Math.max(...votes));
+      cell.style.background=heatColor(v);
+      cell.style.color=Math.abs(v)>0.55?"#fff":"#131A22";
+      cell.children[0].textContent=ANAME[best];
+      cell.children[1].textContent=fmt(v);
+      cell.className="acell"+((y===NY-1&&(dx===0||dx===1))?" catchzone":"");
+    }
+  }
+  document.getElementById("aHeatLabel").textContent=NDX*NY+" situações · média sobre posições da raquete";
+}
+
+function renderStats(){
+  document.getElementById("aEp").textContent=ep;
+  document.getElementById("aEps").textContent=eps.toFixed(2);
+  const rate=outcomes.length?Math.round(100*outcomes.reduce((s,v)=>s+v,0)/outcomes.length)+"%":"—";
+  document.getElementById("aRate").textContent=rate;
+  const sname=(strat==="c1"?"C=1":strat==="double"?"Double":"C=150")
+    +(repMode==="per"?" · PER":"")
+    +(archMode==="duel"?" · Dueling":"");
+  document.getElementById("aEnvLabel").textContent=(running?("treinando · passo "+steps):(steps?"pausado · passo "+steps:"parado"))+" · "+sname;
+}
+function renderSpark(){
+  const svg=document.getElementById("aSpark"),lab=document.getElementById("aSparkLabel");
+  if(rateHist.length<2){svg.innerHTML="";lab.textContent="—";return;}
+  /* histórico completo: se há mais episódios que pixels, reamostra o eixo x
+     agrupando em baldes e plotando a média de cada balde */
+  const MAXPTS=300;
+  let pts;
+  if(rateHist.length<=MAXPTS){
+    pts=rateHist;
+  }else{
+    const bucket=rateHist.length/MAXPTS;
+    pts=new Array(MAXPTS);
+    for(let k=0;k<MAXPTS;k++){
+      const a=Math.floor(k*bucket), b=Math.max(a+1,Math.floor((k+1)*bucket));
+      let s=0;for(let j=a;j<b;j++)s+=rateHist[j];
+      pts[k]=s/(b-a);
+    }
+  }
+  const X=k=>k/(pts.length-1)*300,Y=v=>68-v*62;
+  let d="";pts.forEach((v,k)=>{d+=(k?"L":"M")+X(k).toFixed(1)+","+Y(v).toFixed(1);});
+  svg.innerHTML='<line x1="0" y1="'+Y(0.5).toFixed(1)+'" x2="300" y2="'+Y(0.5).toFixed(1)+'" stroke="#CBD3DC" stroke-width="1" stroke-dasharray="3 3"/>'+
+    '<path d="'+d+'" fill="none" stroke="#0F8A8D" stroke-width="1.6"/>';
+  lab.textContent="ep 1 → "+rateHist.length+" · agora "+Math.round(rateHist[rateHist.length-1]*100)+"%";
+}
+
+/* ---- laço de animação: treina rápido, mostra ao vivo ---- */
+let frame=0;
+function loop(){
+  if(!running)return;
+  for(let k=0;k<STEPS_PER_FRAME;k++)envStep();
+  drawScreen();
+  frame++;
+  if(frame%4===0){renderStates();renderStats();renderSpark();}
+  raf=requestAnimationFrame(loop);
+}
+const btn=document.getElementById("aBtn");
+document.querySelectorAll("#aStrat button").forEach(b=>{
+  b.onclick=()=>{
+    strat=b.dataset.s;
+    document.querySelectorAll("#aStrat button").forEach(o=>o.classList.toggle("on",o===b));
+    if(strat!=="c1"){Qhat=cloneNet(Q);sinceCopy=0;}
+    renderStats();
+  };
+});
+document.querySelectorAll("#aRep button").forEach(b=>{
+  b.onclick=()=>{
+    repMode=b.dataset.r;
+    document.querySelectorAll("#aRep button").forEach(o=>o.classList.toggle("on",o===b));
+    if(repMode==="per"){beta=0.4;maxPr=1;for(const t of D)t.pr=1;} /* zera prioridades ao ligar */
+    renderStats();
+  };
+});
+document.querySelectorAll("#aArch button").forEach(b=>{
+  b.onclick=()=>{
+    if(archMode===b.dataset.a)return;
+    archMode=b.dataset.a;
+    document.querySelectorAll("#aArch button").forEach(o=>o.classList.toggle("on",o===b));
+    /* arquiteturas têm pesos incompatíveis: recria as redes, preserva memória e histórico */
+    Q=newNet(archMode==="duel");Qhat=cloneNet(Q);sinceCopy=0;
+    renderStates();renderStats();
+  };
+});
+btn.onclick=()=>{
+  running=!running;
+  btn.textContent=running?"⏸ Pausar":"▶ Treinar e assistir";
+  btn.classList.toggle("primary",!running);
+  if(running)raf=requestAnimationFrame(loop);
+  else{cancelAnimationFrame(raf);renderStates();renderStats();renderSpark();}
+};
+document.getElementById("aReset").onclick=()=>{
+  running=false;cancelAnimationFrame(raf);
+  btn.textContent="▶ Treinar e assistir";btn.classList.add("primary");
+  reset();
+};
 reset();
 })();
 </script>
