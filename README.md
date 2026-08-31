@@ -1,38 +1,24 @@
 # GBC063 — Inteligência Artificial
 
-Repositório oficial de materiais da disciplina **GBC063 — Inteligência Artificial** da Universidade Federal de Uberlândia (FACOM), ministrada pelo Prof. Marcelo Keese Albertini. O curso cobre IA de busca até aprendizado por reforço profundo ao longo de 16 semanas, usando Python. Este repositório contém o módulo de Aprendizagem por Reforço (14 aulas) e os simuladores interativos que as acompanham.
+Materiais do módulo de Aprendizagem por Reforço (14 aulas) da disciplina **GBC063 — Inteligência Artificial** (UFU/FACOM): slides, resumos (handouts) e simuladores interativos que rodam no navegador.
 
-**Pergunta do curso:** "Como construir agentes que tomam boas decisões?" — respondida progressivamente através de busca → jogos → probabilidade → aprendizado supervisionado → aprendizado por reforço.
-
-## Simuladores
-
-Simuladores interativos — rodam direto no navegador:
-
-- [Q-Learning passo a passo — Sarsamax](https://albertiniufu.github.io/gbc063/simuladores/q-learning-simulador.html) — um agente aprende a atravessar uma grade 4×4 até o tesouro sem cair nos buracos; cada clique executa exatamente uma linha do pseudocódigo e você vê a tabela Q mudar por causa dela.
-- [Crawler Bot do CS188 — rastejar com Q-learning](https://albertiniufu.github.io/gbc063/simuladores/crawler_bot_ucberkeley_cs188.html) — o robô rastejador do projeto de Berkeley: um braço articulado de duas juntas (ombro e mão) aprende por Q-learning tabular a empurrar o chão para se deslocar, com velocidade média no painel e ε, γ e α ajustáveis ao vivo.
-- [Deep Q-Learning, linha por linha](https://albertiniufu.github.io/gbc063/simuladores/dqn.html) — o pseudocódigo do DQN (Mnih et al., Nature 2015) executa de verdade: uma rede neural minúscula aprende a atravessar um labirinto 5×5 com paredes e poços, com mapa de calor e opção Double DQN.
-- [Mars Rover — processo de recompensa de Markov](https://albertiniufu.github.io/gbc063/aula01/simulador-mars-rover.html) — a cadeia de estados do Mars Rover com função valor, equação de Bellman com os números de agora, velocidade de convergência e amostragem de episódios.
-- [Laboratório interativo — MDPs, Iteração de Valor e de Política](https://albertiniufu.github.io/gbc063/aula02/interativo-aula02.html) — companheiro dos slides da Aula 2: manipule o MDP, acompanhe a anatomia do backup, a convergência e os retornos amostrais (ponte para a Aula 3).
-- [Console do transecto — avaliação de política sem modelo](https://albertiniufu.github.io/gbc063/aula03/simulador-avaliacao.html) — três formas de avaliar a mesma política (Monte Carlo, diferença temporal e equivalência de certeza) sobre um transecto de 7 sítios de coleta, com RMSE por episódio.
-- [Caderno de demonstrações da Aula 4](https://albertiniufu.github.io/gbc063/aula04/aula04-demos.html) — quatro coisas que só se veem rodando: a tríade mortal, o viés de maximização virando curva, o exemplo A–B editável e a pegada de uma única atualização.
-- [Laboratório de gradiente de política](https://albertiniufu.github.io/gbc063/aula05/aula05-laboratorio-gradiente-de-politica.html) — a função escore empurrando a distribuição, onde mora a variância, REINFORCE aprendendo a ser aleatório e quanto viés vale a pena comprar em estimadores n-passos.
-- [Bandits bayesianos e amostragem de Thompson](https://albertiniufu.github.io/gbc063/aula11/interativo-aula11.html) — três estações para ver a exploração acontecer: um sorteio por passo, quatro algoritmos em muitas execuções e o que acontece quando o prior mente.
-- [MCTS ao vivo](https://albertiniufu.github.io/gbc063/aula13/lab13-mcts.html) — árvore sintética com ramificação e profundidade configuráveis, simulações UCT, árvore construída e estatísticas na raiz.
-- [Busca em árvore Monte Carlo — ingredientes do AlphaZero](https://albertiniufu.github.io/gbc063/aula14/laboratorio-mcts.html) — um Lig-4 movido pelos mesmos ingredientes do AlphaZero (PUCT, rede política–valor), com todos eles expostos.
+**Pergunta do curso:** "Como construir agentes que tomam boas decisões?"
 
 ## Aulas
 
-- [Aula 1 — Introdução à Aprendizagem por Reforço](aula01/aula01.pdf) — panorama da área, decisão sequencial sob incerteza e processos de Markov.
-- [Aula 2 — Decisões com modelo do mundo](aula02/aula02.pdf) — processos de decisão de Markov, avaliação, iteração de política e de valor.
-- [Aula 3 — Avaliação de política sem modelo](aula03/aula03.pdf) — Monte Carlo, diferença temporal e equivalência de certeza.
-- [Aula 4 — Controle sem modelo e aproximação de função valor](aula04/aula04.pdf) — MC/TD em lote, ε-guloso e GLIE, SARSA e Q-learning, VFA e DQN.
-- [Aula 5 — Gradientes de política I](aula05/aula05.pdf) — políticas parametrizadas, razão de verossimilhança, REINFORCE, linha de base e vantagem.
-- [Aula 6 — Gradientes de política II: variância, confiança e PPO](aula06/aula06.pdf) — linha de base, ator–crítico e limites de desempenho.
-- [Aula 7 — PPO, GAE e imitação](aula07/aula07.pdf) — amostragem por importância, melhoria monotônica, imitação e RL inverso.
-- [Aula 8 — Imitação, aprendizado de recompensa e RLHF](aula08/aula08.pdf) — erros compostos, DAGGER, RL inverso, Bradley–Terry, RLHF e DPO.
-- [Aula 9 — Bandidos e arrependimento](aula09/aula09.pdf) — bandidos multi-braços, arrependimento, ε-guloso, otimismo e UCB.
-- [Aula 10 — Aprendizado rápido II](aula10/aula10.pdf) — prova da cota do UCB, PAC e bandits bayesianos, alinhamento de valores.
-- [Aula 11 — Bandits bayesianos](aula11/aula11.pdf) — conjugação Beta–Bernoulli, casamento de probabilidade e arrependimento bayesiano.
-- [Aula 12 — Aprendizagem rápida em MDPs](aula12/aula12.pdf) — garantias PAC, MBIE-EB, lema da simulação, PSRL e exploração com generalização.
-- [Aula 13 — MCTS e a família AlphaZero](aula13/aula13.pdf) — busca baseada em simulação, UCT, AlphaGo, AlphaZero e MuZero.
-- [Aula 14 — MCTS II: AlphaZero](aula14/aula14.pdf) — PUCT, auto-jogo, rede política–valor, AlphaTensor, AlphaDev e raciocínio metanível.
+| Aula | Slides | Resumo | Simulador | Extras |
+|------|--------|--------|-----------|--------|
+| 1 — Introdução à Aprendizagem por Reforço | [PDF](aula01/aula01.pdf) | [PDF](aula01/handout-aula01.pdf) | [Mars Rover](https://albertiniufu.github.io/gbc063/aula01/aula01-iterativa-mars-rover.html) | [Nota Bellman](aula01/nota-bellman.pdf) |
+| 2 — Decisões com modelo do mundo | [PDF](aula02/aula02.pdf) | [PDF](aula02/handout-aula02.pdf) | [MDPs](https://albertiniufu.github.io/gbc063/aula02/interativo-aula02.html) | — |
+| 3 — Avaliação de política sem modelo | [PDF](aula03/aula03.pdf) | [PDF](aula03/handout-aula03.pdf) | [Avaliação de política](https://albertiniufu.github.io/gbc063/aula03/simulador-avaliacao.html) | [Referência](aula03/referencia-aula03.pdf) |
+| 4 — Controle sem modelo e aproximação de função valor | [PDF](aula04/aula04.pdf) | [PDF](aula04/handout-aula04.pdf) | [Demos](https://albertiniufu.github.io/gbc063/aula04/aula04-demos.html) · [Q-Learning](https://albertiniufu.github.io/gbc063/simuladores/q-learning-simulador.html) · [Crawler Bot](https://albertiniufu.github.io/gbc063/simuladores/crawler_bot_ucberkeley_cs188.html) · [DQN](https://albertiniufu.github.io/gbc063/simuladores/dqn.html) | — |
+| 5 — Gradientes de política I | [PDF](aula05/aula05.pdf) | [PDF](aula05/handout-aula05.pdf) | [Lab. gradiente](https://albertiniufu.github.io/gbc063/aula05/aula05-laboratorio-gradiente-de-politica.html) | — |
+| 6 — Gradientes de política II: variância, confiança e PPO | [PDF](aula06/aula06.pdf) | [PDF](aula06/handout-aula06.pdf) | — | — |
+| 7 — PPO, GAE e imitação | [PDF](aula07/aula07.pdf) | [PDF](aula07/handout-aula07.pdf) | — | — |
+| 8 — Imitação, aprendizado de recompensa e RLHF | [PDF](aula08/aula08.pdf) | [PDF](aula08/handout-aula08.pdf) | — | — |
+| 9 — Bandidos e arrependimento | [PDF](aula09/aula09.pdf) | [PDF](aula09/handout-aula09.pdf) | — | — |
+| 10 — Aprendizado rápido II | [PDF](aula10/aula10.pdf) | [PDF](aula10/handout-aula10.pdf) | — | — |
+| 11 — Bandits bayesianos | [PDF](aula11/aula11.pdf) | [PDF](aula11/handout-aula11.pdf) | [Bandits](https://albertiniufu.github.io/gbc063/aula11/interativo-aula11.html) | — |
+| 12 — Aprendizagem rápida em MDPs | [PDF](aula12/aula12.pdf) | [PDF](aula12/handout-aula12.pdf) | — | — |
+| 13 — MCTS e a família AlphaZero | [PDF](aula13/aula13.pdf) | [PDF](aula13/handout-aula13.pdf) | [MCTS](https://albertiniufu.github.io/gbc063/aula13/lab13-mcts.html) | — |
+| 14 — MCTS II: AlphaZero | [PDF](aula14/aula14.pdf) | [PDF](aula14/handout-aula14.pdf) | [Lig-4](https://albertiniufu.github.io/gbc063/aula14/laboratorio-mcts.html) | — |

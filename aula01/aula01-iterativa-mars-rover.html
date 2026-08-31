@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mars Rover — laboratório de processos de Markov</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Fira+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --azul:#16324F; --azul-claro:#2E5F8A; --teal:#18808D;
+  --laranja:#E8590C; --ambar:#F2A93B; --verde:#2B9348;
+  --vermelho:#C1121F; --cinza:#5C677D;
+  --papel:#F4F6F8; --carta:#FFFFFF; --linha:#DDE3EA;
+  --sombra:0 1px 2px rgba(22,50,79,.06),0 8px 24px rgba(22,50,79,.06);
+  --r:10px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--papel);color:var(--azul);
+  font-family:"Fira Sans","TeX Gyre Heros",system-ui,sans-serif;
+  font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1180px;margin:0 auto;padding:26px 20px 60px}
+
+/* ---------- cabeçalho ---------- */
+.eyebrow{font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--laranja);margin:0 0 6px}
+h1{font-size:clamp(26px,3.4vw,38px);font-weight:700;letter-spacing:-.02em;margin:0 0 6px;line-height:1.12}
+.dek{margin:0;max-width:70ch;color:var(--cinza);font-size:15.5px}
+.regua{height:3px;width:56px;background:var(--laranja);border-radius:2px;margin:16px 0 22px}
+
+/* ---------- barra de controles ---------- */
+.controles{
+  background:var(--carta);border:1px solid var(--linha);border-radius:var(--r);
+  box-shadow:var(--sombra);padding:14px 18px;margin-bottom:18px;
+  display:flex;flex-wrap:wrap;gap:20px;align-items:flex-end;
+  position:sticky;top:10px;z-index:20;
+}
+.controles.pulso{animation:pulso .9s ease}
+@keyframes pulso{0%{box-shadow:0 0 0 0 rgba(232,89,12,.45)}100%{box-shadow:0 0 0 14px rgba(232,89,12,0)}}
+.campo{display:flex;flex-direction:column;gap:5px;min-width:170px;flex:1 1 170px}
+.campo label{
+  font-size:10.5px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--cinza);display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+}
+.campo label b{
+  font-family:"Fira Mono",ui-monospace,monospace;font-size:14px;font-weight:500;
+  color:var(--azul);font-variant-numeric:tabular-nums;letter-spacing:0;
+}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:22px;background:transparent;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:4px;background:var(--linha);border-radius:2px}
+input[type=range]::-moz-range-track{height:4px;background:var(--linha);border-radius:2px}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:16px;height:16px;border-radius:50%;
+  background:var(--laranja);border:2px solid #fff;box-shadow:0 0 0 1px var(--laranja);margin-top:-6px;
+}
+input[type=range]::-moz-range-thumb{
+  width:14px;height:14px;border-radius:50%;background:var(--laranja);
+  border:2px solid #fff;box-shadow:0 0 0 1px var(--laranja);
+}
+input[type=range]:focus-visible{outline:2px solid var(--azul-claro);outline-offset:4px;border-radius:4px}
+
+.seg{display:flex;border:1px solid var(--linha);border-radius:8px;overflow:hidden}
+.seg button{border:0;border-radius:0;padding:8px 13px;font-size:13px;background:var(--carta)}
+.seg button.ativo{background:var(--azul);color:#fff}
+.seg button:not(.ativo):hover{background:#EEF2F6}
+
+.botoes{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+button{
+  font-family:inherit;font-size:13.5px;font-weight:500;padding:8px 15px;border-radius:7px;
+  border:1px solid var(--linha);background:var(--carta);color:var(--azul);cursor:pointer;
+  transition:background .12s,border-color .12s,color .12s;
+}
+button:hover{background:#EEF2F6;border-color:#C6D0DA}
+button:focus-visible{outline:2px solid var(--azul-claro);outline-offset:2px}
+button.primario{background:var(--laranja);border-color:var(--laranja);color:#fff}
+button.primario:hover{background:#CF4F0A;border-color:#CF4F0A}
+button:disabled{opacity:.45;cursor:not-allowed}
+.contador{font-family:"Fira Mono",monospace;font-size:12.5px;color:var(--cinza);font-variant-numeric:tabular-nums;white-space:nowrap;line-height:1.7}
+.contador b{color:var(--azul);font-weight:700;font-size:14.5px}
+
+/* ---------- cartões ---------- */
+.grade{display:grid;grid-template-columns:repeat(12,1fr);gap:18px}
+.carta{background:var(--carta);border:1px solid var(--linha);border-radius:var(--r);box-shadow:var(--sombra);padding:18px 20px;min-width:0}
+.carta > h2{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--cinza);margin:0 0 2px}
+.carta > .sub{margin:0 0 14px;font-size:13px;color:var(--cinza)}
+.span12{grid-column:span 12}.span7{grid-column:span 7}.span5{grid-column:span 5}
+
+/* ---------- diagrama ---------- */
+.palco{width:100%;overflow-x:auto;overflow-y:hidden}
+svg{display:block;width:100%;height:auto}
+#chain{min-width:720px}
+.st-circulo{fill:#EAF0F6;stroke:var(--azul);stroke-width:2.2;transition:fill .15s,stroke .15s}
+.st-alvo{cursor:pointer}
+.st-alvo:focus-visible .st-circulo{stroke:var(--azul-claro);stroke-width:3.4}
+.st-alvo:hover .st-circulo{fill:#DDE7F1}
+.sel .st-circulo{fill:#FDE3D2;stroke:var(--laranja);stroke-width:3}
+.contrib .st-circulo{stroke:var(--teal);stroke-width:3;fill:#DFF0F1}
+.st-rot{font-family:"Fira Mono",monospace;font-size:13px;fill:var(--azul);font-weight:500}
+.barra{fill:var(--azul-claro);transition:y .22s ease,height .22s ease,fill .15s}
+.barra.sel{fill:var(--laranja)}
+.alvo-linha{stroke:var(--cinza);stroke-width:1.6;stroke-dasharray:4 3}
+.val-rot{font-family:"Fira Mono",monospace;font-size:12.5px;fill:var(--azul);font-weight:500;font-variant-numeric:tabular-nums}
+.arco{fill:none;stroke:#B9C4D0;stroke-width:1.5}
+.arco.aceso{stroke:var(--teal);stroke-width:2.6}
+.p-rot{font-family:"Fira Mono",monospace;font-size:10.5px;fill:var(--cinza)}
+.p-rot.aceso{fill:var(--teal);font-weight:700}
+.rec-rot{font-family:"Fira Mono",monospace;font-size:11.5px;font-weight:500}
+.eixo{stroke:var(--linha);stroke-width:1}
+.eixo-rot{font-family:"Fira Mono",monospace;font-size:10px;fill:var(--cinza)}
+.pil{cursor:pointer}
+.pil rect{fill:#fff;stroke:var(--azul-claro);stroke-width:1.6;transition:fill .12s}
+.pil:hover rect{fill:#EEF2F6}
+.pil:focus-visible rect{stroke:var(--laranja);stroke-width:2.6}
+.pil text{font-size:13px;fill:var(--azul);font-weight:700}
+.legenda{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--cinza);margin-top:6px;padding-top:12px;border-top:1px solid var(--linha)}
+.legenda span{display:flex;align-items:center;gap:6px}
+.chip{width:11px;height:11px;border-radius:2px;display:inline-block}
+.chip.tracejado{width:16px;height:0;border-top:2px dashed var(--cinza);border-radius:0}
+
+/* ---------- Bellman ---------- */
+.eq{font-family:"Fira Mono",monospace;font-size:13.5px;line-height:2.05;font-variant-numeric:tabular-nums;overflow-x:auto;padding-bottom:4px}
+.eq .lin{white-space:nowrap}
+.eq .rot{color:var(--cinza);font-size:11.5px}
+.eq .imed{color:var(--verde)} .eq .fut{color:var(--teal)} .eq .res{color:var(--laranja);font-weight:700}
+.passo-rec{display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap}
+.passo-rec span{font-size:12.5px;color:var(--cinza)}
+.passo-rec b{font-family:"Fira Mono",monospace;font-size:15px;color:var(--azul);min-width:46px;text-align:center;font-variant-numeric:tabular-nums}
+button.mini{padding:3px 11px;font-size:15px;line-height:1.2;font-family:"Fira Mono",monospace}
+
+/* ---------- avisos ---------- */
+.aviso{border-left:3px solid var(--vermelho);background:#FDF2F2;padding:9px 13px;border-radius:0 6px 6px 0;font-size:13px;margin-top:14px}
+.aviso.ok{border-left-color:var(--verde);background:#F1F9F3}
+.aviso.info{border-left-color:var(--ambar);background:#FFF8EE}
+.oculto{display:none}
+
+/* ---------- heatmap ---------- */
+.heat{display:grid;grid-template-columns:44px repeat(7,1fr);gap:3px;font-family:"Fira Mono",monospace;font-size:11px}
+.heat .hcab{color:var(--cinza);text-align:center;padding:2px 0;font-size:10.5px}
+.heat .hk{color:var(--cinza);display:flex;align-items:center;justify-content:flex-end;padding-right:6px}
+.heat .hcel{border-radius:3px;text-align:center;padding:4px 2px;font-variant-numeric:tabular-nums;min-width:0;overflow:hidden}
+.heat-nota{font-size:11.5px;color:var(--cinza);margin-top:8px}
+
+/* ---------- matrizes ---------- */
+details.mat{border:1px solid var(--linha);border-radius:8px;padding:0}
+details.mat summary{cursor:pointer;padding:10px 14px;font-size:13px;font-weight:500;list-style-position:inside}
+details.mat[open] summary{border-bottom:1px solid var(--linha)}
+details.mat pre{
+  margin:0;padding:12px 14px;overflow-x:auto;font-family:"Fira Mono",monospace;
+  font-size:12px;line-height:1.65;color:var(--azul);font-variant-numeric:tabular-nums;
+}
+details.mat pre b{color:var(--laranja)}
+
+/* ---------- episódios ---------- */
+.ep-grade{display:grid;grid-template-columns:1.15fr .85fr;gap:20px}
+.pista{position:relative;display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:6px 0 12px}
+.pcel{
+  background:var(--papel);border:1px solid var(--linha);border-radius:6px;
+  text-align:center;padding:20px 2px 7px;font-family:"Fira Mono",monospace;font-size:11.5px;
+  color:var(--cinza);transition:background .15s,border-color .15s;
+}
+.pcel b{display:block;color:var(--azul);font-size:12.5px}
+.pcel.flash{background:#DFF3E4;border-color:var(--verde)}
+.rover-token{
+  position:absolute;top:-4px;width:40px;height:26px;pointer-events:none;
+  transform:translateX(-50%);transition:left .16s ease;
+}
+.anim-leitura{
+  font-family:"Fira Mono",monospace;font-size:12.5px;color:var(--azul);
+  background:var(--papel);border:1px solid var(--linha);border-radius:6px;
+  padding:8px 12px;min-height:38px;font-variant-numeric:tabular-nums;
+}
+.trilha{
+  display:flex;gap:5px;flex-wrap:wrap;font-family:"Fira Mono",monospace;font-size:12px;
+  max-height:96px;overflow-y:auto;padding:10px;background:var(--papel);
+  border-radius:6px;border:1px solid var(--linha);margin-top:10px;
+}
+.trilha .vazio{color:var(--cinza);font-family:"Fira Sans",sans-serif}
+.passo{padding:2px 7px;border-radius:4px;background:#E7EDF3;color:var(--azul);white-space:nowrap}
+.passo.premio{background:#DFF3E4;color:#1E6B33;font-weight:700}
+.passo.reticencias{background:none;color:var(--cinza)}
+.placar{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0 4px}
+.metrica{background:var(--papel);border-radius:7px;padding:9px 11px;border:1px solid var(--linha)}
+.metrica .k{font-size:9.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--cinza);display:block;margin-bottom:3px}
+.metrica .v{font-family:"Fira Mono",monospace;font-size:17px;font-weight:500;font-variant-numeric:tabular-nums;display:block}
+.metrica .v.destaque{color:var(--laranja)} .metrica .v.alvo{color:var(--teal)}
+
+/* ---------- desafio ---------- */
+.des-grade{display:grid;grid-template-columns:1fr auto;gap:18px;align-items:start}
+.des-status{font-size:14px;margin:2px 0 12px}
+.des-status.venceu{color:var(--verde);font-weight:600}
+.des-metricas{display:flex;gap:10px;flex-wrap:wrap}
+.des-metricas .metrica{min-width:130px}
+
+/* ---------- roteiro ---------- */
+.missao{
+  display:grid;grid-template-columns:26px 1fr auto;gap:14px;align-items:start;
+  padding:14px 4px;border-bottom:1px solid var(--linha);
+}
+.missao:last-child{border-bottom:0}
+.missao .num{
+  font-family:"Fira Mono",monospace;font-weight:700;color:var(--laranja);
+  font-size:14px;padding-top:2px;
+}
+.missao h3{margin:0 0 3px;font-size:14.5px;font-weight:600}
+.missao p{margin:0 0 6px;font-size:13.5px;color:#33465C}
+.missao details{font-size:13px;color:#33465C}
+.missao summary{cursor:pointer;color:var(--teal);font-weight:500;font-size:12.5px}
+.missao details[open] summary{margin-bottom:4px}
+
+footer{
+  margin-top:34px;padding-top:16px;border-top:1px solid var(--linha);
+  font-size:12.5px;color:var(--cinza);display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;
+}
+kbd{
+  font-family:"Fira Mono",monospace;font-size:11px;background:var(--carta);
+  border:1px solid var(--linha);border-bottom-width:2px;border-radius:4px;padding:1px 5px;
+}
+
+@media (max-width:960px){
+  .span7,.span5{grid-column:span 12}
+  .ep-grade{grid-template-columns:1fr}
+  .placar{grid-template-columns:repeat(2,1fr)}
+  .des-grade{grid-template-columns:1fr}
+  .controles{position:static}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none !important;animation:none !important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="eyebrow">UFU · Aprendizagem por Reforço · Aula 1</p>
+  <h1>Mars Rover — laboratório de processos de Markov</h1>
+  <p class="dek">Sete posições, transições ruidosas, recompensa em duas pontas. Rode a iteração de
+     Bellman, assista ao valor se propagar, sorteie episódios — e, no modo com política, tente
+     vencer o planejador: encontre a política ótima antes de revelá-la.</p>
+  <div class="regua"></div>
+
+  <!-- ================= controles ================= -->
+  <div class="controles" id="controles">
+    <div class="campo" style="flex:0 0 auto;min-width:0">
+      <label>Modo</label>
+      <div class="seg" role="group" aria-label="Modo do simulador">
+        <button id="seg-mrp" class="ativo">Sem ações (MRP)</button>
+        <button id="seg-mdp">Com política (MDP)</button>
+      </div>
+    </div>
+    <div class="campo">
+      <label for="gama">Fator de desconto γ <b id="gama-val">0,90</b></label>
+      <input type="range" id="gama" min="0" max="1" step="0.01" value="0.9">
+    </div>
+    <div class="campo">
+      <label for="pmov"><span id="pmov-rot">Probabilidade de mover p</span> <b id="pmov-val">0,40</b></label>
+      <input type="range" id="pmov" min="0" max="0.5" step="0.02" value="0.4">
+    </div>
+    <div class="botoes">
+      <button id="btn-passo">Um passo</button>
+      <button id="btn-rodar" class="primario">Rodar</button>
+      <button id="btn-conv">Convergir já</button>
+      <button id="btn-zerar">Zerar</button>
+      <span class="contador">iteração <b id="k-val">0</b><br>Δ = <b id="delta-val">—</b></span>
+    </div>
+  </div>
+
+  <div class="grade">
+
+    <!-- ================= diagrama ================= -->
+    <div class="carta span12">
+      <h2>Cadeia e função valor</h2>
+      <p class="sub" id="chain-sub">A coluna sobre cada estado é V<sub>k</sub>(s); o traço pontilhado
+         é o valor exato. Clique em um estado para inspecioná-lo.</p>
+      <div class="palco">
+        <svg id="chain" viewBox="0 0 1000 372" role="img"
+             aria-label="Cadeia de sete estados com colunas de valor e transições"></svg>
+      </div>
+      <div class="legenda">
+        <span><i class="chip" style="background:var(--azul-claro)"></i> V<sub>k</sub>(s)</span>
+        <span><i class="chip" style="background:var(--laranja)"></i> estado selecionado</span>
+        <span><i class="chip tracejado"></i> <span id="leg-exato">V*(s) exato</span></span>
+        <span><i class="chip" style="background:var(--teal)"></i> transições que alimentam o backup</span>
+        <span id="leg-pol" class="oculto">▶◀ clique nas setas para trocar a ação</span>
+      </div>
+    </div>
+
+    <!-- ================= Bellman ================= -->
+    <div class="carta span7">
+      <h2>Equação de Bellman, com os números de agora</h2>
+      <p class="sub" id="bell-sub">Backup do estado selecionado.</p>
+      <div class="eq" id="bell-eq"></div>
+      <div class="passo-rec">
+        <span>Recompensa <span id="rec-estado">R(s₄)</span></span>
+        <button class="mini" id="rec-menos" aria-label="Diminuir recompensa">−</button>
+        <b id="rec-val">0</b>
+        <button class="mini" id="rec-mais" aria-label="Aumentar recompensa">+</button>
+        <button id="rec-reset">Restaurar +1 / +10</button>
+      </div>
+      <div class="aviso info oculto" id="aviso-gama"></div>
+    </div>
+
+    <!-- ================= contração ================= -->
+    <div class="carta span5">
+      <h2>Velocidade de convergência</h2>
+      <p class="sub">Erro máximo ‖V<sub>k</sub> − V<sup>exato</sup>‖<sub>∞</sub> em escala log.
+         A reta tracejada é o limite teórico γ<sup>k</sup>·erro₀.</p>
+      <div class="palco">
+        <svg id="grafico" viewBox="0 0 420 250" role="img"
+             aria-label="Erro máximo por iteração em escala logarítmica"></svg>
+      </div>
+      <div class="legenda">
+        <span><i class="chip" style="background:var(--laranja)"></i> erro observado</span>
+        <span><i class="chip tracejado"></i> γ<sup>k</sup>·erro₀</span>
+      </div>
+    </div>
+
+    <!-- ================= propagação ================= -->
+    <div class="carta span7">
+      <h2>Mapa de propagação do valor</h2>
+      <p class="sub">Cada linha é uma iteração; cada célula, V<sub>k</sub>(s). Observe o valor
+         escorrer das recompensas para os vizinhos, um estado por backup.</p>
+      <div class="heat" id="heat"></div>
+      <p class="heat-nota" id="heat-nota"></p>
+    </div>
+
+    <!-- ================= matrizes ================= -->
+    <div class="carta span5">
+      <h2>Por dentro: forma matricial</h2>
+      <p class="sub">O sistema V = R + γPV que a solução exata resolve
+         com V = (I − γP)<sup>−1</sup>R.</p>
+      <details class="mat">
+        <summary>Matriz de transição P<span id="mat-p-rot"></span></summary>
+        <pre id="mat-p"></pre>
+      </details>
+      <div style="height:10px"></div>
+      <details class="mat">
+        <summary>Vetores R e V exato</summary>
+        <pre id="mat-v"></pre>
+      </details>
+    </div>
+
+    <!-- ================= episódios ================= -->
+    <div class="carta span12">
+      <h2>Amostrando episódios (Monte Carlo)</h2>
+      <p class="sub">Sem usar a matriz P para calcular nada: apenas sorteando trajetórias e somando
+         recompensas descontadas. É assim que os métodos sem modelo estimam valor.</p>
+      <div class="ep-grade">
+        <div>
+          <div class="botoes" style="margin-bottom:10px">
+            <button id="btn-ep-anim" class="primario">Assistir 1 episódio</button>
+            <button id="btn-ep100">Sortear 100</button>
+            <button id="btn-ep1000">Sortear 1000</button>
+            <button id="btn-ep-zerar">Zerar amostras</button>
+            <span class="contador">saindo de <b id="ep-origem">s₄</b></span>
+          </div>
+          <div class="pista" id="pista"></div>
+          <div class="anim-leitura" id="anim-leitura">Clique em “Assistir 1 episódio” para ver o
+            rover andar e o retorno G ser somado termo a termo.</div>
+          <div class="trilha" id="trilha"><span class="vazio">Nenhum episódio sorteado ainda.</span></div>
+          <div class="placar">
+            <div class="metrica"><span class="k">Último retorno G</span><span class="v" id="ep-g">—</span></div>
+            <div class="metrica"><span class="k">Média de <span id="ep-n">0</span> ep.</span><span class="v destaque" id="ep-media">—</span></div>
+            <div class="metrica"><span class="k" id="ep-alvo-rot">Valor exato</span><span class="v alvo" id="ep-alvo">—</span></div>
+            <div class="metrica"><span class="k">Erro da média</span><span class="v" id="ep-erro">—</span></div>
+          </div>
+        </div>
+        <div>
+          <p class="sub" style="margin-bottom:6px">Distribuição dos retornos sorteados — o valor
+             exato é a <em>média</em> desta nuvem.</p>
+          <svg id="hist" viewBox="0 0 430 240" role="img"
+               aria-label="Histograma dos retornos amostrados"></svg>
+          <div class="legenda" style="border-top:0;padding-top:4px">
+            <span><i class="chip" style="background:var(--laranja)"></i> média amostral</span>
+            <span><i class="chip tracejado" style="border-color:var(--teal)"></i> valor exato</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= desafio ================= -->
+    <div class="carta span12" id="carta-desafio">
+      <h2>Desafio: vença o planejador</h2>
+      <div id="des-corpo"></div>
+    </div>
+
+    <!-- ================= roteiro ================= -->
+    <div class="carta span12">
+      <h2>Roteiro de experimentos</h2>
+      <p class="sub">Seis investigações guiadas. “Preparar” configura o laboratório; pense na
+         pergunta antes de abrir a discussão.</p>
+      <div id="missoes"></div>
+    </div>
+  </div>
+
+  <footer>
+    <span>Adaptado de CS234 (Emma Brunskill, Stanford) · Prof. Marcelo Keese Albertini · UFU</span>
+    <span>Atalhos: <kbd>→</kbd> um passo · <kbd>espaço</kbd> rodar/pausar · <kbd>R</kbd> zerar</span>
+  </footer>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   1. MODELO
+   ============================================================ */
+const N = 7;
+const R_PADRAO = [1, 0, 0, 0, 0, 0, 10];
+const NOME_ACAO = { "1": "TentarDireita", "-1": "TentarEsquerda" };
+const movReduzido = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const est = {
+  modo: "mrp",              // 'mrp' | 'mdp'
+  gama: 0.9,
+  pMRP: 0.4,                // prob. de mover para cada lado (MRP)
+  qMDP: 0.5,                // prob. de a ação tentada funcionar (MDP)
+  pi: [1, 1, 1, 1, 1, 1, 1],// +1 direita, −1 esquerda
+  R: R_PADRAO.slice(),
+  V: new Array(N).fill(0),
+  Vstar: null,
+  k: 0,
+  delta: null,
+  erros: [],
+  histV: [],
+  sel: 3,
+  rodando: false,
+  temporizador: null,
+  divergiu: false,
+  otima: null,              // {score, pi} — melhor política possível (modo MDP)
+  melhor: null,             // {score, pi} — melhor que o usuário já construiu
+  revelou: false,
+  ep: { n: 0, soma: 0, ultimoG: null, trilha: null, amostras: [], truncou: false },
+  anim: { ativo: false, timer: null }
+};
+
+const paramAtivo = () => est.modo === "mrp" ? est.pMRP : est.qMDP;
+
+/* Cadeia simétrica (MRP): anda p para cada lado, fica com o resto. */
+function matrizMRP(p) {
+  const P = Array.from({ length: N }, () => new Array(N).fill(0));
+  for (let i = 0; i < N; i++) {
+    const e = i > 0 ? p : 0, d = i < N - 1 ? p : 0;
+    if (e) P[i][i - 1] = e;
+    if (d) P[i][i + 1] = d;
+    P[i][i] = 1 - e - d;
+  }
+  return P;
+}
+/* Cadeia induzida por uma política (MDP): a ação tentada funciona com
+   probabilidade q; caso contrário (ou contra a parede) o rover fica. */
+function matrizPolitica(pi, q) {
+  const P = Array.from({ length: N }, () => new Array(N).fill(0));
+  for (let i = 0; i < N; i++) {
+    const alvo = i + pi[i];
+    if (alvo >= 0 && alvo < N) { P[i][alvo] = q; P[i][i] = 1 - q; }
+    else P[i][i] = 1;
+  }
+  return P;
+}
+const matrizAtiva = () =>
+  est.modo === "mrp" ? matrizMRP(est.pMRP) : matrizPolitica(est.pi, est.qMDP);
+
+/* (I − γP)V = R por eliminação de Gauss com pivotamento parcial. */
+function resolveExato(P, R, g) {
+  if (g >= 0.9995) return null;
+  const A = Array.from({ length: N }, (_, i) =>
+    Array.from({ length: N }, (_, j) => (i === j ? 1 : 0) - g * P[i][j]).concat([R[i]]));
+  for (let c = 0; c < N; c++) {
+    let piv = c;
+    for (let r = c + 1; r < N; r++) if (Math.abs(A[r][c]) > Math.abs(A[piv][c])) piv = r;
+    if (Math.abs(A[piv][c]) < 1e-12) return null;
+    [A[c], A[piv]] = [A[piv], A[c]];
+    for (let r = 0; r < N; r++) {
+      if (r === c) continue;
+      const f = A[r][c] / A[c][c];
+      for (let j = c; j <= N; j++) A[r][j] -= f * A[c][j];
+    }
+  }
+  return A.map((lin, i) => lin[N] / A[i][i]);
+}
+
+/* Melhor política determinística por enumeração (2^7 = 128 candidatas). */
+function politicaOtima() {
+  let melhor = null;
+  for (let m = 0; m < (1 << N); m++) {
+    const pi = Array.from({ length: N }, (_, i) => (m >> i) & 1 ? 1 : -1);
+    const V = resolveExato(matrizPolitica(pi, est.qMDP), est.R, est.gama);
+    if (!V) return null;
+    const score = V.reduce((a, b) => a + b, 0) / N;
+    if (!melhor || score > melhor.score + 1e-12) melhor = { score, pi, V };
+  }
+  return melhor;
+}
+
+function passoBellman() {
+  const P = matrizAtiva(), Vn = new Array(N);
+  for (let i = 0; i < N; i++) {
+    let s = 0;
+    for (let j = 0; j < N; j++) s += P[i][j] * est.V[j];
+    Vn[i] = est.R[i] + est.gama * s;
+  }
+  let d = 0;
+  for (let i = 0; i < N; i++) d = Math.max(d, Math.abs(Vn[i] - est.V[i]));
+  est.delta = d;
+  est.V = Vn;
+  est.k++;
+  est.histV.push(Vn.slice());
+  if (est.histV.length > 400) est.histV.shift();
+  if (est.Vstar) {
+    let e = 0;
+    for (let i = 0; i < N; i++) e = Math.max(e, Math.abs(est.V[i] - est.Vstar[i]));
+    est.erros.push(e);
+  }
+  est.divergiu = est.V.some(v => !isFinite(v) || Math.abs(v) > 1e12);
+  if (est.divergiu) pausar();
+}
+
+function recalcularExato() {
+  est.Vstar = resolveExato(matrizAtiva(), est.R, est.gama);
+  if (est.modo === "mdp") {
+    est.otima = politicaOtima();
+    if (est.Vstar && est.otima) {
+      const score = est.Vstar.reduce((a, b) => a + b, 0) / N;
+      if (!est.melhor || score > est.melhor.score + 1e-12)
+        est.melhor = { score, pi: est.pi.slice() };
+    }
+  } else est.otima = null;
+}
+
+function zerarIteracao() {
+  est.V = new Array(N).fill(0);
+  est.k = 0;
+  est.delta = null;
+  est.divergiu = false;
+  est.erros = [];
+  est.histV = [est.V.slice()];
+  if (est.Vstar) {
+    let e = 0;
+    for (let i = 0; i < N; i++) e = Math.max(e, Math.abs(est.Vstar[i]));
+    est.erros.push(e);
+  }
+}
+
+/* ============================================================
+   2. FORMATAÇÃO
+   ============================================================ */
+const nf = (x, d = 2) => {
+  if (x === null || x === undefined || !isFinite(x)) return "∞";
+  if (Math.abs(x) >= 1e7) return x.toExponential(1).replace(".", ",");
+  return x.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
+};
+const SUB = ["₁","₂","₃","₄","₅","₆","₇"];
+const nomeEstado = i => "s" + SUB[i];
+const rotuloExato = () => est.modo === "mrp" ? "V*" : "Vπ";
+function supIndice(n) {
+  const m = { "-": "⁻", 0: "⁰", 1: "¹", 2: "²", 3: "³", 4: "⁴",
+              5: "⁵", 6: "⁶", 7: "⁷", 8: "⁸", 9: "⁹" };
+  return String(n).split("").map(c => m[c] || c).join("");
+}
+
+/* ============================================================
+   3. DIAGRAMA DA CADEIA
+   ============================================================ */
+const svgNS = "http://www.w3.org/2000/svg";
+const chain = document.getElementById("chain");
+const X0 = 78, DX = 141, YB = 250, H_MAX = 176, Y_TOPO = YB - H_MAX;
+const xs = i => X0 + i * DX;
+
+function el(tag, attrs, txt) {
+  const n = document.createElementNS(svgNS, tag);
+  for (const a in attrs) n.setAttribute(a, attrs[a]);
+  if (txt !== undefined) n.textContent = txt;
+  return n;
+}
+function marcador(id, cor) {
+  const mk = el("marker", { id, viewBox: "0 0 8 8", refX: 7, refY: 4,
+    markerWidth: 5.5, markerHeight: 5.5, orient: "auto-start-reverse" });
+  mk.appendChild(el("path", { d: "M0 0 L8 4 L0 8 z", fill: cor }));
+  return mk;
+}
+
+function escalaMax() {
+  let vmax = 1;
+  for (let i = 0; i < N; i++) {
+    if (isFinite(est.V[i])) vmax = Math.max(vmax, Math.abs(est.V[i]));
+    if (est.Vstar) vmax = Math.max(vmax, Math.abs(est.Vstar[i]));
+  }
+  return vmax * 1.12;
+}
+
+function desenharCadeia() {
+  chain.textContent = "";
+  chain.setAttribute("viewBox", `0 0 1000 ${est.modo === "mdp" ? 404 : 372}`);
+  const defs = el("defs", {});
+  defs.appendChild(marcador("mseta", "#B9C4D0"));
+  defs.appendChild(marcador("mseta-aceso", "#18808D"));
+  chain.appendChild(defs);
+
+  const P = matrizAtiva(), sel = est.sel;
+  const sucessores = new Set();
+  for (let j = 0; j < N; j++) if (P[sel][j] > 0 && j !== sel) sucessores.add(j);
+
+  const vmax = escalaMax();
+  const alt = v => Math.max(0, Math.min(H_MAX, (Math.abs(v) / vmax) * H_MAX));
+
+  chain.appendChild(el("line", { class: "eixo", x1: 24, y1: YB, x2: 976, y2: YB }));
+  chain.appendChild(el("line", { class: "eixo", x1: 24, y1: Y_TOPO, x2: 976, y2: Y_TOPO,
+                                 "stroke-dasharray": "2 4" }));
+  chain.appendChild(el("text", { class: "eixo-rot", x: 24, y: Y_TOPO - 7 }, nf(vmax, 1)));
+  chain.appendChild(el("text", { class: "eixo-rot", x: 24, y: YB + 14 }, "0"));
+
+  /* --- arcos direcionais a partir da matriz ativa --- */
+  const arco = (d, aceso) => el("path", {
+    class: "arco" + (aceso ? " aceso" : ""), d,
+    "marker-end": aceso ? "url(#mseta-aceso)" : "url(#mseta)"
+  });
+  const rotP = (x, y, v, aceso) => el("text", {
+    class: "p-rot" + (aceso ? " aceso" : ""), x, y, "text-anchor": "middle"
+  }, nf(v, 2));
+
+  for (let i = 0; i < N; i++) {
+    for (let j = 0; j < N; j++) {
+      const p = P[i][j];
+      if (p <= 0.0001) continue;
+      const aceso = i === sel;
+      if (j === i + 1) {            // faixa de cima: para a direita
+        const a = xs(i), b = xs(j), mid = (a + b) / 2;
+        chain.appendChild(arco(`M ${a + 18} ${YB + 27} Q ${mid} ${YB + 47} ${b - 20} ${YB + 27}`, aceso));
+        chain.appendChild(rotP(mid, YB + 32, p, aceso));
+      } else if (j === i - 1) {     // faixa de baixo: para a esquerda
+        const a = xs(i), b = xs(j), mid = (a + b) / 2;
+        chain.appendChild(arco(`M ${a - 18} ${YB + 41} Q ${mid} ${YB + 68} ${b + 20} ${YB + 41}`, aceso));
+        chain.appendChild(rotP(mid, YB + 66, p, aceso));
+      } else if (j === i) {         // laço próprio
+        const x = xs(i);
+        chain.appendChild(arco(
+          `M ${x - 11} ${YB + 30} C ${x - 27} ${YB + 82} ${x + 27} ${YB + 82} ${x + 12} ${YB + 31}`, aceso));
+        chain.appendChild(rotP(x, YB + 84, p, aceso));
+      }
+    }
+  }
+
+  /* --- colunas, marcadores, círculos, recompensas, política --- */
+  for (let i = 0; i < N; i++) {
+    const x = xs(i), v = est.V[i], h = alt(v), ehSel = i === sel;
+
+    chain.appendChild(el("rect", {
+      class: "barra" + (ehSel ? " sel" : ""), x: x - 24, width: 48,
+      y: YB - h, height: h, rx: 3
+    }));
+    if (est.Vstar) {
+      const hs = alt(est.Vstar[i]);
+      chain.appendChild(el("line", {
+        class: "alvo-linha", x1: x - 31, x2: x + 31, y1: YB - hs, y2: YB - hs
+      }));
+    }
+    chain.appendChild(el("text", {
+      class: "val-rot", x, y: YB - Math.max(h, 26) - 8, "text-anchor": "middle"
+    }, nf(v, 2)));
+
+    const g = el("g", {
+      class: "st-alvo" + (ehSel ? " sel" : (sucessores.has(i) ? " contrib" : "")),
+      tabindex: "0", role: "button",
+      "aria-label": `Estado ${i + 1}, valor ${nf(v, 2)}. Ativar para selecionar.`
+    });
+    g.appendChild(el("circle", { class: "st-circulo", cx: x, cy: YB + 1, r: 21 }));
+    g.appendChild(el("text", { class: "st-rot", x, y: YB + 6, "text-anchor": "middle" },
+                    nomeEstado(i)));
+    g.addEventListener("click", () => selecionar(i));
+    g.addEventListener("keydown", e => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selecionar(i); }
+    });
+    chain.appendChild(g);
+
+    const r = est.R[i];
+    const cor = r > 0 ? "var(--verde)" : (r < 0 ? "var(--vermelho)" : "var(--cinza)");
+    chain.appendChild(el("text", {
+      class: "rec-rot", x, y: YB + 106, "text-anchor": "middle", fill: cor
+    }, "R = " + (r > 0 ? "+" : "") + r));
+
+    if (est.modo === "mdp") {
+      const pil = el("g", {
+        class: "pil", tabindex: "0", role: "button",
+        "aria-label": `Ação em ${nomeEstado(i)}: ${NOME_ACAO[est.pi[i]]}. Ativar para trocar.`
+      });
+      pil.appendChild(el("rect", { x: x - 20, y: YB + 118, width: 40, height: 23, rx: 11.5 }));
+      pil.appendChild(el("text", { x, y: YB + 135, "text-anchor": "middle" },
+                        est.pi[i] === 1 ? "▶" : "◀"));
+      const flip = () => {
+        est.pi[i] *= -1;
+        pausar();
+        recalcularExato();
+        zerarIteracao();
+        zerarEpisodios();
+        redesenhar();
+      };
+      pil.addEventListener("click", flip);
+      pil.addEventListener("keydown", e => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); flip(); }
+      });
+      chain.appendChild(pil);
+    }
+  }
+}
+
+/* ============================================================
+   4. LEITURA DA EQUAÇÃO DE BELLMAN
+   ============================================================ */
+function desenharBellman() {
+  const i = est.sel, P = matrizAtiva(), cx = document.getElementById("bell-eq");
+  const viz = [];
+  for (let j = 0; j < N; j++) if (P[i][j] > 0) viz.push(j);
+  const somaFut = viz.reduce((a, j) => a + P[i][j] * est.V[j], 0);
+  const novo = est.R[i] + est.gama * somaFut;
+  const termos = viz.map(j => `${nf(P[i][j], 2)}·${nf(est.V[j], 2)}`).join(" + ");
+
+  const cond = est.modo === "mdp" ? `${nomeEstado(i)}, π(${nomeEstado(i)})` : nomeEstado(i);
+  cx.innerHTML =
+    `<div class="lin"><span class="rot">simbólico</span> &nbsp; ` +
+    `V(${nomeEstado(i)}) = R(${nomeEstado(i)}) + γ · Σ P(s′|${cond})·V(s′)</div>` +
+    `<div class="lin"><span class="rot">números &nbsp;</span> &nbsp; ` +
+    `V(${nomeEstado(i)}) = <span class="imed">${nf(est.R[i], 2)}</span> + ` +
+    `<span class="fut">${nf(est.gama, 2)} · (${termos})</span></div>` +
+    `<div class="lin"><span class="rot">resultado</span> &nbsp; ` +
+    `V<sub>${est.k + 1}</sub>(${nomeEstado(i)}) = <span class="res">${nf(novo, 3)}</span>` +
+    (est.Vstar ? `&nbsp;&nbsp;<span class="rot">exato: ${nf(est.Vstar[i], 3)}</span>` : "") +
+    `</div>`;
+
+  const nomes = viz.map(nomeEstado).join(", ");
+  document.getElementById("bell-sub").textContent =
+    est.modo === "mdp"
+      ? `Backup de ${nomeEstado(i)} sob a ação ${NOME_ACAO[est.pi[i]]}: puxa valor de ${nomes}.`
+      : `Backup de ${nomeEstado(i)}: puxa valor de ${nomes}.`;
+  document.getElementById("rec-estado").textContent = `R(${nomeEstado(i)})`;
+  document.getElementById("rec-val").textContent = est.R[i];
+  document.getElementById("ep-origem").textContent = nomeEstado(i);
+}
+
+/* ============================================================
+   5. GRÁFICO DE CONTRAÇÃO
+   ============================================================ */
+const graf = document.getElementById("grafico");
+function desenharGrafico() {
+  graf.textContent = "";
+  const GW = 420, GH = 250, ML = 46, MR = 12, MT = 14, MB = 34;
+  const w = GW - ML - MR, h = GH - MT - MB;
+
+  if (!est.Vstar) {
+    graf.appendChild(el("text", { x: GW / 2, y: GH / 2 - 6, "text-anchor": "middle",
+      class: "eixo-rot" }, "Sem valor exato para comparar."));
+    graf.appendChild(el("text", { x: GW / 2, y: GH / 2 + 12, "text-anchor": "middle",
+      class: "eixo-rot" }, "Com γ = 1 a série não converge."));
+    return;
+  }
+  const dados = est.erros.map(e => Math.max(e, 1e-14));
+  const kmax = Math.max(24, dados.length - 1);
+  const topo = 2, base = -12;
+  const px = k => ML + (k / kmax) * w;
+  const py = e => MT + (1 - (Math.log10(e) - base) / (topo - base)) * h;
+
+  for (let d = topo; d >= base; d -= 2) {
+    const y = py(Math.pow(10, d));
+    graf.appendChild(el("line", { class: "eixo", x1: ML, x2: ML + w, y1: y, y2: y }));
+    graf.appendChild(el("text", { class: "eixo-rot", x: ML - 6, y: y + 3.5,
+      "text-anchor": "end" }, "10" + supIndice(d)));
+  }
+  graf.appendChild(el("line", { class: "eixo", x1: ML, x2: ML, y1: MT, y2: MT + h }));
+  graf.appendChild(el("line", { class: "eixo", x1: ML, x2: ML + w, y1: MT + h, y2: MT + h }));
+  for (let k = 0; k <= kmax; k += Math.ceil(kmax / 6))
+    graf.appendChild(el("text", { class: "eixo-rot", x: px(k), y: GH - 14,
+      "text-anchor": "middle" }, k));
+  graf.appendChild(el("text", { class: "eixo-rot", x: ML + w / 2, y: GH - 2,
+    "text-anchor": "middle" }, "iteração k"));
+
+  if (dados.length && est.gama > 0) {
+    let d = "";
+    for (let k = 0; k <= kmax; k++)
+      d += (k ? " L " : "M ") + px(k) + " " + py(Math.max(dados[0] * Math.pow(est.gama, k), 1e-14));
+    graf.appendChild(el("path", { d, fill: "none", stroke: "var(--cinza)",
+      "stroke-width": 1.4, "stroke-dasharray": "5 4" }));
+  }
+  if (dados.length > 1) {
+    let d = "";
+    dados.forEach((e, k) => { d += (k ? " L " : "M ") + px(k) + " " + py(e); });
+    graf.appendChild(el("path", { d, fill: "none", stroke: "var(--laranja)",
+      "stroke-width": 2.2, "stroke-linejoin": "round" }));
+    const u = dados.length - 1;
+    graf.appendChild(el("circle", { cx: px(u), cy: py(dados[u]), r: 3.4,
+      fill: "var(--laranja)" }));
+  }
+}
+
+/* ============================================================
+   6. MAPA DE PROPAGAÇÃO
+   ============================================================ */
+function desenharHeat() {
+  const heat = document.getElementById("heat");
+  const vmax = escalaMax();
+  const MOSTRAR = 12;
+  const total = est.histV.length;
+  const ini = Math.max(0, total - MOSTRAR);
+  let html = `<div class="hcab">k</div>` +
+    Array.from({ length: N }, (_, j) => `<div class="hcab">${nomeEstado(j)}</div>`).join("");
+  for (let r = ini; r < total; r++) {
+    html += `<div class="hk">${r}</div>`;
+    for (let j = 0; j < N; j++) {
+      const v = est.histV[r][j];
+      const t = Math.min(1, Math.abs(v) / vmax);
+      const bg = v >= 0
+        ? `rgba(46,95,138,${(t * 0.95).toFixed(3)})`
+        : `rgba(193,18,31,${(t * 0.85).toFixed(3)})`;
+      const fg = t > 0.55 ? "#fff" : "var(--azul)";
+      html += `<div class="hcel" style="background:${bg};color:${fg}">${
+        isFinite(v) ? nf(v, Math.abs(v) >= 100 ? 0 : 1) : "∞"}</div>`;
+    }
+  }
+  heat.innerHTML = html;
+  document.getElementById("heat-nota").textContent =
+    total > MOSTRAR
+      ? `Mostrando as últimas ${MOSTRAR} de ${total - 1} iterações. Zere e avance passo a passo para ver o início.`
+      : `Dica: com γ alto, zere e dê passos um a um — o +10 leva um backup por estado para chegar a ${nomeEstado(0)}.`;
+}
+
+/* ============================================================
+   7. MATRIZES
+   ============================================================ */
+function desenharMatrizes() {
+  const P = matrizAtiva();
+  const cel = x => nf(x, 2).padStart(5, " ");
+  document.getElementById("mat-p-rot").textContent =
+    est.modo === "mdp" ? " (induzida pela política π)" : "";
+  document.getElementById("mat-p").textContent =
+    P.map(lin => "| " + lin.map(cel).join("  ") + " |").join("\n");
+  const linhaR = "R  = [ " + est.R.map(x => String(x).padStart(4)).join(" ") + " ]";
+  const linhaV = est.Vstar
+    ? rotuloExato().padEnd(2) + " = [ " + est.Vstar.map(v => nf(v, 1).padStart(6)).join(" ") + " ]"
+    : "V exato indisponível (γ = 1 torna I − γP singular).";
+  document.getElementById("mat-v").textContent = linhaR + "\n" + linhaV;
+}
+
+/* ============================================================
+   8. EPISÓDIOS
+   ============================================================ */
+function sortearEpisodio(inicio, capTrilha) {
+  const P = matrizAtiva();
+  const LIM = est.gama >= 0.9995 ? 250 : 3000;
+  let s = inicio, G = 0, desc = 1, t = 0;
+  const trilha = [];
+  while (t < LIM && desc > 1e-9) {
+    G += desc * est.R[s];
+    if (trilha.length < capTrilha) trilha.push({ s, r: est.R[s], desc });
+    let u = Math.random(), acc = 0, prox = s;
+    for (let j = 0; j < N; j++) { acc += P[s][j]; if (u <= acc) { prox = j; break; } }
+    s = prox; desc *= est.gama; t++;
+  }
+  return { G, trilha, truncou: t >= LIM };
+}
+
+function registrarEpisodio(r) {
+  est.ep.soma += r.G;
+  est.ep.n++;
+  est.ep.ultimoG = r.G;
+  est.ep.trilha = r.trilha;
+  est.ep.truncou = r.truncou;
+  est.ep.amostras.push(r.G);
+  if (est.ep.amostras.length > 8000) est.ep.amostras.shift();
+}
+function rodarEpisodios(q) {
+  if (est.anim.ativo) return;
+  let r = null;
+  for (let i = 0; i < q; i++) { r = sortearEpisodio(est.sel, 40); est.ep.soma += r.G;
+    est.ep.n++; est.ep.amostras.push(r.G); }
+  est.ep.ultimoG = r.G; est.ep.trilha = r.trilha; est.ep.truncou = r.truncou;
+  if (est.ep.amostras.length > 8000) est.ep.amostras.splice(0, est.ep.amostras.length - 8000);
+  desenharEpisodios();
+}
+function zerarEpisodios() {
+  pararAnimacao();
+  est.ep = { n: 0, soma: 0, ultimoG: null, trilha: null, amostras: [], truncou: false };
+  desenharEpisodios();
+  document.getElementById("anim-leitura").textContent =
+    "Clique em “Assistir 1 episódio” para ver o rover andar e o retorno G ser somado termo a termo.";
+}
+
+/* --- pista animada --- */
+const ROVER_SVG =
+  '<svg viewBox="0 0 40 26" xmlns="http://www.w3.org/2000/svg">' +
+  '<line x1="20" y1="2" x2="20" y2="7" stroke="#E8590C" stroke-width="2"/>' +
+  '<circle cx="20" cy="2.6" r="2" fill="#F2A93B"/>' +
+  '<rect x="7" y="7" width="26" height="10" rx="3" fill="#E8590C"/>' +
+  '<rect x="11" y="9.5" width="8" height="5" rx="1.5" fill="#FFF" opacity=".85"/>' +
+  '<circle cx="13" cy="19.5" r="4.4" fill="#16324F"/>' +
+  '<circle cx="27" cy="19.5" r="4.4" fill="#16324F"/>' +
+  '<circle cx="13" cy="19.5" r="1.6" fill="#B9C4D0"/>' +
+  '<circle cx="27" cy="19.5" r="1.6" fill="#B9C4D0"/></svg>';
+
+function montarPista() {
+  const p = document.getElementById("pista");
+  p.innerHTML = "";
+  for (let i = 0; i < N; i++) {
+    const c = document.createElement("div");
+    c.className = "pcel"; c.id = "pcel-" + i;
+    const r = est.R[i];
+    c.innerHTML = `<b>${nomeEstado(i)}</b>R ${r > 0 ? "+" + r : r}`;
+    p.appendChild(c);
+  }
+  const tok = document.createElement("div");
+  tok.className = "rover-token"; tok.id = "rover";
+  tok.innerHTML = ROVER_SVG;
+  p.appendChild(tok);
+  posicionarRover(est.sel);
+}
+function posicionarRover(i) {
+  const tok = document.getElementById("rover");
+  if (tok) tok.style.left = ((i + 0.5) * 100 / N) + "%";
+}
+function pararAnimacao() {
+  if (est.anim.timer) clearInterval(est.anim.timer);
+  est.anim = { ativo: false, timer: null };
+  ["btn-ep100", "btn-ep1000", "btn-ep-zerar"].forEach(id =>
+    document.getElementById(id).disabled = false);
+}
+function assistirEpisodio() {
+  if (est.anim.ativo) return;
+  const r = sortearEpisodio(est.sel, 80);
+  const leitura = document.getElementById("anim-leitura");
+  if (movReduzido) {
+    registrarEpisodio(r);
+    leitura.textContent = `Episódio concluído: G = ${nf(r.G, 3)} (animação desativada pela preferência de movimento reduzido).`;
+    desenharEpisodios();
+    return;
+  }
+  est.anim.ativo = true;
+  ["btn-ep100", "btn-ep1000", "btn-ep-zerar"].forEach(id =>
+    document.getElementById(id).disabled = true);
+  let idx = 0, Gparcial = 0;
+  const MAXA = Math.min(r.trilha.length, 60);
+  est.anim.timer = setInterval(() => {
+    if (idx >= MAXA) {
+      pararAnimacao();
+      registrarEpisodio(r);
+      leitura.textContent = (r.trilha.length > MAXA ? "(acelerado até o fim) " : "") +
+        `Episódio concluído: G = ${nf(r.G, 3)}.`;
+      desenharEpisodios();
+      return;
+    }
+    const pss = r.trilha[idx];
+    posicionarRover(pss.s);
+    const ganho = pss.desc * pss.r;
+    Gparcial += ganho;
+    leitura.textContent =
+      `t = ${String(idx).padStart(2)} · ${nomeEstado(pss.s)} · ganho γ${supIndice(idx)}·R = ` +
+      `${nf(pss.desc, 3)}·${pss.r} = ${nf(ganho, 3)} · G parcial = ${nf(Gparcial, 3)}`;
+    if (pss.r !== 0) {
+      const cel = document.getElementById("pcel-" + pss.s);
+      cel.classList.add("flash");
+      setTimeout(() => cel.classList.remove("flash"), 240);
+    }
+    idx++;
+  }, 175);
+}
+
+function desenharEpisodios() {
+  montarPista();
+  const tr = document.getElementById("trilha");
+  if (!est.ep.trilha) {
+    tr.innerHTML = '<span class="vazio">Nenhum episódio sorteado ainda.</span>';
+  } else {
+    tr.innerHTML = est.ep.trilha.slice(0, 40).map(p =>
+      `<span class="passo${p.r !== 0 ? " premio" : ""}">${nomeEstado(p.s)}${
+        p.r !== 0 ? " " + (p.r > 0 ? "+" : "") + p.r : ""}</span>`).join("") +
+      '<span class="passo reticencias">…</span>';
+  }
+  document.getElementById("ep-g").textContent =
+    est.ep.ultimoG === null ? "—" : nf(est.ep.ultimoG, 2);
+  document.getElementById("ep-n").textContent = est.ep.n;
+  const media = est.ep.n ? est.ep.soma / est.ep.n : null;
+  document.getElementById("ep-media").textContent = media === null ? "—" : nf(media, 2);
+  document.getElementById("ep-alvo-rot").textContent =
+    `Valor exato ${rotuloExato()}(${nomeEstado(est.sel)})`;
+  document.getElementById("ep-alvo").textContent =
+    est.Vstar ? nf(est.Vstar[est.sel], 2) : "—";
+  document.getElementById("ep-erro").textContent =
+    (media !== null && est.Vstar) ? nf(Math.abs(media - est.Vstar[est.sel]), 3) : "—";
+  desenharHist();
+}
+
+function desenharHist() {
+  const svg = document.getElementById("hist");
+  svg.textContent = "";
+  const W = 430, H = 240, ML = 10, MR = 10, MT = 26, MB = 30;
+  const w = W - ML - MR, h = H - MT - MB;
+  const A = est.ep.amostras;
+  if (A.length < 2) {
+    svg.appendChild(el("text", { x: W / 2, y: H / 2, "text-anchor": "middle",
+      class: "eixo-rot" }, "Sorteie episódios para preencher o histograma."));
+    return;
+  }
+  let lo = Math.min(...A), hi = Math.max(...A);
+  if (est.Vstar) { lo = Math.min(lo, est.Vstar[est.sel]); hi = Math.max(hi, est.Vstar[est.sel]); }
+  const pad = Math.max((hi - lo) * 0.06, 0.5); lo -= pad; hi += pad;
+  const NB = 26, bins = new Array(NB).fill(0);
+  for (const g of A) {
+    const b = Math.min(NB - 1, Math.max(0, Math.floor((g - lo) / (hi - lo) * NB)));
+    bins[b]++;
+  }
+  const bmax = Math.max(...bins);
+  const bx = i => ML + (i / NB) * w;
+  for (let i = 0; i < NB; i++) {
+    const bh = (bins[i] / bmax) * h;
+    svg.appendChild(el("rect", { x: bx(i) + 1, y: MT + h - bh,
+      width: w / NB - 2, height: bh, fill: "#9FB4CB", rx: 2 }));
+  }
+  svg.appendChild(el("line", { class: "eixo", x1: ML, x2: ML + w, y1: MT + h, y2: MT + h }));
+  const gx = v => ML + (v - lo) / (hi - lo) * w;
+  const media = est.ep.soma / est.ep.n;
+  svg.appendChild(el("line", { x1: gx(media), x2: gx(media), y1: MT - 4, y2: MT + h,
+    stroke: "var(--laranja)", "stroke-width": 2.2 }));
+  svg.appendChild(el("text", { class: "eixo-rot", x: gx(media), y: MT - 10,
+    "text-anchor": "middle", fill: "var(--laranja)" }, "média " + nf(media, 2)));
+  if (est.Vstar) {
+    const v = est.Vstar[est.sel];
+    svg.appendChild(el("line", { x1: gx(v), x2: gx(v), y1: MT + 8, y2: MT + h,
+      stroke: "var(--teal)", "stroke-width": 2, "stroke-dasharray": "5 4" }));
+    svg.appendChild(el("text", { class: "eixo-rot", x: gx(v), y: MT + h + 14,
+      "text-anchor": "middle", fill: "var(--teal)" }, rotuloExato() + " " + nf(v, 2)));
+  }
+  svg.appendChild(el("text", { class: "eixo-rot", x: ML, y: MT + h + 14 }, nf(lo, 1)));
+  svg.appendChild(el("text", { class: "eixo-rot", x: ML + w, y: MT + h + 14,
+    "text-anchor": "end" }, nf(hi, 1)));
+}
+
+/* ============================================================
+   9. DESAFIO DA POLÍTICA
+   ============================================================ */
+function desenharDesafio() {
+  const corpo = document.getElementById("des-corpo");
+  if (est.modo === "mrp") {
+    corpo.innerHTML =
+      `<p class="sub" style="margin-bottom:10px">No modo com política, cada estado ganha uma ação
+       (◀ TentarEsquerda ou ▶ TentarDireita) e você tenta montar a política de maior valor.
+       O simulador conhece a resposta — calculada por enumeração das 2⁷ = 128 políticas — mas só
+       revela quando você pedir.</p>
+       <button id="btn-ir-mdp" class="primario">Ativar modo com política</button>`;
+    document.getElementById("btn-ir-mdp").addEventListener("click", () => trocarModo("mdp"));
+    return;
+  }
+  if (!est.Vstar || !est.otima) {
+    corpo.innerHTML = `<p class="sub">Desafio indisponível com γ = 1 (não há valores finitos
+      para comparar). Reduza γ.</p>`;
+    return;
+  }
+  const score = est.Vstar.reduce((a, b) => a + b, 0) / N;
+  const ehOtima = Math.abs(score - est.otima.score) < 1e-9;
+  const setas = est.pi.map(a => a === 1 ? "▶" : "◀").join(" ");
+  corpo.innerHTML =
+    `<div class="des-grade"><div>
+      <p class="des-status ${ehOtima ? "venceu" : ""}" id="des-status">${
+        ehOtima
+          ? "Sua política é a ótima! Nenhuma das outras 127 rende mais. Agora mude γ ou q e veja se ela continua ótima."
+          : "Ainda existe política melhor. Troque as setas sob os estados — pense: de cada estado, vale mais buscar o +1 perto ou o +10 longe?"}</p>
+      <p class="sub" style="margin-bottom:10px">π atual:&nbsp;
+        <span style="font-family:'Fira Mono',monospace;letter-spacing:.3em">${setas}</span>
+        &nbsp;· pontuação = média dos valores exatos dos 7 estados.</p>
+      <div class="botoes">
+        <button id="btn-pol-dir">Tudo à direita</button>
+        <button id="btn-pol-esq">Tudo à esquerda</button>
+        <button id="btn-pol-alea">Aleatória</button>
+        <button id="btn-pol-rev" class="primario">${est.revelou ? "Aplicar π* de novo" : "Revelar π*"}</button>
+      </div>
+    </div>
+    <div class="des-metricas">
+      <div class="metrica"><span class="k">Pontuação atual</span>
+        <span class="v destaque">${nf(score, 3)}</span></div>
+      <div class="metrica"><span class="k">Sua melhor</span>
+        <span class="v">${est.melhor ? nf(est.melhor.score, 3) : "—"}</span></div>
+      <div class="metrica"><span class="k">Ótima (π*)</span>
+        <span class="v alvo">${est.revelou ? nf(est.otima.score, 3) : "?"}</span></div>
+    </div></div>`;
+  const aplicar = pi => {
+    est.pi = pi;
+    pausar(); recalcularExato(); zerarIteracao(); zerarEpisodios(); redesenhar();
+  };
+  document.getElementById("btn-pol-dir").addEventListener("click",
+    () => aplicar([1, 1, 1, 1, 1, 1, 1]));
+  document.getElementById("btn-pol-esq").addEventListener("click",
+    () => aplicar([-1, -1, -1, -1, -1, -1, -1]));
+  document.getElementById("btn-pol-alea").addEventListener("click",
+    () => aplicar(Array.from({ length: N }, () => Math.random() < 0.5 ? 1 : -1)));
+  document.getElementById("btn-pol-rev").addEventListener("click", () => {
+    est.revelou = true;
+    aplicar(est.otima.pi.slice());
+  });
+}
+
+/* ============================================================
+   10. AVISOS, SELEÇÃO E PIPELINE DE REDESENHO
+   ============================================================ */
+function atualizarAvisos() {
+  const av = document.getElementById("aviso-gama");
+  if (est.divergiu) {
+    av.className = "aviso";
+    av.textContent = "Os valores divergiram. Com γ = 1 e horizonte infinito a soma de " +
+      "recompensas não é limitada — por isso descontamos o futuro.";
+  } else if (!est.Vstar) {
+    av.className = "aviso info";
+    av.textContent = "Com γ = 1 a matriz I − γP é singular: não existe solução exata única. " +
+      "Rode a iteração e veja os valores crescerem sem parar.";
+  } else if (est.gama === 0) {
+    av.className = "aviso info";
+    av.textContent = "Com γ = 0 o agente é míope: V(s) = R(s) e a iteração converge em um único passo.";
+  } else {
+    av.className = "aviso info oculto";
+  }
+}
+
+function selecionar(i) {
+  est.sel = i;
+  zerarEpisodios();
+  desenharCadeia();
+  desenharBellman();
+  desenharEpisodios();
+}
+
+function redesenhar() {
+  desenharCadeia();
+  desenharBellman();
+  desenharGrafico();
+  desenharHeat();
+  desenharMatrizes();
+  desenharDesafio();
+  desenharEpisodios();
+  atualizarAvisos();
+  document.getElementById("k-val").textContent = est.k;
+  document.getElementById("delta-val").textContent =
+    est.delta === null ? "—" : nf(est.delta, est.delta < 0.001 ? 6 : 3);
+  document.getElementById("leg-exato").textContent = rotuloExato() + "(s) exato";
+  document.getElementById("leg-pol").classList.toggle("oculto", est.modo !== "mdp");
+  document.getElementById("chain-sub").innerHTML = est.modo === "mdp"
+    ? "A coluna sobre cada estado é V<sub>k</sub>(s) da <em>política atual</em>; o traço " +
+      "pontilhado é V<sup>π</sup>(s) exato. Clique num estado para inspecionar; clique nas " +
+      "setas para trocar a ação."
+    : "A coluna sobre cada estado é V<sub>k</sub>(s); o traço pontilhado é o valor exato V*(s). " +
+      "Clique em um estado para inspecioná-lo.";
+}
+
+function reiniciarTudo(resetMelhor) {
+  if (resetMelhor) { est.melhor = null; est.revelou = false; }
+  recalcularExato();
+  zerarIteracao();
+  zerarEpisodios();
+  redesenhar();
+}
+
+/* ============================================================
+   11. EXECUÇÃO
+   ============================================================ */
+function pausar() {
+  est.rodando = false;
+  clearInterval(est.temporizador);
+  document.getElementById("btn-rodar").textContent = "Rodar";
+}
+function alternarRodar() {
+  if (est.rodando) { pausar(); return; }
+  est.rodando = true;
+  document.getElementById("btn-rodar").textContent = "Pausar";
+  est.temporizador = setInterval(() => {
+    passoBellman();
+    redesenhar();
+    if (est.divergiu || (est.delta !== null && est.delta < 1e-10) || est.k > 500) pausar();
+  }, 240);
+}
+function convergirJa() {
+  pausar();
+  let guard = 0;
+  do { passoBellman(); guard++; }
+  while (!est.divergiu && est.delta > 1e-9 && guard < 3000);
+  redesenhar();
+}
+
+/* ============================================================
+   12. CONFIGURAÇÃO E LIGAÇÕES DE INTERFACE
+   ============================================================ */
+const slGama = document.getElementById("gama");
+const slP = document.getElementById("pmov");
+
+function sincronizarControles() {
+  document.getElementById("seg-mrp").classList.toggle("ativo", est.modo === "mrp");
+  document.getElementById("seg-mdp").classList.toggle("ativo", est.modo === "mdp");
+  slGama.value = est.gama;
+  document.getElementById("gama-val").textContent = nf(est.gama, 2);
+  if (est.modo === "mrp") {
+    document.getElementById("pmov-rot").textContent = "Probabilidade de mover p";
+    slP.min = 0; slP.max = 0.5; slP.step = 0.02; slP.value = est.pMRP;
+    document.getElementById("pmov-val").textContent = nf(est.pMRP, 2);
+  } else {
+    document.getElementById("pmov-rot").textContent = "Confiabilidade da ação q";
+    slP.min = 0; slP.max = 1; slP.step = 0.05; slP.value = est.qMDP;
+    document.getElementById("pmov-val").textContent = nf(est.qMDP, 2);
+  }
+}
+
+function aplicarConfig(cfg) {
+  pausar();
+  if (cfg.modo !== undefined) est.modo = cfg.modo;
+  if (cfg.gama !== undefined) est.gama = cfg.gama;
+  if (cfg.p !== undefined) est.pMRP = cfg.p;
+  if (cfg.q !== undefined) est.qMDP = cfg.q;
+  if (cfg.R !== undefined) est.R = cfg.R.slice();
+  if (cfg.pi !== undefined) est.pi = cfg.pi.slice();
+  if (cfg.sel !== undefined) est.sel = cfg.sel;
+  sincronizarControles();
+  reiniciarTudo(true);
+  const ctr = document.getElementById("controles");
+  ctr.classList.remove("pulso"); void ctr.offsetWidth; ctr.classList.add("pulso");
+}
+function trocarModo(m) { if (m !== est.modo) aplicarConfig({ modo: m }); }
+
+document.getElementById("seg-mrp").addEventListener("click", () => trocarModo("mrp"));
+document.getElementById("seg-mdp").addEventListener("click", () => trocarModo("mdp"));
+
+slGama.addEventListener("input", () => {
+  est.gama = parseFloat(slGama.value);
+  document.getElementById("gama-val").textContent = nf(est.gama, 2);
+  pausar(); reiniciarTudo(true);
+});
+slP.addEventListener("input", () => {
+  const v = parseFloat(slP.value);
+  if (est.modo === "mrp") est.pMRP = v; else est.qMDP = v;
+  document.getElementById("pmov-val").textContent = nf(v, 2);
+  pausar(); reiniciarTudo(true);
+});
+
+document.getElementById("btn-passo").addEventListener("click", () => {
+  pausar(); passoBellman(); redesenhar();
+});
+document.getElementById("btn-rodar").addEventListener("click", alternarRodar);
+document.getElementById("btn-conv").addEventListener("click", convergirJa);
+document.getElementById("btn-zerar").addEventListener("click", () => {
+  pausar(); zerarIteracao(); redesenhar();
+});
+
+document.getElementById("rec-mais").addEventListener("click", () => {
+  est.R[est.sel] = Math.min(20, est.R[est.sel] + 1); pausar(); reiniciarTudo(true);
+});
+document.getElementById("rec-menos").addEventListener("click", () => {
+  est.R[est.sel] = Math.max(-20, est.R[est.sel] - 1); pausar(); reiniciarTudo(true);
+});
+document.getElementById("rec-reset").addEventListener("click", () => {
+  est.R = R_PADRAO.slice(); pausar(); reiniciarTudo(true);
+});
+
+document.getElementById("btn-ep-anim").addEventListener("click", assistirEpisodio);
+document.getElementById("btn-ep100").addEventListener("click", () => rodarEpisodios(100));
+document.getElementById("btn-ep1000").addEventListener("click", () => rodarEpisodios(1000));
+document.getElementById("btn-ep-zerar").addEventListener("click", zerarEpisodios);
+
+document.addEventListener("keydown", e => {
+  const t = e.target;
+  if (t.tagName === "INPUT" || t.tagName === "BUTTON" || t.tagName === "SUMMARY") return;
+  if (t.closest && t.closest(".st-alvo, .pil")) return;
+  if (e.key === "ArrowRight") { pausar(); passoBellman(); redesenhar(); }
+  if (e.key === " ") { e.preventDefault(); alternarRodar(); }
+  if (e.key === "r" || e.key === "R") { pausar(); zerarIteracao(); redesenhar(); }
+});
+
+/* ============================================================
+   13. ROTEIRO DE EXPERIMENTOS
+   ============================================================ */
+const MISSOES = [
+  {
+    t: "O agente míope",
+    cfg: { modo: "mrp", gama: 0, p: 0.4, R: R_PADRAO, sel: 3 },
+    q: "Com γ = 0, quantas iterações a iteração de Bellman leva para convergir? " +
+       "O que a função valor vira?",
+    d: "Uma só. Com γ = 0 o backup ignora completamente o futuro, então V(s) = R(s): a barra " +
+       "de s₇ salta para 10, a de s₁ para 1, e nada escorre para os vizinhos. Observe Δ ir a " +
+       "zero já na segunda iteração — e o gráfico de convergência degenerar num ponto."
+  },
+  {
+    t: "O valor escorre um vizinho por backup",
+    cfg: { modo: "mrp", gama: 0.9, p: 0.4, R: R_PADRAO, sel: 3 },
+    q: "Zere e avance com “Um passo” olhando o mapa de propagação: depois de k iterações, " +
+       "quais estados já “sentiram” o +10 de s₇?",
+    d: "Exatamente os que estão a até k passos de s₇: cada backup consulta apenas vizinhos " +
+       "imediatos, então a informação viaja um estado por iteração — s₁ só sente o +10 na " +
+       "6ª iteração, e ainda assim multiplicado por γ⁶ vezes probabilidades. É a mesma " +
+       "estrutura da recursão V(s) = R(s) + γ·ΣP(s′|s)V(s′) desenrolada no tempo."
+  },
+  {
+    t: "A inclinação da reta é γ",
+    cfg: { modo: "mrp", gama: 0.5, p: 0.4, R: R_PADRAO, sel: 3 },
+    q: "Rode até convergir com γ = 0,50 e observe a inclinação do erro no gráfico log. " +
+       "Depois mude para γ = 0,95 e repita. Por que a inclinação muda?",
+    d: "Porque o backup de Bellman é uma contração de fator γ: cada iteração multiplica o " +
+       "erro máximo por no máximo γ, logo ‖V_k − V*‖ ≤ γᵏ‖V₀ − V*‖ — uma reta de coeficiente " +
+       "angular log γ na escala logarítmica. γ alto significa valores maiores E convergência " +
+       "mais lenta. Essa é a proposição que demonstraremos na Aula 2."
+  },
+  {
+    t: "Perto ou longe? O γ decide",
+    cfg: { modo: "mdp", gama: 0.5, q: 0.5, R: R_PADRAO, pi: [1,1,1,1,1,1,1], sel: 1 },
+    q: "Com γ = 0,50, “tudo à direita” é ótima? Monte a melhor política que conseguir e só " +
+       "então revele π*. Depois aumente γ aos poucos: em que ponto “sempre direita” passa a " +
+       "ser ótima?",
+    d: "Com γ baixo, uma recompensa a d passos vale ~γᵈ·R: perto de s₁, o +1 imediato vence o " +
+       "+10 distante, e a política ótima manda os primeiros estados para a esquerda. Conforme " +
+       "γ cresce, a fronteira de indiferença desliza para a esquerda até o +10 dominar a " +
+       "cadeia inteira. O fator de desconto não é um detalhe numérico — ele define o " +
+       "comportamento ótimo."
+  },
+  {
+    t: "Monte Carlo honesto",
+    cfg: { modo: "mrp", gama: 0.9, p: 0.4, R: R_PADRAO, sel: 3 },
+    q: "Sorteie 1 episódio, depois 100, depois 1000, sempre olhando o erro da média e o " +
+       "histograma. Como o erro cai com o número de amostras n?",
+    d: "Aproximadamente como 1/√n (desvio-padrão da média amostral). O histograma mostra por " +
+       "quê: retornos individuais variam enormemente — episódios que encostam cedo no s₇ " +
+       "rendem muito, os que vagam para a esquerda rendem pouco — e V(s) é apenas a média " +
+       "dessa distribuição espalhada. Estimar valor por amostragem é possível sem conhecer P, " +
+       "mas paga-se em variância: o tema central dos métodos sem modelo."
+  },
+  {
+    t: "Quando γ = 1 quebra",
+    cfg: { modo: "mrp", gama: 1, p: 0.4, R: R_PADRAO, sel: 3 },
+    q: "Rode a iteração com γ = 1. O que acontece com as barras, com Δ e com a solução " +
+       "exata? Em que situações γ = 1 seria aceitável?",
+    d: "As barras crescem sem parar e Δ estabiliza num valor positivo: a soma de recompensas " +
+       "num processo que nunca termina é infinita, e I − γP torna-se singular (as linhas de P " +
+       "somam 1). γ = 1 só é seguro com horizonte finito ou estados terminais que encerram o " +
+       "episódio com probabilidade 1 — exatamente como está no slide do fator de desconto."
+  }
+];
+
+function montarMissoes() {
+  const box = document.getElementById("missoes");
+  box.innerHTML = "";
+  MISSOES.forEach((m, i) => {
+    const div = document.createElement("div");
+    div.className = "missao";
+    div.innerHTML =
+      `<div class="num">${i + 1}</div>
+       <div><h3>${m.t}</h3><p>${m.q}</p>
+         <details><summary>Revelar discussão</summary><p>${m.d}</p></details>
+       </div>
+       <div><button class="prep">Preparar</button></div>`;
+    div.querySelector(".prep").addEventListener("click", () => {
+      aplicarConfig(m.cfg);
+      window.scrollTo({ top: 0, behavior: movReduzido ? "auto" : "smooth" });
+    });
+    box.appendChild(div);
+  });
+}
+
+/* ============================================================
+   14. INÍCIO
+   ============================================================ */
+montarMissoes();
+sincronizarControles();
+reiniciarTudo(true);
+</script>
+</body>
+</html>
