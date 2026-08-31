@@ -4,7 +4,6 @@ guidelines/*
 # Course materials — teacher-only and style guides
 professor/
 docs/
-Makefile
 
 # Livro de referência (baixado, não versionado)
 SuttonBartoIPRLBook2ndEd.pdf
