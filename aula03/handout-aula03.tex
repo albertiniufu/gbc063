@@ -1,32 +1,67 @@
 %% ============================================================
 %%  Handout — Aula 3: Avaliação de Política Sem Modelo
-%%  Curso de Aprendizagem por Reforço — UFU
-%%  VERSÃO DE COLUNA ÚNICA (pacote handout1colRL)
-%%  Compilar com XeLaTeX (2x)
+%%  Curso: Aprendizagem por Reforço — UFU
+%%  Prof. Marcelo Keese Albertini
+%%  Adaptado e expandido de CS234 (Stanford), Emma Brunskill
+%%  COMPILAR COM XeLaTeX (duas vezes)
 %% ============================================================
-\documentclass[a4paper, 11pt]{extarticle}
+\documentclass[11pt, a4paper]{article}
 
-\usepackage{handout1colRL}
+%% .sty do projeto na raiz do repositório (../)
+\makeatletter
+\def\input@path{{./}{../}}
+\makeatother
+
+\usepackage{handoutAprendizadoRL}
 \usepackage{babel}
 \babelprovide[import, main]{brazilian}
 
-\disciplina{Aprendizagem por Reforço}
-\rotulo{Folha de estudo}
-\title{Aula 3 — Avaliação de política sem modelo}
-\subtitulo{Como estimar $\Vpi$ quando não conhecemos a dinâmica $P$ nem a
-  recompensa $\rec$ \ \textbullet\ \ Monte Carlo, Diferença Temporal e
-  Equivalência de certeza}
-\author{Prof.\ Marcelo Keese Albertini \textbullet\ Universidade Federal de
-  Uberlândia \textbullet\ adaptado de E.\ Brunskill, CS234 (Stanford)}
-\rodape{Aprendizagem por Reforço \textbullet\ Aula 3 \textbullet\ UFU}
+\setaula{Aula 3 — Avaliação de política sem modelo}
+\setprof{Prof. Marcelo Keese Albertini}
+
+%% Macros locais (portadas do antigo handout1colRL; corpo da aula intacto)
+\usepackage{tabularx}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newenvironment{tabelaflex}[2][\footnotesize]
+  {#1\setlength{\tabcolsep}{5pt}%
+   \renewcommand{\arraystretch}{1.12}\tabularx{\linewidth}{#2}}
+  {\endtabularx\par}
+\newcommand{\notinha}[1]{\par{\footnotesize\color{rlCinza}#1}\par}
+\newcommand{\colMC}{\textbf{\color{rlTeal}Monte Carlo}}
+\newcommand{\colTD}{\textbf{\color{rlLaranja}TD(0)}}
+\newcommand{\colEC}{\textbf{\color{rlAzulClaro}Equiv.\ de certeza}}
+\makeatletter
+\NewDocumentCommand{\marsrover}{s O{} m}{%
+  \begin{tikzpicture}[node distance=3mm, #2]
+    \IfBooleanTF{#1}{\def\rl@ext{estado terminal}}{\def\rl@ext{estado}}
+    \foreach \i [count=\c] in {1,...,7}{%
+      \ifnum\c=1
+        \node[\rl@ext] (s\i) {$s_{\i}$};
+      \else
+        \pgfmathtruncatemacro{\prev}{\i-1}
+        \ifnum\c=7
+          \node[\rl@ext, right=of s\prev] (s\i) {$s_{\i}$};
+        \else
+          \node[estado, right=of s\prev] (s\i) {$s_{\i}$};
+        \fi
+      \fi}
+    \foreach \i in {#3}{\node[estado destacado] at (s\i) {$s_{\i}$};}
+    \IfBooleanT{#1}{%
+      \node[font=\tiny, color=rlVerde!60!black, above=0.5mm of s1] {$+1$};
+      \node[font=\tiny, color=rlVerde!60!black, above=0.5mm of s7] {$+10$};}
+  \end{tikzpicture}}
+\makeatother
 
 \begin{document}
 
-\cabecalho
+\capa{Aula 3: Avaliação de política sem modelo}
+     {Como estimar $\Vpi$ sem conhecer $P$ nem $\rec$ \textbullet\ Monte Carlo, Diferença Temporal e Equivalência de certeza}
+     {Prof. Marcelo Keese Albertini}
+     {Adaptado de Emma Brunskill, CS234: Reinforcement Learning, Stanford University \textbullet\ 2026}
 
 
 %% ---------------------------------------------------------------
-\secao{O problema}
+\section{O problema}
 
 Na aula passada conhecíamos $P$ e $\rec$ e resolvíamos Bellman por programação
 dinâmica. Agora temos apenas \textbf{experiência}: episódios gerados pela
@@ -48,7 +83,7 @@ Com o modelo, a PD faz $V_k^{\pol}(s) = \rec(s,\pol(s)) + \gamma\sum_{s'}
 \emph{estimativa} dele chama-se \textbf{bootstrapping} — é o que separa TD de MC.
 
 %% ---------------------------------------------------------------
-\secao{1. Monte Carlo (MC)}
+\section{1. Monte Carlo (MC)}
 
 \textbf{Ideia:} valor é uma esperança, e esperanças se estimam com médias.
 Rode $\pol$ até o fim do episódio, anote o retorno obtido a partir de cada
@@ -78,7 +113,7 @@ com $\alpha = 1/N(s)$ recuperando exatamente a média de toda visita.
 \end{itemize}
 
 %% ---------------------------------------------------------------
-\secao{2. Diferença temporal — TD(0)}
+\section{2. Diferença temporal — TD(0)}
 
 \textbf{Ideia:} não espere o fim. Como $G_t = r_t + \gamma G_{t+1}$ e já temos
 um palpite para o valor do próximo estado, use-o no lugar do futuro observado.
@@ -110,7 +145,7 @@ um palpite para o valor do próximo estado, use-o no lugar do futuro observado.
 \end{alertabox}
 
 %% ---------------------------------------------------------------
-\secao{3. Equivalência de certeza}
+\section{3. Equivalência de certeza}
 
 \textbf{Ideia:} se falta o modelo, estime-o e planeje nele \emph{como se}
 fosse verdadeiro. Por contagens (máxima verossimilhança):
@@ -131,7 +166,7 @@ e resolve-se $V = \hat{r} + \gamma\hat{P}V$ por qualquer método da aula 2.
 \end{itemize}
 
 %% ---------------------------------------------------------------
-\secao{4. Avaliação em lote}
+\section{4. Avaliação em lote}
 
 Com um conjunto \textbf{fixo} de $K$ episódios, repassados infinitas vezes:
 
@@ -168,7 +203,7 @@ sempre levou a $B$ com $r=0$ e conclui $V(A) = \gamma V(B)$.
 
 
 %% ============================ TABELA ============================
-\secao{Tabela comparativa}
+\section{Tabela comparativa}
 
 \begin{tabelaflex}{@{}p{0.26\linewidth}YYY@{}}
   \toprule
@@ -194,7 +229,7 @@ Markoviano.}
 
 
 %% ---------------------------------------------------------------
-\secao{Exemplo numérico — \emph{Mars Rover}}
+\section{Exemplo numérico — \emph{Mars Rover}}
 
 \begin{center}
 \marsrover*{}
@@ -231,7 +266,7 @@ acerta os três?} Ela estimou $\hat p(s_2\!\mid\! s_2) = \hat p(s_1\!\mid\! s_2)
 muito mais que os outros dois.
 
 %% ---------------------------------------------------------------
-\secao{Convergência}
+\section{Convergência}
 
 \begin{teobox}{Condições de Robbins--Monro}
   Tanto o MC incremental quanto o TD(0) convergem para $\Vpi(s)$ se a taxa de
@@ -251,7 +286,7 @@ Não-viesado \textbf{não} implica consistente: estimar a média usando só a
 primeira observação é não-viesado e nunca melhora.
 
 %% ---------------------------------------------------------------
-\secao{Para revisar}
+\section{Para revisar}
 
 \begin{enumerate}
   \item Por que o MC de toda visita é viesado, se ele também é uma média de
@@ -267,8 +302,7 @@ primeira observação é não-viesado e nunca melhora.
 \end{enumerate}
 
 \vspace{0.3em}
-\begin{juntos}
-\secao{Vocabulário para ler a literatura em inglês}
+\section{Vocabulário para ler a literatura em inglês}
 
 \begin{tabelaflex}[\scriptsize]{@{}YYYY@{}}
   \toprule
@@ -285,7 +319,6 @@ primeira observação é não-viesado e nunca melhora.
   máxima verossimilhança & maximum likelihood & fora da política  & off-policy\\
   \bottomrule
 \end{tabelaflex}
-\end{juntos}
 
 \notinha{``Backup'' e ``bootstrapping'' são mantidos em inglês por serem
 consagrados na literatura em português.}

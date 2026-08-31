@@ -5,6 +5,11 @@
 %%  Compilar com XeLaTeX (2x) — latexmk -xelatex aula05.tex
 %% ============================================================
 \documentclass[aspectratio=169, 11pt]{beamer}
+%% .sty do projeto na raiz do repositório (../)
+\makeatletter
+\def\input@path{{./}{../}}
+\makeatother
+
 
 \usetheme{AprendizadoRL}      % ANTES do babel — fontspec precisa vir primeiro
 \usepackage{babel}

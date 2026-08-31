@@ -6,6 +6,11 @@
 %%  COMPILAR COM XeLaTeX (duas vezes)
 %% ============================================================
 \documentclass[aspectratio=169, 11pt]{beamer}
+%% .sty do projeto na raiz do repositório (../)
+\makeatletter
+\def\input@path{{./}{../}}
+\makeatother
+
 
 \usetheme{AprendizadoRL}      % ANTES do babel
 \usepackage{babel}
