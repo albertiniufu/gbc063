@@ -1,6 +1,6 @@
 # GBC063 — Inteligência Artificial
 
-Materiais do módulo de Aprendizagem por Reforço (14 aulas) da disciplina **GBC063 — Inteligência Artificial** (UFU/FACOM): slides, resumos (handouts) e simuladores interativos que rodam no navegador.
+Materiais da disciplina **GBC063 — Inteligência Artificial** (UFU/FACOM): slides, resumos (handouts) e simuladores interativos que rodam no navegador.
 
 **Pergunta do curso:** "Como construir agentes que tomam boas decisões?"
 
