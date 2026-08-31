@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-tema="diurno">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,14 +8,72 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fira+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Fira+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-:root{
+/* ============================================================
+   TEMAS — todas as cores vêm destas variáveis
+   ============================================================ */
+:root, html[data-tema="diurno"]{
+  --papel:#F4F6F8; --carta:#FFFFFF; --linha:#DDE3EA; --hover:#EEF2F6;
   --azul:#16324F; --azul-claro:#2E5F8A; --teal:#18808D;
-  --laranja:#E8590C; --ambar:#F2A93B; --verde:#2B9348;
-  --vermelho:#C1121F; --cinza:#5C677D;
-  --papel:#F4F6F8; --carta:#FFFFFF; --linha:#DDE3EA;
+  --laranja:#E8590C; --ambar:#F2A93B; --verde:#2B9348; --vermelho:#C1121F;
+  --cinza:#5C677D; --texto-suave:#33465C;
+  --marca:#16324F; --marca-texto:#FFFFFF;
+  --estado-fundo:#EAF0F6; --estado-hover:#DDE7F1;
+  --sel-fundo:#FDE3D2; --contrib-fundo:#DFF0F1;
+  --arco:#B9C4D0; --hist:#9FB4CB; --chip:#E7EDF3;
+  --premio-fundo:#DFF3E4; --premio-texto:#1E6B33;
+  --ok-fundo:#E7F5EB; --ok-borda:#BCE0C6;
+  --aviso-err:#FDF2F2; --aviso-ok:#F1F9F3; --aviso-info:#FFF8EE;
+  --heat-pos:46,95,138; --heat-neg:193,18,31; --heat-texto-forte:#FFFFFF;
   --sombra:0 1px 2px rgba(22,50,79,.06),0 8px 24px rgba(22,50,79,.06);
-  --r:10px;
 }
+html[data-tema="areia"]{
+  --papel:#F3EEE3; --carta:#FBF8F1; --linha:#E2D9C6; --hover:#EFE8D9;
+  --azul:#23364A; --azul-claro:#38678F; --teal:#1D7F86;
+  --laranja:#D9530B; --ambar:#DE9A22; --verde:#2F8F4A; --vermelho:#BB1E2A;
+  --cinza:#7A7160; --texto-suave:#4A4234;
+  --marca:#23364A; --marca-texto:#FBF8F1;
+  --estado-fundo:#EFE9DA; --estado-hover:#E7DFCC;
+  --sel-fundo:#FBE0CB; --contrib-fundo:#DFEDE9;
+  --arco:#C9BFA9; --hist:#C0B394; --chip:#ECE5D4;
+  --premio-fundo:#E2EFD9; --premio-texto:#2F6B33;
+  --ok-fundo:#E7F2DF; --ok-borda:#C8DDBA;
+  --aviso-err:#F8E9E6; --aviso-ok:#EDF4E4; --aviso-info:#FBF1DC;
+  --heat-pos:56,103,143; --heat-neg:187,30,42; --heat-texto-forte:#FBF8F1;
+  --sombra:0 1px 2px rgba(60,50,30,.07),0 8px 24px rgba(60,50,30,.07);
+}
+html[data-tema="noturno"]{
+  color-scheme:dark;
+  --papel:#0E1926; --carta:#152536; --linha:#27384C; --hover:#1D3044;
+  --azul:#E4EDF6; --azul-claro:#6FA3D0; --teal:#46B4C2;
+  --laranja:#F26E24; --ambar:#F2A93B; --verde:#4CC272; --vermelho:#F05D68;
+  --cinza:#91A3B8; --texto-suave:#B9C7D6;
+  --marca:#6FA3D0; --marca-texto:#0E1926;
+  --estado-fundo:#1C3049; --estado-hover:#24405E;
+  --sel-fundo:#4A2A16; --contrib-fundo:#133B41;
+  --arco:#4A5D74; --hist:#4E6A88; --chip:#21344A;
+  --premio-fundo:#17402A; --premio-texto:#7ADE9C;
+  --ok-fundo:#12331F; --ok-borda:#2C5B3C;
+  --aviso-err:#3A1A1E; --aviso-ok:#14301D; --aviso-info:#33270F;
+  --heat-pos:111,163,208; --heat-neg:240,93,104; --heat-texto-forte:#0E1926;
+  --sombra:0 1px 2px rgba(0,0,0,.35),0 10px 28px rgba(0,0,0,.35);
+}
+html[data-tema="marte"]{
+  color-scheme:dark;
+  --papel:#171010; --carta:#221715; --linha:#3C2A24; --hover:#2C1E1A;
+  --azul:#F4E9E1; --azul-claro:#C4703F; --teal:#4FB3A6;
+  --laranja:#FF7A33; --ambar:#F2A93B; --verde:#58C27A; --vermelho:#F0616D;
+  --cinza:#B29A8C; --texto-suave:#D6C4B8;
+  --marca:#C4703F; --marca-texto:#171010;
+  --estado-fundo:#2E211C; --estado-hover:#3A2A23;
+  --sel-fundo:#4A2410; --contrib-fundo:#1E3A36;
+  --arco:#6B5347; --hist:#8A6A55; --chip:#33241E;
+  --premio-fundo:#23402B; --premio-texto:#86DFA0;
+  --ok-fundo:#1D3524; --ok-borda:#3D5C43;
+  --aviso-err:#401E22; --aviso-ok:#1B3322; --aviso-info:#3A2A10;
+  --heat-pos:196,112,63; --heat-neg:240,97,109; --heat-texto-forte:#171010;
+  --sombra:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.4);
+}
+
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
 body{
@@ -26,14 +84,46 @@ body{
 .wrap{max-width:1180px;margin:0 auto;padding:26px 20px 60px}
 
 /* ---------- cabeçalho ---------- */
+.topo{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;flex-wrap:wrap}
 .eyebrow{font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--laranja);margin:0 0 6px}
 h1{font-size:clamp(26px,3.4vw,38px);font-weight:700;letter-spacing:-.02em;margin:0 0 6px;line-height:1.12}
 .dek{margin:0;max-width:70ch;color:var(--cinza);font-size:15.5px}
 .regua{height:3px;width:56px;background:var(--laranja);border-radius:2px;margin:16px 0 22px}
+.temas{display:flex;gap:8px;align-items:center;padding-top:4px}
+.temas .rot{font-size:10.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--cinza);margin-right:2px}
+.tema-btn{width:26px;height:26px;border-radius:50%;border:2px solid var(--linha);padding:0;cursor:pointer}
+.tema-btn:hover{border-color:var(--cinza)}
+.tema-btn.ativo{outline:2px solid var(--laranja);outline-offset:2px}
+.tema-btn:focus-visible{outline:2px solid var(--azul-claro);outline-offset:2px}
+
+/* símbolos matemáticos dentro de rótulos em caixa alta */
+.simb{text-transform:none;font-style:italic;font-weight:600}
+
+/* ---------- botão de ajuda "?" e popover ---------- */
+.qbtn{
+  width:18px;height:18px;border-radius:50%;padding:0;font-size:11px;line-height:1;
+  font-family:"Fira Mono",ui-monospace,monospace;color:var(--cinza);
+  border:1px solid var(--arco);background:var(--carta);
+  display:inline-flex;align-items:center;justify-content:center;
+  vertical-align:middle;margin-left:6px;cursor:help;text-transform:none;flex:0 0 auto;
+}
+.qbtn:hover{color:var(--laranja);border-color:var(--laranja);background:var(--carta)}
+.qbtn:focus-visible{outline:2px solid var(--azul-claro);outline-offset:2px}
+#pop{
+  position:fixed;z-index:70;max-width:min(370px,calc(100vw - 24px));
+  background:var(--carta);border:1px solid var(--linha);border-radius:10px;
+  box-shadow:var(--sombra),0 12px 36px rgba(0,0,0,.22);padding:13px 15px 14px;
+}
+#pop h4{margin:0 0 7px;font-size:13.5px;font-weight:600;display:flex;justify-content:space-between;gap:12px;align-items:center}
+#pop .pop-x{width:22px;height:22px;border-radius:6px;padding:0;font-size:13px;line-height:1;flex:0 0 auto}
+#pop .pop-corpo{font-size:13px;line-height:1.58;color:var(--texto-suave)}
+#pop .pop-corpo b{color:var(--azul)}
+#pop .pop-corpo .vd{color:var(--verde);font-weight:600}
+#pop .pop-corpo .tl{color:var(--teal);font-weight:600}
 
 /* ---------- barra de controles ---------- */
 .controles{
-  background:var(--carta);border:1px solid var(--linha);border-radius:var(--r);
+  background:var(--carta);border:1px solid var(--linha);border-radius:10px;
   box-shadow:var(--sombra);padding:14px 18px;margin-bottom:18px;
   display:flex;flex-wrap:wrap;gap:20px;align-items:flex-end;
   position:sticky;top:10px;z-index:20;
@@ -43,8 +133,9 @@ h1{font-size:clamp(26px,3.4vw,38px);font-weight:700;letter-spacing:-.02em;margin
 .campo{display:flex;flex-direction:column;gap:5px;min-width:170px;flex:1 1 170px}
 .campo label{
   font-size:10.5px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;
-  color:var(--cinza);display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+  color:var(--cinza);display:flex;justify-content:space-between;align-items:center;gap:10px;
 }
+.campo label .ltx{display:inline-flex;align-items:center}
 .campo label b{
   font-family:"Fira Mono",ui-monospace,monospace;font-size:14px;font-weight:500;
   color:var(--azul);font-variant-numeric:tabular-nums;letter-spacing:0;
@@ -54,56 +145,87 @@ input[type=range]::-webkit-slider-runnable-track{height:4px;background:var(--lin
 input[type=range]::-moz-range-track{height:4px;background:var(--linha);border-radius:2px}
 input[type=range]::-webkit-slider-thumb{
   -webkit-appearance:none;width:16px;height:16px;border-radius:50%;
-  background:var(--laranja);border:2px solid #fff;box-shadow:0 0 0 1px var(--laranja);margin-top:-6px;
+  background:var(--laranja);border:2px solid var(--carta);box-shadow:0 0 0 1px var(--laranja);margin-top:-6px;
 }
 input[type=range]::-moz-range-thumb{
   width:14px;height:14px;border-radius:50%;background:var(--laranja);
-  border:2px solid #fff;box-shadow:0 0 0 1px var(--laranja);
+  border:2px solid var(--carta);box-shadow:0 0 0 1px var(--laranja);
 }
 input[type=range]:focus-visible{outline:2px solid var(--azul-claro);outline-offset:4px;border-radius:4px}
 
 .seg{display:flex;border:1px solid var(--linha);border-radius:8px;overflow:hidden}
 .seg button{border:0;border-radius:0;padding:8px 13px;font-size:13px;background:var(--carta)}
-.seg button.ativo{background:var(--azul);color:#fff}
-.seg button:not(.ativo):hover{background:#EEF2F6}
+.seg button.ativo{background:var(--marca);color:var(--marca-texto)}
+.seg button:not(.ativo):hover{background:var(--hover)}
 
 .botoes{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 button{
   font-family:inherit;font-size:13.5px;font-weight:500;padding:8px 15px;border-radius:7px;
   border:1px solid var(--linha);background:var(--carta);color:var(--azul);cursor:pointer;
-  transition:background .12s,border-color .12s,color .12s;
+  transition:background .12s,border-color .12s,color .12s,filter .12s;
 }
-button:hover{background:#EEF2F6;border-color:#C6D0DA}
+button:hover{background:var(--hover);border-color:var(--arco)}
 button:focus-visible{outline:2px solid var(--azul-claro);outline-offset:2px}
 button.primario{background:var(--laranja);border-color:var(--laranja);color:#fff}
-button.primario:hover{background:#CF4F0A;border-color:#CF4F0A}
+button.primario:hover{filter:brightness(.92);background:var(--laranja)}
 button:disabled{opacity:.45;cursor:not-allowed}
 .contador{font-family:"Fira Mono",monospace;font-size:12.5px;color:var(--cinza);font-variant-numeric:tabular-nums;white-space:nowrap;line-height:1.7}
 .contador b{color:var(--azul);font-weight:700;font-size:14.5px}
 
 /* ---------- cartões ---------- */
 .grade{display:grid;grid-template-columns:repeat(12,1fr);gap:18px}
-.carta{background:var(--carta);border:1px solid var(--linha);border-radius:var(--r);box-shadow:var(--sombra);padding:18px 20px;min-width:0}
-.carta > h2{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--cinza);margin:0 0 2px}
+.carta{background:var(--carta);border:1px solid var(--linha);border-radius:10px;box-shadow:var(--sombra);padding:18px 20px;min-width:0}
+.carta > h2{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--cinza);margin:0 0 2px;display:flex;align-items:center}
 .carta > .sub{margin:0 0 14px;font-size:13px;color:var(--cinza)}
 .span12{grid-column:span 12}.span7{grid-column:span 7}.span5{grid-column:span 5}
+
+/* ---------- abas ---------- */
+.abas-wrap{margin:26px 0 18px}
+.abas{display:flex;gap:2px;flex-wrap:wrap;border-bottom:2px solid var(--linha)}
+.aba{
+  border:0;background:none;border-radius:8px 8px 0 0;
+  padding:10px 15px 12px;position:relative;display:flex;align-items:center;gap:9px;
+  color:var(--cinza);font-size:14px;font-weight:500;
+}
+.aba:hover{background:var(--hover);color:var(--azul)}
+.aba .aba-num{
+  font-family:"Fira Mono",monospace;font-size:11px;font-weight:700;
+  width:20px;height:20px;border-radius:50%;display:inline-flex;
+  align-items:center;justify-content:center;
+  background:var(--hover);color:var(--cinza);flex:0 0 auto;
+}
+.aba[aria-selected="true"]{color:var(--azul);font-weight:600}
+.aba[aria-selected="true"] .aba-num{background:var(--laranja);color:#fff}
+.aba[aria-selected="true"]::after{
+  content:"";position:absolute;left:10px;right:10px;bottom:-2px;height:3px;
+  background:var(--laranja);border-radius:2px;
+}
+.aba .aba-badge{
+  font-family:"Fira Mono",monospace;font-size:10.5px;font-variant-numeric:tabular-nums;
+  background:var(--papel);border:1px solid var(--linha);border-radius:9px;
+  padding:1px 7px;color:var(--cinza);
+}
+.aba .aba-badge:empty{display:none}
+.aba .aba-badge.venceu{background:var(--ok-fundo);border-color:var(--ok-borda);color:var(--verde);font-weight:700}
+.lede{margin:14px 2px 16px;font-size:14px;color:var(--cinza);max-width:86ch}
+[role="tabpanel"][hidden]{display:none}
 
 /* ---------- diagrama ---------- */
 .palco{width:100%;overflow-x:auto;overflow-y:hidden}
 svg{display:block;width:100%;height:auto}
 #chain{min-width:720px}
-.st-circulo{fill:#EAF0F6;stroke:var(--azul);stroke-width:2.2;transition:fill .15s,stroke .15s}
+.st-circulo{fill:var(--estado-fundo);stroke:var(--azul);stroke-width:2.2;transition:fill .15s,stroke .15s}
 .st-alvo{cursor:pointer}
 .st-alvo:focus-visible .st-circulo{stroke:var(--azul-claro);stroke-width:3.4}
-.st-alvo:hover .st-circulo{fill:#DDE7F1}
-.sel .st-circulo{fill:#FDE3D2;stroke:var(--laranja);stroke-width:3}
-.contrib .st-circulo{stroke:var(--teal);stroke-width:3;fill:#DFF0F1}
+.st-alvo:hover .st-circulo{fill:var(--estado-hover)}
+.sel .st-circulo{fill:var(--sel-fundo);stroke:var(--laranja);stroke-width:3}
+.contrib .st-circulo{stroke:var(--teal);stroke-width:3;fill:var(--contrib-fundo)}
 .st-rot{font-family:"Fira Mono",monospace;font-size:13px;fill:var(--azul);font-weight:500}
 .barra{fill:var(--azul-claro);transition:y .22s ease,height .22s ease,fill .15s}
 .barra.sel{fill:var(--laranja)}
 .alvo-linha{stroke:var(--cinza);stroke-width:1.6;stroke-dasharray:4 3}
 .val-rot{font-family:"Fira Mono",monospace;font-size:12.5px;fill:var(--azul);font-weight:500;font-variant-numeric:tabular-nums}
-.arco{fill:none;stroke:#B9C4D0;stroke-width:1.5}
+.arco{fill:none;stroke:var(--arco);stroke-width:1.5}
 .arco.aceso{stroke:var(--teal);stroke-width:2.6}
 .p-rot{font-family:"Fira Mono",monospace;font-size:10.5px;fill:var(--cinza)}
 .p-rot.aceso{fill:var(--teal);font-weight:700}
@@ -111,8 +233,8 @@ svg{display:block;width:100%;height:auto}
 .eixo{stroke:var(--linha);stroke-width:1}
 .eixo-rot{font-family:"Fira Mono",monospace;font-size:10px;fill:var(--cinza)}
 .pil{cursor:pointer}
-.pil rect{fill:#fff;stroke:var(--azul-claro);stroke-width:1.6;transition:fill .12s}
-.pil:hover rect{fill:#EEF2F6}
+.pil rect{fill:var(--carta);stroke:var(--azul-claro);stroke-width:1.6;transition:fill .12s}
+.pil:hover rect{fill:var(--hover)}
 .pil:focus-visible rect{stroke:var(--laranja);stroke-width:2.6}
 .pil text{font-size:13px;fill:var(--azul);font-weight:700}
 .legenda{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--cinza);margin-top:6px;padding-top:12px;border-top:1px solid var(--linha)}
@@ -131,9 +253,9 @@ svg{display:block;width:100%;height:auto}
 button.mini{padding:3px 11px;font-size:15px;line-height:1.2;font-family:"Fira Mono",monospace}
 
 /* ---------- avisos ---------- */
-.aviso{border-left:3px solid var(--vermelho);background:#FDF2F2;padding:9px 13px;border-radius:0 6px 6px 0;font-size:13px;margin-top:14px}
-.aviso.ok{border-left-color:var(--verde);background:#F1F9F3}
-.aviso.info{border-left-color:var(--ambar);background:#FFF8EE}
+.aviso{border-left:3px solid var(--vermelho);background:var(--aviso-err);padding:9px 13px;border-radius:0 6px 6px 0;font-size:13px;margin-top:14px}
+.aviso.ok{border-left-color:var(--verde);background:var(--aviso-ok)}
+.aviso.info{border-left-color:var(--ambar);background:var(--aviso-info)}
 .oculto{display:none}
 
 /* ---------- heatmap ---------- */
@@ -145,13 +267,12 @@ button.mini{padding:3px 11px;font-size:15px;line-height:1.2;font-family:"Fira Mo
 
 /* ---------- matrizes ---------- */
 details.mat{border:1px solid var(--linha);border-radius:8px;padding:0}
-details.mat summary{cursor:pointer;padding:10px 14px;font-size:13px;font-weight:500;list-style-position:inside}
+details.mat summary{cursor:pointer;padding:10px 14px;font-size:13px;font-weight:500;list-style-position:inside;display:flex;align-items:center;flex-wrap:wrap}
 details.mat[open] summary{border-bottom:1px solid var(--linha)}
 details.mat pre{
   margin:0;padding:12px 14px;overflow-x:auto;font-family:"Fira Mono",monospace;
   font-size:12px;line-height:1.65;color:var(--azul);font-variant-numeric:tabular-nums;
 }
-details.mat pre b{color:var(--laranja)}
 
 /* ---------- episódios ---------- */
 .ep-grade{display:grid;grid-template-columns:1.15fr .85fr;gap:20px}
@@ -162,7 +283,7 @@ details.mat pre b{color:var(--laranja)}
   color:var(--cinza);transition:background .15s,border-color .15s;
 }
 .pcel b{display:block;color:var(--azul);font-size:12.5px}
-.pcel.flash{background:#DFF3E4;border-color:var(--verde)}
+.pcel.flash{background:var(--premio-fundo);border-color:var(--verde)}
 .rover-token{
   position:absolute;top:-4px;width:40px;height:26px;pointer-events:none;
   transform:translateX(-50%);transition:left .16s ease;
@@ -178,8 +299,8 @@ details.mat pre b{color:var(--laranja)}
   border-radius:6px;border:1px solid var(--linha);margin-top:10px;
 }
 .trilha .vazio{color:var(--cinza);font-family:"Fira Sans",sans-serif}
-.passo{padding:2px 7px;border-radius:4px;background:#E7EDF3;color:var(--azul);white-space:nowrap}
-.passo.premio{background:#DFF3E4;color:#1E6B33;font-weight:700}
+.passo{padding:2px 7px;border-radius:4px;background:var(--chip);color:var(--azul);white-space:nowrap}
+.passo.premio{background:var(--premio-fundo);color:var(--premio-texto);font-weight:700}
 .passo.reticencias{background:none;color:var(--cinza)}
 .placar{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0 4px}
 .metrica{background:var(--papel);border-radius:7px;padding:9px 11px;border:1px solid var(--linha)}
@@ -193,6 +314,15 @@ details.mat pre b{color:var(--laranja)}
 .des-status.venceu{color:var(--verde);font-weight:600}
 .des-metricas{display:flex;gap:10px;flex-wrap:wrap}
 .des-metricas .metrica{min-width:130px}
+.pi-linha{display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 14px}
+.pi-est{display:flex;flex-direction:column;align-items:center;gap:4px;
+  font-family:"Fira Mono",monospace;font-size:11px;color:var(--cinza)}
+.pi-seta{
+  width:40px;height:32px;border-radius:16px;font-weight:700;font-size:14px;
+  border:1.6px solid var(--azul-claro);padding:0;
+}
+.pi-seta:hover{border-color:var(--laranja);color:var(--laranja);background:var(--carta)}
+.pi-nota{font-size:12px;color:var(--cinza);margin:0 0 8px}
 
 /* ---------- roteiro ---------- */
 .missao{
@@ -200,13 +330,11 @@ details.mat pre b{color:var(--laranja)}
   padding:14px 4px;border-bottom:1px solid var(--linha);
 }
 .missao:last-child{border-bottom:0}
-.missao .num{
-  font-family:"Fira Mono",monospace;font-weight:700;color:var(--laranja);
-  font-size:14px;padding-top:2px;
-}
+.missao .num{font-family:"Fira Mono",monospace;font-weight:700;color:var(--laranja);font-size:14px;padding-top:2px}
 .missao h3{margin:0 0 3px;font-size:14.5px;font-weight:600}
-.missao p{margin:0 0 6px;font-size:13.5px;color:#33465C}
-.missao details{font-size:13px;color:#33465C}
+.missao p{margin:0 0 6px;font-size:13.5px;color:var(--texto-suave)}
+.missao .aba-dest{font-size:11px;color:var(--cinza);text-transform:uppercase;letter-spacing:.09em;font-weight:600}
+.missao details{font-size:13px;color:var(--texto-suave)}
 .missao summary{cursor:pointer;color:var(--teal);font-weight:500;font-size:12.5px}
 .missao details[open] summary{margin-bottom:4px}
 
@@ -225,37 +353,68 @@ kbd{
   .placar{grid-template-columns:repeat(2,1fr)}
   .des-grade{grid-template-columns:1fr}
   .controles{position:static}
+  .aba{padding:9px 10px 11px;font-size:13px}
+  .aba .aba-tit{display:none}
+  .aba[aria-selected="true"] .aba-tit{display:inline}
 }
 @media (prefers-reduced-motion:reduce){
   *{transition:none !important;animation:none !important}
+  html{scroll-behavior:auto}
 }
 </style>
 </head>
 <body>
 <div class="wrap">
 
-  <p class="eyebrow">UFU · Aprendizagem por Reforço · Aula 1</p>
-  <h1>Mars Rover — laboratório de processos de Markov</h1>
-  <p class="dek">Sete posições, transições ruidosas, recompensa em duas pontas. Rode a iteração de
-     Bellman, assista ao valor se propagar, sorteie episódios — e, no modo com política, tente
-     vencer o planejador: encontre a política ótima antes de revelá-la.</p>
+  <div class="topo">
+    <div>
+      <p class="eyebrow">UFU · Aprendizagem por Reforço · Aula 1</p>
+      <h1>Mars Rover — laboratório de processos de Markov</h1>
+      <p class="dek">Sete posições, transições ruidosas, recompensa em duas pontas. A bancada abaixo
+         é permanente; as abas contam a história da aula: entenda o modelo, planeje com Bellman,
+         estime por amostragem — e depois tente vencer o planejador.</p>
+    </div>
+    <div class="temas" role="group" aria-label="Tema de cores">
+      <span class="rot">Tema</span>
+      <button class="tema-btn ativo" data-tema="diurno" title="Diurno (claro)"
+        aria-label="Tema diurno, claro"
+        style="background:linear-gradient(135deg,#F4F6F8 55%,#E8590C 55%)"></button>
+      <button class="tema-btn" data-tema="areia" title="Areia (claro quente)"
+        aria-label="Tema areia, claro quente"
+        style="background:linear-gradient(135deg,#F3EEE3 55%,#D9530B 55%)"></button>
+      <button class="tema-btn" data-tema="noturno" title="Noturno (escuro)"
+        aria-label="Tema noturno, escuro"
+        style="background:linear-gradient(135deg,#0E1926 55%,#F26E24 55%)"></button>
+      <button class="tema-btn" data-tema="marte" title="Marte (escuro quente)"
+        aria-label="Tema marte, escuro quente"
+        style="background:linear-gradient(135deg,#171010 55%,#C4703F 55%)"></button>
+    </div>
+  </div>
   <div class="regua"></div>
 
-  <!-- ================= controles ================= -->
+  <!-- ================= controles (permanentes) ================= -->
   <div class="controles" id="controles">
     <div class="campo" style="flex:0 0 auto;min-width:0">
-      <label>Modo</label>
+      <label><span class="ltx">Modo <button class="qbtn" data-ajuda="modo"
+        aria-label="Explicação: modos MRP e MDP">?</button></span></label>
       <div class="seg" role="group" aria-label="Modo do simulador">
         <button id="seg-mrp" class="ativo">Sem ações (MRP)</button>
         <button id="seg-mdp">Com política (MDP)</button>
       </div>
     </div>
     <div class="campo">
-      <label for="gama">Fator de desconto γ <b id="gama-val">0,90</b></label>
+      <label for="gama"><span class="ltx">Fator de desconto <i class="simb">γ</i>
+        <button class="qbtn" data-ajuda="gama"
+          aria-label="Explicação: fator de desconto">?</button></span>
+        <b id="gama-val">0,90</b></label>
       <input type="range" id="gama" min="0" max="1" step="0.01" value="0.9">
     </div>
     <div class="campo">
-      <label for="pmov"><span id="pmov-rot">Probabilidade de mover p</span> <b id="pmov-val">0,40</b></label>
+      <label for="pmov"><span class="ltx"><span id="pmov-rot">Probabilidade de mover
+        <i class="simb">p</i></span>
+        <button class="qbtn" data-ajuda="pq"
+          aria-label="Explicação: parâmetro da dinâmica">?</button></span>
+        <b id="pmov-val">0,40</b></label>
       <input type="range" id="pmov" min="0" max="0.5" step="0.02" value="0.4">
     </div>
     <div class="botoes">
@@ -264,89 +423,134 @@ kbd{
       <button id="btn-conv">Convergir já</button>
       <button id="btn-zerar">Zerar</button>
       <span class="contador">iteração <b id="k-val">0</b><br>Δ = <b id="delta-val">—</b></span>
+      <button class="qbtn" data-ajuda="exec"
+        aria-label="Explicação: botões de execução, k e delta">?</button>
     </div>
   </div>
 
-  <div class="grade">
+  <!-- ================= bancada: cadeia (permanente) ================= -->
+  <div class="carta span12">
+    <h2>Cadeia e função valor <button class="qbtn" data-ajuda="bancada"
+      aria-label="Explicação: cadeia e função valor">?</button></h2>
+    <p class="sub" id="chain-sub">A coluna sobre cada estado é V<sub>k</sub>(s); o traço pontilhado
+       é o valor exato. Clique em um estado para inspecioná-lo.</p>
+    <div class="palco">
+      <svg id="chain" viewBox="0 0 1000 372" role="img"
+           aria-label="Cadeia de sete estados com colunas de valor e transições"></svg>
+    </div>
+    <div class="legenda">
+      <span><i class="chip" style="background:var(--azul-claro)"></i> V<sub>k</sub>(s)</span>
+      <span><i class="chip" style="background:var(--laranja)"></i> estado selecionado</span>
+      <span><i class="chip tracejado"></i> <span id="leg-exato">V*(s) exato</span></span>
+      <span><i class="chip" style="background:var(--teal)"></i> transições que alimentam o backup</span>
+      <span id="leg-pol" class="oculto">▶◀ clique nas setas para trocar a ação</span>
+    </div>
+    <div class="aviso info oculto" id="aviso-gama"></div>
+  </div>
 
-    <!-- ================= diagrama ================= -->
+  <!-- ================= abas ================= -->
+  <div class="abas-wrap">
+    <div class="abas" role="tablist" aria-label="Seções do laboratório">
+      <button class="aba" role="tab" id="tab-modelo" aria-controls="painel-modelo">
+        <span class="aba-num">1</span><span class="aba-tit">Entenda o modelo</span>
+      </button>
+      <button class="aba" role="tab" id="tab-iteracao" aria-controls="painel-iteracao">
+        <span class="aba-num">2</span><span class="aba-tit">Iteração de valor</span>
+        <span class="aba-badge" id="badge-iteracao"></span>
+      </button>
+      <button class="aba" role="tab" id="tab-montecarlo" aria-controls="painel-montecarlo">
+        <span class="aba-num">3</span><span class="aba-tit">Monte Carlo</span>
+        <span class="aba-badge" id="badge-montecarlo"></span>
+      </button>
+      <button class="aba" role="tab" id="tab-desafio" aria-controls="painel-desafio">
+        <span class="aba-num">4</span><span class="aba-tit">Desafio da política</span>
+        <span class="aba-badge" id="badge-desafio"></span>
+      </button>
+      <button class="aba" role="tab" id="tab-roteiro" aria-controls="painel-roteiro">
+        <span class="aba-num">5</span><span class="aba-tit">Roteiro</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ============ aba 1: entenda o modelo ============ -->
+  <section role="tabpanel" id="painel-modelo" aria-labelledby="tab-modelo" hidden>
+    <p class="lede">De onde vem cada número: a recursão de Bellman aplicada ao estado selecionado
+       na bancada, e o sistema linear que ela esconde. Edite as recompensas e veja tudo reagir.</p>
+    <div class="grade">
+      <div class="carta span7">
+        <h2>Equação de Bellman, com os números de agora <button class="qbtn"
+          data-ajuda="bellman" aria-label="Explicação: equação de Bellman">?</button></h2>
+        <p class="sub" id="bell-sub">Backup do estado selecionado.</p>
+        <div class="eq" id="bell-eq"></div>
+        <div class="passo-rec">
+          <span>Recompensa <span id="rec-estado">R(s₄)</span></span>
+          <button class="mini" id="rec-menos" aria-label="Diminuir recompensa">−</button>
+          <b id="rec-val">0</b>
+          <button class="mini" id="rec-mais" aria-label="Aumentar recompensa">+</button>
+          <button id="rec-reset">Restaurar +1 / +10</button>
+          <button class="qbtn" data-ajuda="recompensa"
+            aria-label="Explicação: editar recompensas">?</button>
+        </div>
+      </div>
+      <div class="carta span5">
+        <h2>Por dentro: forma matricial <button class="qbtn" data-ajuda="matricial"
+          aria-label="Explicação: forma matricial">?</button></h2>
+        <p class="sub">O sistema V = R + γPV que a solução exata resolve
+           com V = (I − γP)<sup>−1</sup>R.</p>
+        <details class="mat">
+          <summary>Matriz de transição P<span id="mat-p-rot"></span>
+            <button class="qbtn" data-ajuda="matP"
+              aria-label="Explicação: matriz de transição">?</button></summary>
+          <pre id="mat-p"></pre>
+        </details>
+        <div style="height:10px"></div>
+        <details class="mat">
+          <summary>Vetores R e V exato
+            <button class="qbtn" data-ajuda="vetores"
+              aria-label="Explicação: vetores R e V">?</button></summary>
+          <pre id="mat-v"></pre>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ aba 2: iteração de valor ============ -->
+  <section role="tabpanel" id="painel-iteracao" aria-labelledby="tab-iteracao" hidden>
+    <p class="lede">Programação dinâmica: repita o backup até o ponto fixo. Aqui você mede a
+       velocidade da convergência — e assiste ao valor se espalhar pela cadeia, um vizinho por
+       iteração. Use “Um passo”, “Rodar” ou “Convergir já” na barra acima.</p>
+    <div class="grade">
+      <div class="carta span5">
+        <h2>Velocidade de convergência <button class="qbtn" data-ajuda="converg"
+          aria-label="Explicação: gráfico de convergência">?</button></h2>
+        <p class="sub">Erro máximo ‖V<sub>k</sub> − V<sup>exato</sup>‖<sub>∞</sub> em escala log.
+           A reta tracejada é o limite teórico γ<sup>k</sup>·erro₀.</p>
+        <div class="palco">
+          <svg id="grafico" viewBox="0 0 420 250" role="img"
+               aria-label="Erro máximo por iteração em escala logarítmica"></svg>
+        </div>
+        <div class="legenda">
+          <span><i class="chip" style="background:var(--laranja)"></i> erro observado</span>
+          <span><i class="chip tracejado"></i> γ<sup>k</sup>·erro₀</span>
+        </div>
+      </div>
+      <div class="carta span7">
+        <h2>Mapa de propagação do valor <button class="qbtn" data-ajuda="heat"
+          aria-label="Explicação: mapa de propagação">?</button></h2>
+        <p class="sub">Cada linha é uma iteração; cada célula, V<sub>k</sub>(s). Observe o valor
+           escorrer das recompensas para os vizinhos, um estado por backup.</p>
+        <div class="heat" id="heat"></div>
+        <p class="heat-nota" id="heat-nota"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ aba 3: Monte Carlo ============ -->
+  <section role="tabpanel" id="painel-montecarlo" aria-labelledby="tab-montecarlo" hidden>
+    <p class="lede">O outro caminho: estimar V(s) sem conhecer a matriz P, apenas sorteando
+       trajetórias e somando recompensas descontadas. Preciso na média, ruidoso em cada amostra —
+       é assim que os métodos sem modelo trabalham.</p>
     <div class="carta span12">
-      <h2>Cadeia e função valor</h2>
-      <p class="sub" id="chain-sub">A coluna sobre cada estado é V<sub>k</sub>(s); o traço pontilhado
-         é o valor exato. Clique em um estado para inspecioná-lo.</p>
-      <div class="palco">
-        <svg id="chain" viewBox="0 0 1000 372" role="img"
-             aria-label="Cadeia de sete estados com colunas de valor e transições"></svg>
-      </div>
-      <div class="legenda">
-        <span><i class="chip" style="background:var(--azul-claro)"></i> V<sub>k</sub>(s)</span>
-        <span><i class="chip" style="background:var(--laranja)"></i> estado selecionado</span>
-        <span><i class="chip tracejado"></i> <span id="leg-exato">V*(s) exato</span></span>
-        <span><i class="chip" style="background:var(--teal)"></i> transições que alimentam o backup</span>
-        <span id="leg-pol" class="oculto">▶◀ clique nas setas para trocar a ação</span>
-      </div>
-    </div>
-
-    <!-- ================= Bellman ================= -->
-    <div class="carta span7">
-      <h2>Equação de Bellman, com os números de agora</h2>
-      <p class="sub" id="bell-sub">Backup do estado selecionado.</p>
-      <div class="eq" id="bell-eq"></div>
-      <div class="passo-rec">
-        <span>Recompensa <span id="rec-estado">R(s₄)</span></span>
-        <button class="mini" id="rec-menos" aria-label="Diminuir recompensa">−</button>
-        <b id="rec-val">0</b>
-        <button class="mini" id="rec-mais" aria-label="Aumentar recompensa">+</button>
-        <button id="rec-reset">Restaurar +1 / +10</button>
-      </div>
-      <div class="aviso info oculto" id="aviso-gama"></div>
-    </div>
-
-    <!-- ================= contração ================= -->
-    <div class="carta span5">
-      <h2>Velocidade de convergência</h2>
-      <p class="sub">Erro máximo ‖V<sub>k</sub> − V<sup>exato</sup>‖<sub>∞</sub> em escala log.
-         A reta tracejada é o limite teórico γ<sup>k</sup>·erro₀.</p>
-      <div class="palco">
-        <svg id="grafico" viewBox="0 0 420 250" role="img"
-             aria-label="Erro máximo por iteração em escala logarítmica"></svg>
-      </div>
-      <div class="legenda">
-        <span><i class="chip" style="background:var(--laranja)"></i> erro observado</span>
-        <span><i class="chip tracejado"></i> γ<sup>k</sup>·erro₀</span>
-      </div>
-    </div>
-
-    <!-- ================= propagação ================= -->
-    <div class="carta span7">
-      <h2>Mapa de propagação do valor</h2>
-      <p class="sub">Cada linha é uma iteração; cada célula, V<sub>k</sub>(s). Observe o valor
-         escorrer das recompensas para os vizinhos, um estado por backup.</p>
-      <div class="heat" id="heat"></div>
-      <p class="heat-nota" id="heat-nota"></p>
-    </div>
-
-    <!-- ================= matrizes ================= -->
-    <div class="carta span5">
-      <h2>Por dentro: forma matricial</h2>
-      <p class="sub">O sistema V = R + γPV que a solução exata resolve
-         com V = (I − γP)<sup>−1</sup>R.</p>
-      <details class="mat">
-        <summary>Matriz de transição P<span id="mat-p-rot"></span></summary>
-        <pre id="mat-p"></pre>
-      </details>
-      <div style="height:10px"></div>
-      <details class="mat">
-        <summary>Vetores R e V exato</summary>
-        <pre id="mat-v"></pre>
-      </details>
-    </div>
-
-    <!-- ================= episódios ================= -->
-    <div class="carta span12">
-      <h2>Amostrando episódios (Monte Carlo)</h2>
-      <p class="sub">Sem usar a matriz P para calcular nada: apenas sorteando trajetórias e somando
-         recompensas descontadas. É assim que os métodos sem modelo estimam valor.</p>
       <div class="ep-grade">
         <div>
           <div class="botoes" style="margin-bottom:10px">
@@ -355,6 +559,8 @@ kbd{
             <button id="btn-ep1000">Sortear 1000</button>
             <button id="btn-ep-zerar">Zerar amostras</button>
             <span class="contador">saindo de <b id="ep-origem">s₄</b></span>
+            <button class="qbtn" data-ajuda="mc"
+              aria-label="Explicação: amostragem de Monte Carlo">?</button>
           </div>
           <div class="pista" id="pista"></div>
           <div class="anim-leitura" id="anim-leitura">Clique em “Assistir 1 episódio” para ver o
@@ -368,8 +574,10 @@ kbd{
           </div>
         </div>
         <div>
-          <p class="sub" style="margin-bottom:6px">Distribuição dos retornos sorteados — o valor
-             exato é a <em>média</em> desta nuvem.</p>
+          <p class="sub" style="margin-bottom:6px;display:flex;align-items:center">Distribuição dos
+             retornos sorteados — o valor exato é a <em>&nbsp;média&nbsp;</em> desta nuvem.
+             <button class="qbtn" data-ajuda="hist"
+               aria-label="Explicação: histograma dos retornos">?</button></p>
           <svg id="hist" viewBox="0 0 430 240" role="img"
                aria-label="Histograma dos retornos amostrados"></svg>
           <div class="legenda" style="border-top:0;padding-top:4px">
@@ -379,26 +587,41 @@ kbd{
         </div>
       </div>
     </div>
+  </section>
 
-    <!-- ================= desafio ================= -->
-    <div class="carta span12" id="carta-desafio">
-      <h2>Desafio: vença o planejador</h2>
+  <!-- ============ aba 4: desafio ============ -->
+  <section role="tabpanel" id="painel-desafio" aria-labelledby="tab-desafio" hidden>
+    <p class="lede">Avaliação responde “quão boa é esta política”; controle pergunta “qual é a
+       melhor”. Monte a sua clicando nas setas abaixo (ou nas da bancada) — o simulador conhece
+       π* (enumerou as 2⁷ = 128 políticas), mas só revela quando você pedir.</p>
+    <div class="carta span12">
+      <h2>Vença o planejador <button class="qbtn" data-ajuda="desafio"
+        aria-label="Explicação: como funciona o desafio">?</button></h2>
       <div id="des-corpo"></div>
     </div>
+  </section>
 
-    <!-- ================= roteiro ================= -->
+  <!-- ============ aba 5: roteiro ============ -->
+  <section role="tabpanel" id="painel-roteiro" aria-labelledby="tab-roteiro" hidden>
+    <p class="lede">Seis investigações para conduzir em aula ou refazer em casa. “Preparar”
+       configura o laboratório e abre a aba certa; pense na pergunta antes de abrir a discussão.</p>
     <div class="carta span12">
-      <h2>Roteiro de experimentos</h2>
-      <p class="sub">Seis investigações guiadas. “Preparar” configura o laboratório; pense na
-         pergunta antes de abrir a discussão.</p>
       <div id="missoes"></div>
     </div>
-  </div>
+  </section>
 
   <footer>
     <span>Adaptado de CS234 (Emma Brunskill, Stanford) · Prof. Marcelo Keese Albertini · UFU</span>
-    <span>Atalhos: <kbd>→</kbd> um passo · <kbd>espaço</kbd> rodar/pausar · <kbd>R</kbd> zerar</span>
+    <span>Atalhos: <kbd>→</kbd> um passo · <kbd>espaço</kbd> rodar/pausar · <kbd>R</kbd> zerar ·
+          <kbd>1</kbd>–<kbd>5</kbd> abas · botões <kbd>?</kbd> explicam cada parte</span>
   </footer>
+</div>
+
+<!-- popover de ajuda (único, reutilizado) -->
+<div id="pop" hidden role="dialog" aria-labelledby="pop-tit">
+  <h4><span class="pop-tit" id="pop-tit"></span>
+      <button class="pop-x" aria-label="Fechar explicação">×</button></h4>
+  <div class="pop-corpo"></div>
 </div>
 
 <script>
@@ -411,13 +634,14 @@ const N = 7;
 const R_PADRAO = [1, 0, 0, 0, 0, 0, 10];
 const NOME_ACAO = { "1": "TentarDireita", "-1": "TentarEsquerda" };
 const movReduzido = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 
 const est = {
-  modo: "mrp",              // 'mrp' | 'mdp'
+  modo: "mrp",
   gama: 0.9,
-  pMRP: 0.4,                // prob. de mover para cada lado (MRP)
-  qMDP: 0.5,                // prob. de a ação tentada funcionar (MDP)
-  pi: [1, 1, 1, 1, 1, 1, 1],// +1 direita, −1 esquerda
+  pMRP: 0.4,
+  qMDP: 0.5,
+  pi: [1, 1, 1, 1, 1, 1, 1],
   R: R_PADRAO.slice(),
   V: new Array(N).fill(0),
   Vstar: null,
@@ -429,16 +653,13 @@ const est = {
   rodando: false,
   temporizador: null,
   divergiu: false,
-  otima: null,              // {score, pi} — melhor política possível (modo MDP)
-  melhor: null,             // {score, pi} — melhor que o usuário já construiu
+  otima: null,
+  melhor: null,
   revelou: false,
   ep: { n: 0, soma: 0, ultimoG: null, trilha: null, amostras: [], truncou: false },
   anim: { ativo: false, timer: null }
 };
 
-const paramAtivo = () => est.modo === "mrp" ? est.pMRP : est.qMDP;
-
-/* Cadeia simétrica (MRP): anda p para cada lado, fica com o resto. */
 function matrizMRP(p) {
   const P = Array.from({ length: N }, () => new Array(N).fill(0));
   for (let i = 0; i < N; i++) {
@@ -449,8 +670,6 @@ function matrizMRP(p) {
   }
   return P;
 }
-/* Cadeia induzida por uma política (MDP): a ação tentada funciona com
-   probabilidade q; caso contrário (ou contra a parede) o rover fica. */
 function matrizPolitica(pi, q) {
   const P = Array.from({ length: N }, () => new Array(N).fill(0));
   for (let i = 0; i < N; i++) {
@@ -463,7 +682,6 @@ function matrizPolitica(pi, q) {
 const matrizAtiva = () =>
   est.modo === "mrp" ? matrizMRP(est.pMRP) : matrizPolitica(est.pi, est.qMDP);
 
-/* (I − γP)V = R por eliminação de Gauss com pivotamento parcial. */
 function resolveExato(P, R, g) {
   if (g >= 0.9995) return null;
   const A = Array.from({ length: N }, (_, i) =>
@@ -482,7 +700,6 @@ function resolveExato(P, R, g) {
   return A.map((lin, i) => lin[N] / A[i][i]);
 }
 
-/* Melhor política determinística por enumeração (2^7 = 128 candidatas). */
 function politicaOtima() {
   let melhor = null;
   for (let m = 0; m < (1 << N); m++) {
@@ -544,6 +761,16 @@ function zerarIteracao() {
   }
 }
 
+/* política: inverter uma seta (usado pela bancada e pelo desafio) */
+function flipPi(i) {
+  est.pi[i] *= -1;
+  pausar();
+  recalcularExato();
+  zerarIteracao();
+  zerarEpisodios();
+  redesenhar();
+}
+
 /* ============================================================
    2. FORMATAÇÃO
    ============================================================ */
@@ -560,18 +787,233 @@ function supIndice(n) {
               5: "⁵", 6: "⁶", 7: "⁷", 8: "⁸", 9: "⁹" };
   return String(n).split("").map(c => m[c] || c).join("");
 }
+/* emoji de tesouro: 💰 para a maior recompensa positiva, 🪙 para as demais */
+function emojiRecompensa(i) {
+  const r = est.R[i];
+  if (r <= 0) return "";
+  const maxPos = Math.max(...est.R);
+  return r === maxPos ? "💰" : "🪙";
+}
 
 /* ============================================================
-   3. DIAGRAMA DA CADEIA
+   3. AJUDA — botões "?" e popover
+   ============================================================ */
+const AJUDAS = {
+  modo: { t: "Modos: MRP e MDP", c:
+    "<b>Sem ações (MRP)</b>: o rover deriva sozinho — a cadeia tem só estados, transições e " +
+    "recompensas. É o objeto da Aula 1, onde definimos retorno e função valor.<br><br>" +
+    "<b>Com política (MDP)</b>: cada estado ganha uma ação (◀ TentarEsquerda / ▶ TentarDireita) " +
+    "que você escolhe; a política π induz uma nova cadeia e o simulador passa a avaliar " +
+    "V<sup>π</sup>. É a ponte para a Aula 2 (avaliação e controle)." },
+  gama: { t: "Fator de desconto γ", c:
+    "γ ∈ [0, 1] diz quanto vale uma recompensa futura: algo recebido daqui a t passos entra no " +
+    "retorno multiplicado por γ<sup>t</sup>. <b>γ = 0</b> produz um agente míope (só o imediato " +
+    "importa); <b>γ perto de 1</b> valoriza o longo prazo. Ele também tem papel matemático: com " +
+    "γ &lt; 1 a soma infinita converge e o backup de Bellman é uma contração de fator γ — por " +
+    "isso γ alto também significa convergência mais lenta." },
+  pq: {
+    t: () => est.modo === "mrp" ? "Probabilidade de mover p" : "Confiabilidade da ação q",
+    c: () => est.modo === "mrp"
+      ? "A cada passo, o rover vai para o vizinho da esquerda com probabilidade p, para o da " +
+        "direita com p, e fica parado com 1 − 2p (nas bordas, o excedente vira permanência). " +
+        "Com <b>p = 0,40</b> a cadeia é exatamente a da aula; p = 0 congela o rover; p = 0,50 " +
+        "elimina a permanência nos estados internos."
+      : "Quando o rover tenta uma direção, o motor funciona com probabilidade q — e com 1 − q " +
+        "ele derrapa e fica onde está (tentar contra a parede também mantém a posição). " +
+        "<b>q = 0,50</b> reproduz o modelo estocástico do slide da aula. Repare que mudar q " +
+        "muda quais políticas são boas." },
+  exec: { t: "Executando a iteração", c:
+    "<b>Um passo</b> aplica um backup de Bellman em todos os estados (V<sub>k</sub> → " +
+    "V<sub>k+1</sub>). <b>Rodar</b> repete automaticamente; <b>Convergir já</b> itera até " +
+    "Δ &lt; 10⁻⁹; <b>Zerar</b> volta a V₀ = 0. O contador <b>k</b> conta as iterações e " +
+    "<b>Δ = ‖V<sub>k</sub> − V<sub>k−1</sub>‖∞</b> é a maior mudança da última iteração — o " +
+    "critério de parada usado na prática: quando Δ é pequeno, o erro verdadeiro também é " +
+    "(vale ‖V<sub>k</sub> − V<sup>exato</sup>‖ ≤ Δ·γ/(1 − γ))." },
+  bancada: { t: "Cadeia e função valor", c:
+    "A linha de círculos é o espaço de estados 𝒮 = {s₁, …, s₇}; as setas são as transições, " +
+    "com suas probabilidades (as em teal alimentam o backup do estado selecionado). A " +
+    "<b>coluna</b> sobre cada estado é a estimativa atual V<sub>k</sub>(s); o <b>traço " +
+    "pontilhado</b> marca o valor exato — as barras sobem até encostar nele. Clique num " +
+    "círculo para selecioná-lo: a aba “Entenda o modelo” mostra o backup daquele estado, e os " +
+    "episódios de Monte Carlo partem dele. 💰 e 🪙 marcam as recompensas positivas." },
+  bellman: { t: "Equação de Bellman", c:
+    "É a decomposição recursiva do valor: o que ganho <span class='vd'>agora</span> mais γ " +
+    "vezes a média do <span class='tl'>valor de onde posso parar</span>. O painel substitui os " +
+    "símbolos pelos números correntes: as probabilidades vêm da linha do estado na matriz P e " +
+    "os V(s′) são as barras atuais da bancada. O “resultado” é exatamente o V<sub>k+1</sub>(s) " +
+    "que o botão “Um passo” escreveria." },
+  recompensa: { t: "Editar recompensas", c:
+    "A recompensa <b>define</b> o problema: mude R e o valor exato, a política ótima e os " +
+    "episódios mudam juntos. Experimente pôr −5 no meio da cadeia (um “buraco”) ou zerar o +10 " +
+    "e ver o +1 dominar. 💰 marca a maior recompensa positiva da cadeia; 🪙, as demais." },
+  matricial: { t: "Forma matricial", c:
+    "Empilhando a equação de Bellman dos N estados obtém-se <b>V = R + γPV</b>, um sistema " +
+    "linear. Isolando: (I − γP)V = R, logo <b>V = (I − γP)⁻¹R</b>. Para γ &lt; 1 a matriz é " +
+    "invertível e a solução é única — é ela que desenha o traço pontilhado da bancada. O custo " +
+    "O(N³) da inversão é o que motiva o método iterativo, que custa O(N²) por passo." },
+  matP: { t: "Matriz de transição P", c:
+    "A entrada da linha i, coluna j é a probabilidade de ir do estado i para o j em um passo: " +
+    "p(s<sub>t+1</sub> = s<sub>j</sub> | s<sub>t</sub> = s<sub>i</sub>). Cada <b>linha é uma " +
+    "distribuição de probabilidade</b> — soma exatamente 1. No modo com política, esta é a " +
+    "matriz induzida por π: cada linha só tem a permanência e o alvo da ação escolhida." },
+  vetores: { t: "Vetores R e V", c:
+    "Com N estados finitos, a recompensa é um vetor de ℝ<sup>N</sup> — e o valor também. O V " +
+    "mostrado aqui é a solução exata do sistema linear; compare-o com as barras da bancada " +
+    "conforme a iteração avança." },
+  converg: { t: "Lendo o gráfico de convergência", c:
+    "O eixo vertical é o erro máximo entre a estimativa e o valor exato, ‖V<sub>k</sub> − " +
+    "V<sup>exato</sup>‖∞, em <b>escala logarítmica</b> — nela, decaimento geométrico vira " +
+    "reta. A reta tracejada é o limite teórico γ<sup>k</sup>·erro₀ garantido pela propriedade " +
+    "de contração; a curva laranja (o erro real) tem a mesma inclinação ou melhor. Mude γ e " +
+    "compare as inclinações." },
+  heat: { t: "Mapa de propagação", c:
+    "Cada linha do mapa é uma iteração; cada coluna, um estado. Como o backup só consulta " +
+    "vizinhos imediatos, a informação da recompensa viaja <b>um estado por iteração</b> — dá " +
+    "para ver o +10 de s₇ “escorrendo” para a esquerda linha após linha, cada vez mais " +
+    "atenuado por γ e pelas probabilidades de transição." },
+  mc: { t: "Amostragem de Monte Carlo", c:
+    "Aqui ninguém olha a matriz P: sorteamos trajetórias reais e somamos as recompensas " +
+    "descontadas, <b>G = r₀ + γr₁ + γ²r₂ + ⋯</b> (a soma é truncada quando γ<sup>t</sup> fica " +
+    "desprezível). Cada episódio dá um G diferente; o valor V(s) é a <b>média teórica</b> " +
+    "dessa variável aleatória — por isso a média amostral se aproxima do valor exato conforme " +
+    "n cresce." },
+  hist: { t: "Histograma dos retornos", c:
+    "A nuvem mostra como os retornos individuais variam: episódios que encostam cedo na " +
+    "recompensa grande rendem muito; os que vagam para o outro lado, pouco. A linha laranja é " +
+    "a média amostral e a tracejada, o valor exato — o erro entre elas cai na ordem de " +
+    "<b>1/√n</b>. Variância alta é o preço de estimar sem modelo." },
+  desafio: { t: "Como funciona o desafio", c:
+    "Você escolhe uma ação por estado (clicando nas setas do painel ou nas da bancada); o " +
+    "simulador avalia a política <b>exatamente</b> e dá a pontuação = média dos " +
+    "V<sup>π</sup>(s). Existem 2⁷ = 128 políticas determinísticas; o simulador resolveu todas " +
+    "e sabe qual é a ótima, mas só conta se você revelar. Dica: para cada estado, pergunte-se " +
+    "se a recompensa perto vale mais que a longe — a resposta depende de γ." }
+};
+
+const pop = document.getElementById("pop");
+let popOpener = null;
+function abrirAjuda(btn) {
+  const a = AJUDAS[btn.dataset.ajuda];
+  if (!a) return;
+  popOpener = btn;
+  document.getElementById("pop-tit").textContent = typeof a.t === "function" ? a.t() : a.t;
+  pop.querySelector(".pop-corpo").innerHTML = typeof a.c === "function" ? a.c() : a.c;
+  pop.hidden = false;
+  const r = btn.getBoundingClientRect(), pw = pop.offsetWidth, ph = pop.offsetHeight;
+  let x = Math.min(Math.max(8, r.left + r.width / 2 - pw / 2), window.innerWidth - pw - 8);
+  let y = r.bottom + 8;
+  if (y + ph > window.innerHeight - 8) y = Math.max(8, r.top - ph - 8);
+  pop.style.left = x + "px";
+  pop.style.top = y + "px";
+  pop.querySelector(".pop-x").focus({ preventScroll: true });
+}
+function fecharPop() {
+  if (pop.hidden) return;
+  pop.hidden = true;
+  if (popOpener) { popOpener.focus({ preventScroll: true }); popOpener = null; }
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest(".qbtn");
+  if (b) {
+    e.preventDefault();          // não ativa <label>/<summary> hospedeiros
+    e.stopPropagation();
+    if (popOpener === b && !pop.hidden) fecharPop(); else abrirAjuda(b);
+    return;
+  }
+  if (!e.target.closest("#pop")) fecharPop();
+});
+pop.querySelector(".pop-x").addEventListener("click", fecharPop);
+window.addEventListener("scroll", fecharPop, { passive: true });
+window.addEventListener("resize", fecharPop);
+
+/* ============================================================
+   4. SISTEMA DE ABAS
+   ============================================================ */
+const ABAS = ["modelo", "iteracao", "montecarlo", "desafio", "roteiro"];
+let abaAtiva = "modelo";
+
+function abrirAba(nome, atualizarHash = true) {
+  if (!ABAS.includes(nome)) nome = "modelo";
+  abaAtiva = nome;
+  for (const a of ABAS) {
+    const tab = document.getElementById("tab-" + a);
+    const painel = document.getElementById("painel-" + a);
+    const ativo = a === nome;
+    tab.setAttribute("aria-selected", ativo ? "true" : "false");
+    tab.tabIndex = ativo ? 0 : -1;
+    painel.hidden = !ativo;
+  }
+  if (nome === "desafio" && est.modo !== "mdp") aplicarConfig({ modo: "mdp" });
+  if (atualizarHash) history.replaceState(null, "", "#" + nome);
+}
+
+function montarAbas() {
+  const lista = document.querySelector(".abas");
+  ABAS.forEach(a => {
+    document.getElementById("tab-" + a).addEventListener("click", () => abrirAba(a));
+  });
+  lista.addEventListener("keydown", e => {
+    const idx = ABAS.indexOf(abaAtiva);
+    let alvo = null;
+    if (e.key === "ArrowRight") alvo = ABAS[(idx + 1) % ABAS.length];
+    if (e.key === "ArrowLeft") alvo = ABAS[(idx - 1 + ABAS.length) % ABAS.length];
+    if (e.key === "Home") alvo = ABAS[0];
+    if (e.key === "End") alvo = ABAS[ABAS.length - 1];
+    if (alvo) {
+      e.preventDefault();
+      abrirAba(alvo);
+      document.getElementById("tab-" + alvo).focus();
+    }
+  });
+  window.addEventListener("hashchange", () =>
+    abrirAba(location.hash.replace("#", "") || "modelo", false));
+}
+
+function atualizarBadges() {
+  document.getElementById("badge-iteracao").textContent = est.k > 0 ? "k=" + est.k : "";
+  document.getElementById("badge-montecarlo").textContent =
+    est.ep.n > 0 ? "n=" + est.ep.n : "";
+  const bd = document.getElementById("badge-desafio");
+  let venceu = false;
+  if (est.modo === "mdp" && est.Vstar && est.otima) {
+    const score = est.Vstar.reduce((a, b) => a + b, 0) / N;
+    venceu = Math.abs(score - est.otima.score) < 1e-9;
+  }
+  bd.textContent = venceu ? "★ ótima" : "";
+  bd.classList.toggle("venceu", venceu);
+}
+
+/* ============================================================
+   5. TEMAS
+   ============================================================ */
+function aplicarTema(nome) {
+  document.documentElement.dataset.tema = nome;
+  document.querySelectorAll(".tema-btn").forEach(b =>
+    b.classList.toggle("ativo", b.dataset.tema === nome));
+  redesenhar();   // recria marcadores de seta e cores do heatmap com o novo tema
+}
+document.querySelectorAll(".tema-btn").forEach(b =>
+  b.addEventListener("click", () => aplicarTema(b.dataset.tema)));
+
+/* ============================================================
+   6. DIAGRAMA DA CADEIA (bancada permanente)
    ============================================================ */
 const svgNS = "http://www.w3.org/2000/svg";
 const chain = document.getElementById("chain");
 const X0 = 78, DX = 141, YB = 250, H_MAX = 176, Y_TOPO = YB - H_MAX;
 const xs = i => X0 + i * DX;
 
+/* atributos fill/stroke com var(...) vão para style, garantindo suporte a temas */
 function el(tag, attrs, txt) {
   const n = document.createElementNS(svgNS, tag);
-  for (const a in attrs) n.setAttribute(a, attrs[a]);
+  let estilo = "";
+  for (const a in attrs) {
+    const v = attrs[a];
+    if ((a === "fill" || a === "stroke") && typeof v === "string" && v.includes("var(")) {
+      estilo += a + ":" + v + ";";
+    } else n.setAttribute(a, v);
+  }
+  if (estilo) n.setAttribute("style", estilo);
   if (txt !== undefined) n.textContent = txt;
   return n;
 }
@@ -581,7 +1023,6 @@ function marcador(id, cor) {
   mk.appendChild(el("path", { d: "M0 0 L8 4 L0 8 z", fill: cor }));
   return mk;
 }
-
 function escalaMax() {
   let vmax = 1;
   for (let i = 0; i < N; i++) {
@@ -595,8 +1036,8 @@ function desenharCadeia() {
   chain.textContent = "";
   chain.setAttribute("viewBox", `0 0 1000 ${est.modo === "mdp" ? 404 : 372}`);
   const defs = el("defs", {});
-  defs.appendChild(marcador("mseta", "#B9C4D0"));
-  defs.appendChild(marcador("mseta-aceso", "#18808D"));
+  defs.appendChild(marcador("mseta", css("--arco")));
+  defs.appendChild(marcador("mseta-aceso", css("--teal")));
   chain.appendChild(defs);
 
   const P = matrizAtiva(), sel = est.sel;
@@ -612,7 +1053,6 @@ function desenharCadeia() {
   chain.appendChild(el("text", { class: "eixo-rot", x: 24, y: Y_TOPO - 7 }, nf(vmax, 1)));
   chain.appendChild(el("text", { class: "eixo-rot", x: 24, y: YB + 14 }, "0"));
 
-  /* --- arcos direcionais a partir da matriz ativa --- */
   const arco = (d, aceso) => el("path", {
     class: "arco" + (aceso ? " aceso" : ""), d,
     "marker-end": aceso ? "url(#mseta-aceso)" : "url(#mseta)"
@@ -626,15 +1066,15 @@ function desenharCadeia() {
       const p = P[i][j];
       if (p <= 0.0001) continue;
       const aceso = i === sel;
-      if (j === i + 1) {            // faixa de cima: para a direita
+      if (j === i + 1) {
         const a = xs(i), b = xs(j), mid = (a + b) / 2;
         chain.appendChild(arco(`M ${a + 18} ${YB + 27} Q ${mid} ${YB + 47} ${b - 20} ${YB + 27}`, aceso));
         chain.appendChild(rotP(mid, YB + 32, p, aceso));
-      } else if (j === i - 1) {     // faixa de baixo: para a esquerda
+      } else if (j === i - 1) {
         const a = xs(i), b = xs(j), mid = (a + b) / 2;
         chain.appendChild(arco(`M ${a - 18} ${YB + 41} Q ${mid} ${YB + 68} ${b + 20} ${YB + 41}`, aceso));
         chain.appendChild(rotP(mid, YB + 66, p, aceso));
-      } else if (j === i) {         // laço próprio
+      } else if (j === i) {
         const x = xs(i);
         chain.appendChild(arco(
           `M ${x - 11} ${YB + 30} C ${x - 27} ${YB + 82} ${x + 27} ${YB + 82} ${x + 12} ${YB + 31}`, aceso));
@@ -643,7 +1083,6 @@ function desenharCadeia() {
     }
   }
 
-  /* --- colunas, marcadores, círculos, recompensas, política --- */
   for (let i = 0; i < N; i++) {
     const x = xs(i), v = est.V[i], h = alt(v), ehSel = i === sel;
 
@@ -677,9 +1116,10 @@ function desenharCadeia() {
 
     const r = est.R[i];
     const cor = r > 0 ? "var(--verde)" : (r < 0 ? "var(--vermelho)" : "var(--cinza)");
+    const emo = emojiRecompensa(i);
     chain.appendChild(el("text", {
       class: "rec-rot", x, y: YB + 106, "text-anchor": "middle", fill: cor
-    }, "R = " + (r > 0 ? "+" : "") + r));
+    }, (emo ? emo + " " : "") + "R = " + (r > 0 ? "+" : "") + r));
 
     if (est.modo === "mdp") {
       const pil = el("g", {
@@ -689,17 +1129,9 @@ function desenharCadeia() {
       pil.appendChild(el("rect", { x: x - 20, y: YB + 118, width: 40, height: 23, rx: 11.5 }));
       pil.appendChild(el("text", { x, y: YB + 135, "text-anchor": "middle" },
                         est.pi[i] === 1 ? "▶" : "◀"));
-      const flip = () => {
-        est.pi[i] *= -1;
-        pausar();
-        recalcularExato();
-        zerarIteracao();
-        zerarEpisodios();
-        redesenhar();
-      };
-      pil.addEventListener("click", flip);
+      pil.addEventListener("click", () => flipPi(i));
       pil.addEventListener("keydown", e => {
-        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); flip(); }
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); flipPi(i); }
       });
       chain.appendChild(pil);
     }
@@ -707,7 +1139,7 @@ function desenharCadeia() {
 }
 
 /* ============================================================
-   4. LEITURA DA EQUAÇÃO DE BELLMAN
+   7. ABA 1 — BELLMAN E MATRIZES
    ============================================================ */
 function desenharBellman() {
   const i = est.sel, P = matrizAtiva(), cx = document.getElementById("bell-eq");
@@ -739,8 +1171,22 @@ function desenharBellman() {
   document.getElementById("ep-origem").textContent = nomeEstado(i);
 }
 
+function desenharMatrizes() {
+  const P = matrizAtiva();
+  const cel = x => nf(x, 2).padStart(5, " ");
+  document.getElementById("mat-p-rot").textContent =
+    est.modo === "mdp" ? " (induzida pela política π)" : "";
+  document.getElementById("mat-p").textContent =
+    P.map(lin => "| " + lin.map(cel).join("  ") + " |").join("\n");
+  const linhaR = "R  = [ " + est.R.map(x => String(x).padStart(4)).join(" ") + " ]";
+  const linhaV = est.Vstar
+    ? rotuloExato().padEnd(2) + " = [ " + est.Vstar.map(v => nf(v, 1).padStart(6)).join(" ") + " ]"
+    : "V exato indisponível (γ = 1 torna I − γP singular).";
+  document.getElementById("mat-v").textContent = linhaR + "\n" + linhaV;
+}
+
 /* ============================================================
-   5. GRÁFICO DE CONTRAÇÃO
+   8. ABA 2 — CONVERGÊNCIA E PROPAGAÇÃO
    ============================================================ */
 const graf = document.getElementById("grafico");
 function desenharGrafico() {
@@ -793,15 +1239,13 @@ function desenharGrafico() {
   }
 }
 
-/* ============================================================
-   6. MAPA DE PROPAGAÇÃO
-   ============================================================ */
 function desenharHeat() {
   const heat = document.getElementById("heat");
   const vmax = escalaMax();
   const MOSTRAR = 12;
   const total = est.histV.length;
   const ini = Math.max(0, total - MOSTRAR);
+  const pos = css("--heat-pos"), neg = css("--heat-neg"), forte = css("--heat-texto-forte");
   let html = `<div class="hcab">k</div>` +
     Array.from({ length: N }, (_, j) => `<div class="hcab">${nomeEstado(j)}</div>`).join("");
   for (let r = ini; r < total; r++) {
@@ -810,9 +1254,9 @@ function desenharHeat() {
       const v = est.histV[r][j];
       const t = Math.min(1, Math.abs(v) / vmax);
       const bg = v >= 0
-        ? `rgba(46,95,138,${(t * 0.95).toFixed(3)})`
-        : `rgba(193,18,31,${(t * 0.85).toFixed(3)})`;
-      const fg = t > 0.55 ? "#fff" : "var(--azul)";
+        ? `rgba(${pos},${(t * 0.95).toFixed(3)})`
+        : `rgba(${neg},${(t * 0.85).toFixed(3)})`;
+      const fg = t > 0.55 ? forte : "var(--azul)";
       html += `<div class="hcel" style="background:${bg};color:${fg}">${
         isFinite(v) ? nf(v, Math.abs(v) >= 100 ? 0 : 1) : "∞"}</div>`;
     }
@@ -825,24 +1269,7 @@ function desenharHeat() {
 }
 
 /* ============================================================
-   7. MATRIZES
-   ============================================================ */
-function desenharMatrizes() {
-  const P = matrizAtiva();
-  const cel = x => nf(x, 2).padStart(5, " ");
-  document.getElementById("mat-p-rot").textContent =
-    est.modo === "mdp" ? " (induzida pela política π)" : "";
-  document.getElementById("mat-p").textContent =
-    P.map(lin => "| " + lin.map(cel).join("  ") + " |").join("\n");
-  const linhaR = "R  = [ " + est.R.map(x => String(x).padStart(4)).join(" ") + " ]";
-  const linhaV = est.Vstar
-    ? rotuloExato().padEnd(2) + " = [ " + est.Vstar.map(v => nf(v, 1).padStart(6)).join(" ") + " ]"
-    : "V exato indisponível (γ = 1 torna I − γP singular).";
-  document.getElementById("mat-v").textContent = linhaR + "\n" + linhaV;
-}
-
-/* ============================================================
-   8. EPISÓDIOS
+   9. ABA 3 — EPISÓDIOS (MONTE CARLO)
    ============================================================ */
 function sortearEpisodio(inicio, capTrilha) {
   const P = matrizAtiva();
@@ -858,7 +1285,6 @@ function sortearEpisodio(inicio, capTrilha) {
   }
   return { G, trilha, truncou: t >= LIM };
 }
-
 function registrarEpisodio(r) {
   est.ep.soma += r.G;
   est.ep.n++;
@@ -866,16 +1292,14 @@ function registrarEpisodio(r) {
   est.ep.trilha = r.trilha;
   est.ep.truncou = r.truncou;
   est.ep.amostras.push(r.G);
-  if (est.ep.amostras.length > 8000) est.ep.amostras.shift();
+  if (est.ep.amostras.length > 8000)
+    est.ep.amostras.splice(0, est.ep.amostras.length - 8000);
 }
 function rodarEpisodios(q) {
   if (est.anim.ativo) return;
-  let r = null;
-  for (let i = 0; i < q; i++) { r = sortearEpisodio(est.sel, 40); est.ep.soma += r.G;
-    est.ep.n++; est.ep.amostras.push(r.G); }
-  est.ep.ultimoG = r.G; est.ep.trilha = r.trilha; est.ep.truncou = r.truncou;
-  if (est.ep.amostras.length > 8000) est.ep.amostras.splice(0, est.ep.amostras.length - 8000);
+  for (let i = 0; i < q; i++) registrarEpisodio(sortearEpisodio(est.sel, 40));
   desenharEpisodios();
+  atualizarBadges();
 }
 function zerarEpisodios() {
   pararAnimacao();
@@ -885,7 +1309,6 @@ function zerarEpisodios() {
     "Clique em “Assistir 1 episódio” para ver o rover andar e o retorno G ser somado termo a termo.";
 }
 
-/* --- pista animada --- */
 const ROVER_SVG =
   '<svg viewBox="0 0 40 26" xmlns="http://www.w3.org/2000/svg">' +
   '<line x1="20" y1="2" x2="20" y2="7" stroke="#E8590C" stroke-width="2"/>' +
@@ -904,7 +1327,8 @@ function montarPista() {
     const c = document.createElement("div");
     c.className = "pcel"; c.id = "pcel-" + i;
     const r = est.R[i];
-    c.innerHTML = `<b>${nomeEstado(i)}</b>R ${r > 0 ? "+" + r : r}`;
+    const emo = emojiRecompensa(i);
+    c.innerHTML = `<b>${nomeEstado(i)}</b>${emo ? emo + " " : ""}R ${r > 0 ? "+" + r : r}`;
     p.appendChild(c);
   }
   const tok = document.createElement("div");
@@ -920,8 +1344,10 @@ function posicionarRover(i) {
 function pararAnimacao() {
   if (est.anim.timer) clearInterval(est.anim.timer);
   est.anim = { ativo: false, timer: null };
-  ["btn-ep100", "btn-ep1000", "btn-ep-zerar"].forEach(id =>
-    document.getElementById(id).disabled = false);
+  ["btn-ep100", "btn-ep1000", "btn-ep-zerar"].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) b.disabled = false;
+  });
 }
 function assistirEpisodio() {
   if (est.anim.ativo) return;
@@ -929,8 +1355,10 @@ function assistirEpisodio() {
   const leitura = document.getElementById("anim-leitura");
   if (movReduzido) {
     registrarEpisodio(r);
-    leitura.textContent = `Episódio concluído: G = ${nf(r.G, 3)} (animação desativada pela preferência de movimento reduzido).`;
+    leitura.textContent =
+      `Episódio concluído: G = ${nf(r.G, 3)} (animação desativada pela preferência de movimento reduzido).`;
     desenharEpisodios();
+    atualizarBadges();
     return;
   }
   est.anim.ativo = true;
@@ -945,6 +1373,7 @@ function assistirEpisodio() {
       leitura.textContent = (r.trilha.length > MAXA ? "(acelerado até o fim) " : "") +
         `Episódio concluído: G = ${nf(r.G, 3)}.`;
       desenharEpisodios();
+      atualizarBadges();
       return;
     }
     const pss = r.trilha[idx];
@@ -1012,7 +1441,7 @@ function desenharHist() {
   for (let i = 0; i < NB; i++) {
     const bh = (bins[i] / bmax) * h;
     svg.appendChild(el("rect", { x: bx(i) + 1, y: MT + h - bh,
-      width: w / NB - 2, height: bh, fill: "#9FB4CB", rx: 2 }));
+      width: w / NB - 2, height: bh, fill: "var(--hist)", rx: 2 }));
   }
   svg.appendChild(el("line", { class: "eixo", x1: ML, x2: ML + w, y1: MT + h, y2: MT + h }));
   const gx = v => ML + (v - lo) / (hi - lo) * w;
@@ -1034,16 +1463,14 @@ function desenharHist() {
 }
 
 /* ============================================================
-   9. DESAFIO DA POLÍTICA
+   10. ABA 4 — DESAFIO DA POLÍTICA
    ============================================================ */
 function desenharDesafio() {
   const corpo = document.getElementById("des-corpo");
   if (est.modo === "mrp") {
     corpo.innerHTML =
-      `<p class="sub" style="margin-bottom:10px">No modo com política, cada estado ganha uma ação
-       (◀ TentarEsquerda ou ▶ TentarDireita) e você tenta montar a política de maior valor.
-       O simulador conhece a resposta — calculada por enumeração das 2⁷ = 128 políticas — mas só
-       revela quando você pedir.</p>
+      `<p class="sub" style="margin-bottom:10px">O desafio usa o modo com política. Ao ativá-lo,
+       cada estado ganha uma ação (◀ TentarEsquerda ou ▶ TentarDireita).</p>
        <button id="btn-ir-mdp" class="primario">Ativar modo com política</button>`;
     document.getElementById("btn-ir-mdp").addEventListener("click", () => trocarModo("mdp"));
     return;
@@ -1055,16 +1482,19 @@ function desenharDesafio() {
   }
   const score = est.Vstar.reduce((a, b) => a + b, 0) / N;
   const ehOtima = Math.abs(score - est.otima.score) < 1e-9;
-  const setas = est.pi.map(a => a === 1 ? "▶" : "◀").join(" ");
+  const setasHTML = est.pi.map((a, i) =>
+    `<div class="pi-est"><span>${nomeEstado(i)}</span>
+       <button class="pi-seta" data-i="${i}"
+         aria-label="Ação em ${nomeEstado(i)}: ${NOME_ACAO[a]}. Ativar para trocar.">
+         ${a === 1 ? "▶" : "◀"}</button></div>`).join("");
   corpo.innerHTML =
     `<div class="des-grade"><div>
-      <p class="des-status ${ehOtima ? "venceu" : ""}" id="des-status">${
+      <p class="des-status ${ehOtima ? "venceu" : ""}">${
         ehOtima
-          ? "Sua política é a ótima! Nenhuma das outras 127 rende mais. Agora mude γ ou q e veja se ela continua ótima."
-          : "Ainda existe política melhor. Troque as setas sob os estados — pense: de cada estado, vale mais buscar o +1 perto ou o +10 longe?"}</p>
-      <p class="sub" style="margin-bottom:10px">π atual:&nbsp;
-        <span style="font-family:'Fira Mono',monospace;letter-spacing:.3em">${setas}</span>
-        &nbsp;· pontuação = média dos valores exatos dos 7 estados.</p>
+          ? "Sua política é a ótima! Nenhuma das outras 127 rende mais. Agora mude γ ou q na barra acima e veja se ela continua ótima."
+          : "Ainda existe política melhor. Clique nas setas abaixo — pense: de cada estado, vale mais buscar o 🪙 perto ou o 💰 longe?"}</p>
+      <p class="pi-nota">π atual — clique numa seta para inverter a ação daquele estado:</p>
+      <div class="pi-linha">${setasHTML}</div>
       <div class="botoes">
         <button id="btn-pol-dir">Tudo à direita</button>
         <button id="btn-pol-esq">Tudo à esquerda</button>
@@ -1095,9 +1525,14 @@ function desenharDesafio() {
     aplicar(est.otima.pi.slice());
   });
 }
+/* setas de política do desafio: delegação (o corpo é re-renderizado) */
+document.getElementById("des-corpo").addEventListener("click", e => {
+  const b = e.target.closest(".pi-seta");
+  if (b) flipPi(+b.dataset.i);
+});
 
 /* ============================================================
-   10. AVISOS, SELEÇÃO E PIPELINE DE REDESENHO
+   11. AVISOS, SELEÇÃO E REDESENHO
    ============================================================ */
 function atualizarAvisos() {
   const av = document.getElementById("aviso-gama");
@@ -1123,6 +1558,7 @@ function selecionar(i) {
   desenharCadeia();
   desenharBellman();
   desenharEpisodios();
+  atualizarBadges();
 }
 
 function redesenhar() {
@@ -1134,6 +1570,7 @@ function redesenhar() {
   desenharDesafio();
   desenharEpisodios();
   atualizarAvisos();
+  atualizarBadges();
   document.getElementById("k-val").textContent = est.k;
   document.getElementById("delta-val").textContent =
     est.delta === null ? "—" : nf(est.delta, est.delta < 0.001 ? 6 : 3);
@@ -1156,7 +1593,7 @@ function reiniciarTudo(resetMelhor) {
 }
 
 /* ============================================================
-   11. EXECUÇÃO
+   12. EXECUÇÃO
    ============================================================ */
 function pausar() {
   est.rodando = false;
@@ -1182,7 +1619,7 @@ function convergirJa() {
 }
 
 /* ============================================================
-   12. CONFIGURAÇÃO E LIGAÇÕES DE INTERFACE
+   13. CONFIGURAÇÃO E LIGAÇÕES
    ============================================================ */
 const slGama = document.getElementById("gama");
 const slP = document.getElementById("pmov");
@@ -1193,11 +1630,13 @@ function sincronizarControles() {
   slGama.value = est.gama;
   document.getElementById("gama-val").textContent = nf(est.gama, 2);
   if (est.modo === "mrp") {
-    document.getElementById("pmov-rot").textContent = "Probabilidade de mover p";
+    document.getElementById("pmov-rot").innerHTML =
+      'Probabilidade de mover <i class="simb">p</i>';
     slP.min = 0; slP.max = 0.5; slP.step = 0.02; slP.value = est.pMRP;
     document.getElementById("pmov-val").textContent = nf(est.pMRP, 2);
   } else {
-    document.getElementById("pmov-rot").textContent = "Confiabilidade da ação q";
+    document.getElementById("pmov-rot").innerHTML =
+      'Confiabilidade da ação <i class="simb">q</i>';
     slP.min = 0; slP.max = 1; slP.step = 0.05; slP.value = est.qMDP;
     document.getElementById("pmov-val").textContent = nf(est.qMDP, 2);
   }
@@ -1259,20 +1698,26 @@ document.getElementById("btn-ep1000").addEventListener("click", () => rodarEpiso
 document.getElementById("btn-ep-zerar").addEventListener("click", zerarEpisodios);
 
 document.addEventListener("keydown", e => {
+  if (e.key === "Escape") { fecharPop(); return; }
   const t = e.target;
   if (t.tagName === "INPUT" || t.tagName === "BUTTON" || t.tagName === "SUMMARY") return;
-  if (t.closest && t.closest(".st-alvo, .pil")) return;
+  if (t.closest && t.closest(".st-alvo, .pil, #pop")) return;
   if (e.key === "ArrowRight") { pausar(); passoBellman(); redesenhar(); }
   if (e.key === " ") { e.preventDefault(); alternarRodar(); }
   if (e.key === "r" || e.key === "R") { pausar(); zerarIteracao(); redesenhar(); }
+  if (e.key >= "1" && e.key <= "5") abrirAba(ABAS[+e.key - 1]);
 });
 
 /* ============================================================
-   13. ROTEIRO DE EXPERIMENTOS
+   14. ROTEIRO DE EXPERIMENTOS
    ============================================================ */
+const NOME_ABA = { modelo: "Entenda o modelo", iteracao: "Iteração de valor",
+  montecarlo: "Monte Carlo", desafio: "Desafio da política", roteiro: "Roteiro" };
+
 const MISSOES = [
   {
     t: "O agente míope",
+    aba: "iteracao",
     cfg: { modo: "mrp", gama: 0, p: 0.4, R: R_PADRAO, sel: 3 },
     q: "Com γ = 0, quantas iterações a iteração de Bellman leva para convergir? " +
        "O que a função valor vira?",
@@ -1282,6 +1727,7 @@ const MISSOES = [
   },
   {
     t: "O valor escorre um vizinho por backup",
+    aba: "iteracao",
     cfg: { modo: "mrp", gama: 0.9, p: 0.4, R: R_PADRAO, sel: 3 },
     q: "Zere e avance com “Um passo” olhando o mapa de propagação: depois de k iterações, " +
        "quais estados já “sentiram” o +10 de s₇?",
@@ -1292,6 +1738,7 @@ const MISSOES = [
   },
   {
     t: "A inclinação da reta é γ",
+    aba: "iteracao",
     cfg: { modo: "mrp", gama: 0.5, p: 0.4, R: R_PADRAO, sel: 3 },
     q: "Rode até convergir com γ = 0,50 e observe a inclinação do erro no gráfico log. " +
        "Depois mude para γ = 0,95 e repita. Por que a inclinação muda?",
@@ -1302,18 +1749,20 @@ const MISSOES = [
   },
   {
     t: "Perto ou longe? O γ decide",
+    aba: "desafio",
     cfg: { modo: "mdp", gama: 0.5, q: 0.5, R: R_PADRAO, pi: [1,1,1,1,1,1,1], sel: 1 },
     q: "Com γ = 0,50, “tudo à direita” é ótima? Monte a melhor política que conseguir e só " +
        "então revele π*. Depois aumente γ aos poucos: em que ponto “sempre direita” passa a " +
        "ser ótima?",
-    d: "Com γ baixo, uma recompensa a d passos vale ~γᵈ·R: perto de s₁, o +1 imediato vence o " +
-       "+10 distante, e a política ótima manda os primeiros estados para a esquerda. Conforme " +
-       "γ cresce, a fronteira de indiferença desliza para a esquerda até o +10 dominar a " +
-       "cadeia inteira. O fator de desconto não é um detalhe numérico — ele define o " +
-       "comportamento ótimo."
+    d: "Com γ baixo, uma recompensa a d passos vale ~γᵈ·R: perto de s₁, o 🪙 +1 imediato vence " +
+       "o 💰 +10 distante, e a política ótima manda os primeiros estados para a esquerda. " +
+       "Conforme γ cresce, a fronteira de indiferença desliza para a esquerda até o +10 " +
+       "dominar a cadeia inteira. O fator de desconto não é um detalhe numérico — ele define " +
+       "o comportamento ótimo."
   },
   {
     t: "Monte Carlo honesto",
+    aba: "montecarlo",
     cfg: { modo: "mrp", gama: 0.9, p: 0.4, R: R_PADRAO, sel: 3 },
     q: "Sorteie 1 episódio, depois 100, depois 1000, sempre olhando o erro da média e o " +
        "histograma. Como o erro cai com o número de amostras n?",
@@ -1325,6 +1774,7 @@ const MISSOES = [
   },
   {
     t: "Quando γ = 1 quebra",
+    aba: "iteracao",
     cfg: { modo: "mrp", gama: 1, p: 0.4, R: R_PADRAO, sel: 3 },
     q: "Rode a iteração com γ = 1. O que acontece com as barras, com Δ e com a solução " +
        "exata? Em que situações γ = 1 seria aceitável?",
@@ -1343,12 +1793,15 @@ function montarMissoes() {
     div.className = "missao";
     div.innerHTML =
       `<div class="num">${i + 1}</div>
-       <div><h3>${m.t}</h3><p>${m.q}</p>
+       <div><h3>${m.t}</h3>
+         <p class="aba-dest">abre em: ${NOME_ABA[m.aba]}</p>
+         <p>${m.q}</p>
          <details><summary>Revelar discussão</summary><p>${m.d}</p></details>
        </div>
        <div><button class="prep">Preparar</button></div>`;
     div.querySelector(".prep").addEventListener("click", () => {
       aplicarConfig(m.cfg);
+      abrirAba(m.aba);
       window.scrollTo({ top: 0, behavior: movReduzido ? "auto" : "smooth" });
     });
     box.appendChild(div);
@@ -1356,11 +1809,13 @@ function montarMissoes() {
 }
 
 /* ============================================================
-   14. INÍCIO
+   15. INÍCIO
    ============================================================ */
+montarAbas();
 montarMissoes();
 sincronizarControles();
 reiniciarTudo(true);
+abrirAba(location.hash.replace("#", "") || "modelo", false);
 </script>
 </body>
 </html>
