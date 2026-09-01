@@ -1,0 +1,778 @@
+%% ============================================================
+%%  Aula 1 — Introdução à Aprendizagem por Reforço
+%%  Versão sucinta: roteiro do apresentador (poucas palavras,
+%%  mesmas definições e figuras do aula01.tex)
+%%  Adaptação em pt-BR do CS234 (Stanford, Emma Brunskill)
+%%  Compilar com XeLaTeX (2x)
+%% ============================================================
+\documentclass[aspectratio=169, 11pt]{beamer}
+%% .sty do projeto na raiz do repositório (../)
+\makeatletter
+\def\input@path{{./}{../}}
+\makeatother
+
+
+\usetheme{AprendizadoRL}      % ANTES do babel — fontspec precisa vir primeiro
+\usepackage{babel}
+\babelprovide[import, main]{brazilian}
+\usepackage{booktabs}
+
+\title[Aula 1 — Introdução à RL]{Aula 1: Introdução à\\ Aprendizagem por Reforço}
+\subtitle[Aprendizagem por Reforço]{Panorama da área \textbullet\ Decisão sequencial sob incerteza \textbullet\ Processos de Markov}
+\author[Prof. Marcelo K. Albertini]{Prof. Marcelo Keese Albertini \\
+  \footnotesize Universidade Federal de Uberlândia \\
+  \footnotesize adaptado de Emma Brunskill, CS234 (Stanford)}
+\institute{Universidade Federal de Uberlândia}
+\date{2026}
+
+% Pergunta deixada para o professor conduzir em aula
+\newcommand{\paradiscussao}{\smallskip
+  {\footnotesize\color{rlCinza}\itshape }}
+
+\begin{document}
+
+\begin{frame}[plain, noframenumbering]\titlepage\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Plano de hoje}
+  \begin{enumerate}
+    \item \textbf{Panorama de RL} — o que é, por que importa, o que a distingue.
+    \item \textbf{Decisão sequencial sob incerteza} — agente, história, estado, Markov.
+    \item \textbf{Processos de Markov e MRPs} — retorno, função valor, Bellman.
+  \end{enumerate}
+
+  \bigskip
+  \begin{ideiabox}
+    Objetivo do curso: \emph{formular} → \emph{escolher} → \emph{implementar} → \emph{avaliar}.
+  \end{ideiabox}
+\end{frame}
+
+%% ============================================================
+\section{Panorama da aprendizagem por reforço}
+%% ============================================================
+
+\begin{frame}{O que é aprendizagem por reforço?}
+  \begin{defbox}{Aprendizagem por reforço (RL)}
+    Aprender, a partir de \alert{experiência}, a tomar \alert{boas decisões} sob \alert{incerteza}.
+  \end{defbox}
+
+  \begin{itemize}
+    \item Núcleo da inteligência: agir e observar consequências.
+    \item Teoria desde os anos 1950 — Bellman (programação dinâmica).
+    \item Última década: de jogos a ciência experimental e LLMs.
+  \end{itemize}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{RL hoje: o motor por trás dos sistemas de raciocínio}
+  \begin{itemize}
+    \item \textbf{LLMs que raciocinam:} R1-Zero — RL em larga escala, sem supervisão; o1 — RL para cadeias de raciocínio.
+    \item \textbf{Matemática de competição:} DeepMind, ouro na IMO (35/42).
+    \item \textbf{Robótica:} manipulação delicada com RL + demonstrações.
+  \end{itemize}
+
+  \begin{ideiabox}
+    RLHF, RLVR, \emph{test-time compute}\ldots\ são RL. Este curso dá a base para essas siglas.
+  \end{ideiabox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Uma década de resultados marcantes}
+  \begin{itemize}
+    \item \textbf{Go} — AlphaGo Zero (Silver et al., \emph{Nature} 2017): autojogo + RL.
+    \item \textbf{Fusão nuclear} — controle de plasma em tokamak (Degrave et al., \emph{Nature} 2022).
+    \item \textbf{COVID-19} — triagem adaptativa \emph{Eurydice}, Grécia (Bastani et al., \emph{Nature} 2021).
+    \item \textbf{ChatGPT} — RLHF.
+  \end{itemize}
+
+  \medskip
+  {\small\color{rlCinza} Jogos, física, saúde, linguagem — a teoria é a mesma.}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Os quatro ingredientes da aprendizagem por reforço}
+  Quatro desafios simultâneos:
+
+  \medskip
+  \begin{enumerate}
+    \item<1-> \textbf{Otimização} — as \emph{melhores} decisões, utilidade explícita.
+    \item<2-> \textbf{Consequências adiadas} — o agora afeta o futuro distante.
+    \item<3-> \textbf{Exploração} — só se aprende o que se experimenta.
+    \item<4-> \textbf{Generalização} — agir bem no nunca visto.
+  \end{enumerate}
+
+  \medskip
+  \onslide<4->{
+  \begin{ideiabox}
+    Supervisionado: só 4. Otimização clássica: só 1. Bandits: 1, 3, 4. RL: o problema completo.
+  \end{ideiabox}}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Ingrediente 1: otimização}
+  \begin{itemize}
+    \item Decidir de forma \alert{ótima} — noção explícita de utilidade.
+    \item Ex.: menor rota entre cidades — sequencial \emph{sem} incerteza, modelo conhecido.
+  \end{itemize}
+
+  \begin{ideiabox}
+    \emph{Reward is enough} (Silver, Singh, Precup, Sutton, 2021): maximizar recompensa bastaria para a maioria das capacidades inteligentes.
+  \end{ideiabox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Ingrediente 2: consequências adiadas}
+  Decisões de agora → resultados muito depois:
+  \begin{itemize}
+    \item poupar para a aposentadoria;
+    \item chave no início da fase (\emph{Montezuma's Revenge}).
+  \end{itemize}
+
+  \medskip
+  Dois desafios:
+  \begin{itemize}
+    \item \textbf{Planejamento:} agora vs.\ ramificações de longo prazo.
+    \item \textbf{Aprendizado:} \alert{atribuição de crédito temporal} — qual decisão causou o quê?
+  \end{itemize}
+
+  \begin{alertabox}
+    A recompensa chega sem etiqueta de causa.
+  \end{alertabox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Ingrediente 3: exploração}
+  \begin{itemize}
+    \item Aprender agindo: tentar (e cair).
+    \item As decisões determinam \emph{quais dados} o agente obtém.
+    \item \textbf{Contrafactuais:} a alternativa nunca é observada.
+  \end{itemize}
+
+  \begin{ideiabox}
+    O ``rótulo'' da ação não escolhida não existe → dilema \alert{exploração vs.\ aproveitamento}.
+  \end{ideiabox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Ingrediente 4: generalização}
+  \begin{itemize}
+    \item \textbf{Política:} experiência passada → ações.
+    \item Pré-programar? Atari: $84\times 84$ pixels — espaço astronômico.
+    \item A política precisa \alert{generalizar}.
+  \end{itemize}
+
+  \medskip
+  {\small\color{rlCinza} Aqui RL encontra deep learning.}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Onde RL é particularmente poderosa}
+  Duas categorias:
+  \begin{enumerate}
+    \item \textbf{Não há exemplos do comportamento desejado} — superar humanos ou sem dados.
+          \\ {\small\color{rlCinza} Ex.: AlphaGo Zero, do zero.}
+    \item \textbf{Busca gigante com resultado adiado} — enumeração impossível.
+          \\ {\small\color{rlCinza} Ex.: AlphaTensor (2022), multiplicação de matrizes como jogo.}
+  \end{enumerate}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{RL no mapa do aprendizado de máquina}
+  \begin{center}
+  \footnotesize
+  \begin{tabular}{@{}p{2.6cm}p{3.4cm}p{3.4cm}p{3.8cm}@{}}
+    \toprule
+      & \textbf{Supervisionado} & \textbf{Não supervisionado} & \textbf{Por reforço} \\
+    \midrule
+    Sinal de aprendizado & rótulo correto por exemplo & nenhum rótulo &
+      recompensa escalar, possivelmente atrasada \\
+    Dados & fixos, i.i.d. & fixos, i.i.d. &
+      gerados pelas \emph{próprias ações} do agente \\
+    Objetivo & prever bem & descobrir estrutura &
+      \emph{agir} bem ao longo do tempo \\
+    Erro informa\ldots & a resposta certa & — &
+      apenas \emph{quão bom} foi o que se fez \\
+    \bottomrule
+  \end{tabular}
+  \end{center}
+
+  \begin{alertabox}
+    RL: dados não i.i.d. — mudar a política muda a distribuição dos dados.
+  \end{alertabox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}[shrink]{Ementa oficial: o curso é de Inteligência Artificial}
+  \begin{center}
+  \footnotesize
+  \begin{tabular}{@{}p{7.6cm}p{5.2cm}@{}}
+    \toprule
+    \textbf{Ementa (ficha GBC063, FACOM/UFU)} & \textbf{Onde aparece no curso} \\
+    \midrule
+    Introdução à IA: definições, histórico, subdivisões (simbólico,
+    conexionista, evolutivo, swarm); linguagens &
+      Panorama nesta aula (Python é a linguagem do curso) \\
+    Solução de problemas: busca, busca informada, jogos e planejamento &
+      MCTS e AlphaZero (aulas 13–14); planejamento em MDP (aula 2) \\
+    Representação do conhecimento; raciocínio lógico; sistemas
+    especialistas &
+      Panorama nesta aula (base de conhecimento + motor de inferência,
+      encadeamentos progressivo/regressivo) \\
+    Conhecimento e raciocínio com incerteza &
+      MDPs e bandits (todo o curso) \\
+    Aprendizagem: supervisionada, não supervisionada, por reforço &
+      Mapa do AM (há pouco); RL é o núcleo (aulas 1–14) \\
+    Tópicos recentes em IA &
+      DQN (aula 4), PPO (aulas 5–7), RLHF/DPO (aulas 7–8) \\
+    \bottomrule
+  \end{tabular}
+  \end{center}
+
+  \begin{alertabox}
+    Disciplina de IA: a ficha pede também fundamentos simbólicos — esta aula dá o panorama; o curso mergulha no RL.
+  \end{alertabox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Plano do curso e objetivos de aprendizagem}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \textbf{Trajetória do curso}
+      \begin{itemize}\setlength{\itemsep}{0.2ex}
+        \item Processos de decisão de Markov e planejamento
+        \item Avaliação de política sem modelo
+        \item Controle sem modelo
+        \item Busca de política (gradientes)
+        \item RL \emph{offline}, RLHF e DPO
+        \item Exploração
+        \item Tópicos avançados
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \textbf{Ao final, você deve saber}
+      \begin{itemize}\setlength{\itemsep}{0.2ex}
+        \item definir os elementos-chave de RL;
+        \item decidir \emph{se} e \emph{como} usar RL em um problema real;
+        \item implementar os algoritmos clássicos;
+        \item avaliar teórica e empiricamente a qualidade de um algoritmo.
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\section{Tomada de decisão sequencial sob incerteza}
+%% ============================================================
+
+\begin{frame}{Exercício de aquecimento: um tutor de IA como processo de decisão}
+  \begin{quizbox}{}
+    Tutor de IA: estudante sem adição nem subtração; exercícios de $+$ ou de $-$; $+1$ acerto, $-1$ erro.
+
+    \smallskip
+    Estados? Ações? Recompensa? Dinâmica? Política ótima? Bom incentivo para \emph{aprender}? Recompensa alternativa?
+  \end{quizbox}
+
+  \begin{alertabox}
+    Moral: a recompensa \emph{define} o problema — mal projetada, vira só adições fáceis.
+  \end{alertabox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Decisão sequencial: o objetivo}
+  \begin{defbox}{Tomada de decisão sequencial}
+    Selecionar ações para \alert{maximizar a recompensa total esperada futura}.
+  \end{defbox}
+
+  Mesmo molde para:
+  \begin{itemize}
+    \item \textbf{Publicidade:} qual anúncio? cliques vs.\ retenção.
+    \item \textbf{Robô e lava-louças:} qual junta mover? rápido vs.\ não quebrar.
+    \item \textbf{Pressão arterial:} qual dose? agora vs.\ efeitos colaterais.
+  \end{itemize}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{A interação agente–mundo (tempo discreto)}
+  \begin{columns}[c]
+    \begin{column}{0.46\textwidth}
+      A cada passo $t$:
+      \begin{enumerate}
+        \item agente executa $a_t$;
+        \item mundo emite $o_t$ e $r_t$;
+        \item agente decide $a_{t+1}$.
+      \end{enumerate}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \centering
+      \scalebox{0.82}{%
+      \begin{tikzpicture}
+        \node[draw=rlAzul, very thick, rounded corners=2mm, fill=rlAzul!8,
+              minimum width=3.1cm, minimum height=1.05cm,
+              font=\bfseries] (ag) {Agente};
+        \node[draw=rlTeal, very thick, rounded corners=2mm, fill=rlTeal!8,
+              minimum width=3.1cm, minimum height=1.05cm,
+              font=\bfseries, below=1.5cm of ag] (mu) {Mundo};
+        \draw[trans destac] (ag.east) -- ++(1.15,0)
+          node[midway, above, font=\scriptsize, color=rlLaranja] {}
+          |- node[pos=0.22, right, font=\scriptsize, color=rlLaranja]
+             {ação $a_t$} (mu.east);
+        \draw[trans] (mu.west) -- ++(-1.35,0)
+          |- node[pos=0.2, left, font=\scriptsize, align=right,
+                  color=rlCinza]
+             {observação $o_t$\\ recompensa $r_t$} (ag.west);
+      \end{tikzpicture}}
+    \end{column}
+  \end{columns}
+
+  \medskip
+  \begin{ideiabox}
+    Laço fechado: os dados de amanhã dependem da decisão de hoje.
+  \end{ideiabox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{História e estado}
+  \begin{defbox}{História $h_t$}
+    Sequência de tudo que o agente fez e percebeu:
+    $h_t = (a_1, o_1, r_1,\; \ldots,\; a_t, o_t, r_t)$.
+  \end{defbox}
+
+  \begin{defbox}{Estado $s_t$}
+    Informação assumida como suficiente para determinar o que vem a seguir.
+    Função da história: $s_t = f(h_t)$.
+  \end{defbox}
+
+  \begin{itemize}
+    \item História cresce sem limite; estado = \alert{resumo} escolhido.
+    \item Escolher $f$ é decisão de \emph{modelagem} — das mais importantes.
+  \end{itemize}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{A hipótese de Markov}
+  \begin{defbox}{Estado de Markov (estado-informação)}
+    $s_t$ é \emph{de Markov} sse
+    \[
+      \Prob(s_{t+1} \mid s_t, a_t) \;=\; \Prob(s_{t+1} \mid h_t, a_t),
+    \]
+    isto é, $s_t$ é uma \alert{estatística suficiente} da história.
+  \end{defbox}
+
+  \begin{ideiabox}
+    ``O futuro é independente do passado, dado o presente.''
+  \end{ideiabox}
+
+  \begin{itemize}
+    \item Trivial: $s_t = h_t$ — mas o estado explode.
+    \item Arte: o \emph{menor} estado (quase) Markov.
+  \end{itemize}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Por que a hipótese de Markov é tão popular?}
+  \begin{itemize}
+    \item Simples; satisfeita com um pouco de história no estado.
+    \item Na prática: $s_t = o_t$.
+  \end{itemize}
+
+  \medskip
+  O estado impacta:
+  \begin{itemize}
+    \item \textbf{custo computacional;}
+    \item \textbf{dados necessários;}
+    \item \textbf{desempenho final} — estado pobre viola Markov.
+  \end{itemize}
+
+  \begin{quizbox}{}
+    Xadrez: a configuração atual do tabuleiro (mais o jogador da vez) é Markov? E um único quadro de Atari com objetos em movimento?
+  \end{quizbox}
+  \paradiscussao
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Tipos de processos de decisão sequencial}
+  Três eixos:
+  \begin{itemize}
+    \item \textbf{Estado observável?} Parcial → \emph{POMDP}. Ex.: pôquer, robô com câmera.
+    \item \textbf{Dinâmica determinística ou estocástica?}
+    \item \textbf{Ações afetam o futuro?} Só recompensa imediata → \emph{bandits}.
+  \end{itemize}
+
+  \medskip
+  {\small\color{rlCinza} Curso começa no caso mais limpo: estado totalmente observável, dinâmica estocástica, ações afetam o futuro — o \textbf{MDP}.}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Exemplo condutor: o \emph{Mars Rover} como MDP}
+  \framesubtitle{Um robô explorador numa fileira de sete posições}
+  \begin{center}
+    \begin{tikzpicture}[node distance=4.2mm]
+      \node[estado destacado] (s1) {$s_1$};
+      \foreach \i/\p in {2/1,3/2,4/3,5/4,6/5}
+        \node[estado, right=of s\p] (s\i) {$s_\i$};
+      \node[estado destacado, right=of s6] (s7) {$s_7$};
+      \node[recomp, below=1.2mm of s1] {$+1$};
+      \foreach \i in {2,...,6}
+        \node[probl, below=1.6mm of s\i] {$0$};
+      \node[recomp, below=1.2mm of s7] {$+10$};
+    \end{tikzpicture}
+  \end{center}
+
+  \begin{itemize}
+    \item \textbf{Estados:} posição, $\gS = \{s_1,\ldots,s_7\}$.
+    \item \textbf{Ações:} $\gA = \{\textsf{TentarEsquerda}, \textsf{TentarDireita}\}$ — o terreno pode derrapar.
+    \item \textbf{Recompensas:} $+1$ em $s_1$, $+10$ em $s_7$, $0$ no resto.
+  \end{itemize}
+
+  \medskip
+  {\small\color{rlCinza} Pequeno o bastante para calcular à mão — nos acompanhará por várias aulas.}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{O modelo do MDP: como o agente representa o mundo}
+  \textbf{Modelo} = representação, \emph{do agente}, de como o mundo muda.
+
+  \begin{defbox}{Modelo de transição (dinâmica)}
+    Prevê o próximo estado:
+    $\;p(s_{t+1} = s' \mid s_t = s,\; a_t = a)$.
+  \end{defbox}
+
+  \begin{defbox}{Modelo de recompensa}
+    Prevê a recompensa imediata:
+    $\;r(s, a) = \E[\, r_t \mid s_t = s,\; a_t = a \,]$.
+  \end{defbox}
+
+  \begin{alertabox}
+    O modelo pode estar \emph{errado} — e em geral está. Boa parte de RL: agir bem apesar disso.
+  \end{alertabox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Mars Rover: um modelo estocástico}
+  Parte do modelo de transição para \textsf{TentarDireita}:
+  \[
+    0{,}5 = \tran{s_1}{s_1, \textsf{TD}} = \tran{s_2}{s_1, \textsf{TD}},
+    \qquad
+    0{,}5 = \tran{s_2}{s_2, \textsf{TD}} = \tran{s_3}{s_2, \textsf{TD}},
+    \;\;\cdots
+  \]
+  Modelo de recompensa: prevê $\hat r = 0$ em \emph{todos} os estados.
+
+  \begin{itemize}
+    \item Metade das vezes derrapa e fica; metade avança.
+    \item Recompensa prevista está \alert{errada}: o mundo paga $+1$/$+10$.
+  \end{itemize}
+
+  \begin{ideiabox}
+    Modelo $\neq$ realidade: crença a ser corrigida pela experiência.
+  \end{ideiabox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Política: o comportamento do agente}
+  \begin{defbox}{Política $\pol$}
+    Determina como o agente escolhe ações.
+    \begin{itemize}
+      \item \textbf{Determinística:} $\pol : \gS \to \gA$, escrita $\pol(s) = a$.
+      \item \textbf{Estocástica:} $\pol(a \mid s) = \Prob(a_t = a \mid s_t = s)$.
+    \end{itemize}
+  \end{defbox}
+
+  \medskip
+  Exemplo no Mars Rover:
+  \[
+    \pol(s_1) = \pol(s_2) = \cdots = \pol(s_7) = \textsf{TentarDireita}.
+  \]
+
+  \begin{quizbox}{}
+    A política acima é determinística ou estocástica? O ambiente estocástico (derrapagem) muda essa resposta?
+  \end{quizbox}
+  \paradiscussao
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Dois problemas fundamentais: avaliação e controle}
+  \begin{defbox}{Avaliação (\emph{policy evaluation})}
+    Dada $\pol$: estimar a recompensa esperada ao segui-la. ``\emph{Quão boa} é esta política?''
+  \end{defbox}
+
+  \begin{defbox}{Controle}
+    Encontrar a \emph{melhor} política. ``\emph{Qual} é a melhor forma de agir?''
+  \end{defbox}
+
+  \begin{ideiabox}
+    Quase todo algoritmo alterna: avaliar a política atual → melhorar. Avaliação é o primeiro degrau.
+  \end{ideiabox}
+\end{frame}
+
+%% ============================================================
+\section{Processos de Markov e processos de recompensa de Markov}
+%% ============================================================
+
+\begin{frame}{Estratégia: crescer em complexidade}
+  Por ora: \textbf{modelo do mundo dado} — dinâmica e recompensa conhecidas, estados e ações finitos.
+
+  \medskip
+  Em camadas:
+  \begin{enumerate}
+    \item \textbf{Processo de Markov} — estados e transições;
+    \item \textbf{Processo de recompensa de Markov (MRP)} — + recompensas e desconto;
+    \item \textbf{Processo de decisão de Markov (MDP)} — + ações (aula 2);
+    \item \textbf{Avaliação e controle em MDPs} — planejamento (aula 2).
+  \end{enumerate}
+
+  \medskip
+  {\small\color{rlCinza} Modelo dado → \emph{planejamento} clássico; ainda sem aprendizado.}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Processo de Markov (cadeia de Markov)}
+  Processo estocástico \emph{sem memória}: estados aleatórios com a propriedade de Markov.
+
+  \begin{defbox}{Processo de Markov}
+    \begin{itemize}
+      \item $\gS$: conjunto (finito) de estados, $s \in \gS$;
+      \item $P$: modelo de transição, $p(s_{t+1} = s' \mid s_t = s)$.
+    \end{itemize}
+    Sem recompensas, sem ações.
+  \end{defbox}
+
+  Com $N$ estados finitos, $P$ é uma matriz $N \times N$:
+  {\small
+  \[
+    P =
+    \begin{pmatrix}
+      \tran{s_1}{s_1} & \tran{s_2}{s_1} & \cdots & \tran{s_N}{s_1} \\
+      \tran{s_1}{s_2} & \tran{s_2}{s_2} & \cdots & \tran{s_N}{s_2} \\
+      \vdots          & \vdots          & \ddots & \vdots          \\
+      \tran{s_1}{s_N} & \tran{s_2}{s_N} & \cdots & \tran{s_N}{s_N}
+    \end{pmatrix}
+  \]}%
+  \vspace{-0.8em}
+  {\small\color{rlCinza} Linha $i$: distribuição do próximo estado a partir de $s_i$ — soma 1.}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Mars Rover como cadeia de Markov}
+  \framesubtitle{Fixe qualquer regra de movimento e esqueça as ações: sobra uma cadeia}
+  \begin{center}
+    \scalebox{0.88}{%
+    \begin{tikzpicture}[node distance=9mm]
+      \node[estado] (s1) {$s_1$};
+      \foreach \i/\p in {2/1,3/2,4/3,5/4,6/5,7/6}
+        \node[estado, right=of s\p] (s\i) {$s_\i$};
+      \foreach \i/\j in {1/2,2/3,3/4,4/5,5/6,6/7}{
+        \draw[trans] (s\i) to[bend left=32]
+          node[probl, above] {$0{,}4$} (s\j);
+        \draw[trans] (s\j) to[bend left=32]
+          node[probl, below] {$0{,}4$} (s\i);}
+      \draw[trans] (s1) edge[loop above] node[probl] {$0{,}6$} (s1);
+      \foreach \i in {2,...,6}
+        \draw[trans] (s\i) edge[loop above] node[probl] {$0{,}2$} (s\i);
+      \draw[trans] (s7) edge[loop above] node[probl] {$0{,}6$} (s7);
+    \end{tikzpicture}}
+  \end{center}
+
+  \vspace{-0.3em}
+  \[
+    P =
+    \begin{pmatrix}
+      0{,}6 & 0{,}4 & 0     & 0     & 0     & 0     & 0     \\
+      0{,}4 & 0{,}2 & 0{,}4 & 0     & 0     & 0     & 0     \\
+      0     & 0{,}4 & 0{,}2 & 0{,}4 & 0     & 0     & 0     \\
+      0     & 0     & 0{,}4 & 0{,}2 & 0{,}4 & 0     & 0     \\
+      0     & 0     & 0     & 0{,}4 & 0{,}2 & 0{,}4 & 0     \\
+      0     & 0     & 0     & 0     & 0{,}4 & 0{,}2 & 0{,}4 \\
+      0     & 0     & 0     & 0     & 0     & 0{,}4 & 0{,}6
+    \end{pmatrix}
+  \]
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Episódios: amostrando a cadeia}
+  Partindo de $s_4$, alguns episódios possíveis:
+  \begin{align*}
+    &s_4,\, s_5,\, s_6,\, s_7,\, s_7,\, s_7,\, \ldots \\
+    &s_4,\, s_4,\, s_5,\, s_4,\, s_5,\, s_6,\, \ldots \\
+    &s_4,\, s_3,\, s_2,\, s_1,\, \ldots
+  \end{align*}
+
+  \begin{itemize}
+    \item Episódio = \emph{realização} do processo estocástico.
+    \item Regiões bem diferentes do espaço — a incerteza a quantificar.
+  \end{itemize}
+
+  \begin{ideiabox}
+    Episódios amostrados serão nossos \emph{dados} (métodos sem modelo).
+  \end{ideiabox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Processo de recompensa de Markov (MRP)}
+  MRP = cadeia de Markov \alert{+ recompensas}.
+
+  \begin{defbox}{Processo de recompensa de Markov}
+    \begin{itemize}
+      \item $\gS$: conjunto (finito) de estados;
+      \item $P$: modelo de transição, $\tran{s_{t+1}=s'}{s_t=s}$;
+      \item $\rec$: função recompensa, $\rec(s) = \E[\, r_t \mid s_t = s \,]$;
+      \item $\gamma \in [0,1]$: fator de desconto.
+    \end{itemize}
+    Ainda sem ações.
+  \end{defbox}
+
+  \begin{itemize}
+    \item Com $N$ estados, $\rec$ é um vetor em $\R^N$.
+    \item Mars Rover: $\rec(s_1) = +1$, $\rec(s_7) = +10$, resto $0$.
+  \end{itemize}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Horizonte e retorno}
+  \begin{defbox}{Horizonte $H$}
+    Número de passos de tempo por episódio. Pode ser infinito.
+  \end{defbox}
+
+  \begin{defbox}{Retorno $G_t$ (de um MRP)}
+    Soma descontada das recompensas do passo $t$ até $H$:
+    \[
+      G_t \;=\; r_t + \gamma\, r_{t+1} + \gamma^2 r_{t+2} + \cdots
+              + \gamma^{H-1} r_{t+H-1}
+    \]
+  \end{defbox}
+
+  \begin{itemize}
+    \item $G_t$ é \alert{aleatório}: depende da trajetória sorteada.
+    \item Peso geometricamente menor — o ``juro'' do tempo.
+  \end{itemize}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Função valor de estado}
+  \begin{defbox}{Função valor $V(s)$ (de um MRP)}
+    Retorno esperado partindo de $s$:
+    \[
+      V(s) \;=\; \E[\, G_t \mid s_t = s \,]
+           \;=\; \E\bigl[\, r_t + \gamma\, r_{t+1} + \gamma^2 r_{t+2}
+                 + \cdots + \gamma^{H-1} r_{t+H-1} \mid s_t = s \,\bigr]
+    \]
+  \end{defbox}
+
+  \begin{ideiabox}
+    Retorno = o que \emph{aconteceu}; valor = o que \emph{se espera} em média.
+  \end{ideiabox}
+
+  {\small\color{rlCinza} Grande parte do curso: calcular, estimar e otimizar funções valor.}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{O fator de desconto $\gamma$}
+  Por que descontar?
+  \begin{itemize}
+    \item \textbf{Matemática:} evita retornos infinitos ($H = \infty$).
+    \item \textbf{Comportamento:} agimos como $\gamma < 1$.
+  \end{itemize}
+
+  \medskip
+  Casos extremos:
+  \begin{itemize}
+    \item $\gamma = 0$: míope; $\gamma = 1$: futuro vale o mesmo.
+  \end{itemize}
+
+  \begin{alertabox}
+    $H < \infty$: $\gamma = 1$ ok. $H = \infty$ e $\gamma = 1$: a soma pode divergir.
+  \end{alertabox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Calculando o valor de um MRP: a equação de Bellman}
+  Para horizonte infinito, $V$ satisfaz
+  \[
+    V(s) \;=\; \termo{\rec(s)}{recompensa imediata}
+      \;+\; \termo{\gamma \sum_{s' \in \gS} \tran{s'}{s}\, V(s')}%
+                  {soma descontada das recompensas futuras}
+  \]
+
+  \begin{ideiabox}
+    Agora + valor (descontado) de onde posso parar — um passo de recursão vira ponto fixo.
+  \end{ideiabox}
+
+  {\small\color{rlCinza} Primeira aparição de Bellman — reaparece em praticamente toda aula.}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Forma matricial e solução analítica}
+  Com estados finitos, Bellman vira sistema linear:
+  \[
+    \begin{pmatrix} V(s_1) \\ \vdots \\ V(s_N) \end{pmatrix}
+    =
+    \begin{pmatrix} \rec(s_1) \\ \vdots \\ \rec(s_N) \end{pmatrix}
+    + \gamma
+    \begin{pmatrix}
+      \tran{s_1}{s_1} & \cdots & \tran{s_N}{s_1} \\
+      \vdots          & \ddots & \vdots          \\
+      \tran{s_1}{s_N} & \cdots & \tran{s_N}{s_N}
+    \end{pmatrix}
+    \begin{pmatrix} V(s_1) \\ \vdots \\ V(s_N) \end{pmatrix}
+  \]
+  Isolando $V$:
+  \[
+    V = \rec + \gamma P V
+    \;\;\Longrightarrow\;\;
+    (I - \gamma P)\, V = \rec
+    \;\;\Longrightarrow\;\;
+    \mdestaque{rlLaranja}{V = (I - \gamma P)^{-1} \rec}
+  \]
+
+  \begin{itemize}
+    \item $\gamma < 1$: $(I - \gamma P)$ invertível — solução única.
+    \item Custo: $\sim O(N^3)$ — proibitivo para $N$ grande.
+  \end{itemize}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Algoritmo iterativo: programação dinâmica}
+  \begin{algbox}{Avaliação iterativa do valor de um MRP}
+    \begin{itemize}
+      \item Inicialize $V_0(s) = 0$ para todo $s$;
+      \item Para $k = 1, 2, \ldots$ até a convergência:
+        \begin{itemize}
+          \item para todo $s \in \gS$:
+            \[
+              V_k(s) \;=\; \rec(s)
+                + \gamma \sum_{s' \in \gS} \tran{s'}{s}\, V_{k-1}(s')
+            \]
+        \end{itemize}
+    \end{itemize}
+  \end{algbox}
+
+  \begin{itemize}
+    \item Custo por iteração: $O(\abs{\gS}^2)$.
+    \item Converge: operador de Bellman é \emph{contração} — prova na próxima aula.
+  \end{itemize}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Resumo da aula}
+  \begin{itemize}
+    \item RL = \textbf{otimização} + \textbf{consequências adiadas} + \textbf{exploração} + \textbf{generalização}.
+    \item Interação gera \textbf{história}; \textbf{estado} é o resumo; \textbf{Markov} diz quando basta.
+    \item \textbf{Cadeias de Markov} → dinâmica; \textbf{MRPs} acrescentam recompensa e desconto.
+    \item \textbf{Valor} $V(s)$ satisfaz \textbf{Bellman}: $O(N^3)$ analítico ou $O(N^2)$/passo iterativo.
+  \end{itemize}
+
+  \begin{ideiabox}
+    Próxima aula: \emph{ações} — MDPs, avaliação de política, iteração de política e de valor.
+  \end{ideiabox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Créditos e leituras}
+  \begin{itemize}
+    \item Material adaptado e expandido de \textbf{CS234: Reinforcement Learning}, Emma Brunskill, Stanford (\texttt{cs234.stanford.edu}); parte da estrutura remonta às notas de David Silver (UCL/DeepMind).
+    \item \textbf{Leitura:} Sutton \& Barto, \emph{Reinforcement Learning: An Introduction}, 2\textsuperscript{a} ed.\ — capítulos 1 e 3.
+    \item Artigos citados: Silver et al.\ (\emph{Nature} 2017); Degrave et al.\ (\emph{Nature} 2022); Bastani et al.\ (\emph{Nature} 2021); Fawzi et al.\ (\emph{Nature} 2022); Mnih et al.\ (\emph{Nature} 2015).
+  \end{itemize}
+\end{frame}
+
+\end{document}

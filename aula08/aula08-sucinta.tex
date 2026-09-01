@@ -1,0 +1,1414 @@
+%% ============================================================
+%%  Aula 8 — Aprendizagem por imitação, aprendizado de recompensa e RLHF
+%%  Versão sucinta: roteiro do apresentador (poucas palavras,
+%%  mesmas definições e figuras do aula08.tex)
+%%  Adaptação em pt-BR do CS234 (Stanford, Emma Brunskill), Lecture 8
+%%  Prof. Marcelo Keese Albertini — Universidade Federal de Uberlândia
+%%  Compilar com XeLaTeX (2x) — latexmk -xelatex aula08.tex
+%% ============================================================
+\documentclass[aspectratio=169, 11pt]{beamer}
+%% .sty do projeto na raiz do repositório (../)
+\makeatletter
+\def\input@path{{./}{../}}
+\makeatother
+
+
+\usetheme{AprendizadoRL}      % ANTES do babel — fontspec precisa vir primeiro
+\usepackage{babel}
+\babelprovide[import, main]{brazilian}
+\usepackage{booktabs}
+
+\title[Aula 8 — Imitação, recompensa e RLHF]{Aula 8: Aprendizagem por imitação,\\ aprendizado de recompensa e RLHF}
+\subtitle[Aprendizagem por Reforço]{Erros compostos \textbullet\ DAGGER \textbullet\ RL inverso \textbullet\ Bradley--Terry \textbullet\ RLHF \textbullet\ DPO}
+\author[Prof. Marcelo K. Albertini]{Prof. Marcelo Keese Albertini \\
+  \footnotesize Universidade Federal de Uberlândia \\
+  \footnotesize adaptado de Emma Brunskill, CS234 (Stanford)}
+\institute{Universidade Federal de Uberlândia}
+\date{2026}
+
+% ---- Nota discreta: perguntas ficam para o professor conduzir em aula
+\newcommand{\paradiscussao}{\smallskip
+  {\footnotesize\color{rlCinza}\itshape Pergunta para discussão conduzida em aula.}}
+
+%% ------------------------------------------------------------
+%% Macros locais desta aula
+%% ------------------------------------------------------------
+\newcommand{\thv}{\theta}
+\newcommand{\Qhat}{\hat{Q}}
+\newcommand{\polth}{\pol_{\thv}}                 % política parametrizada
+\newcommand{\polE}{\pol^{E}}                     % política do especialista
+\newcommand{\pref}{\pol_{\mathrm{ref}}}          % modelo de referência
+\newcommand{\psft}{\pol_{\mathrm{SFT}}}          % modelo após ajuste supervisionado
+\newcommand{\rphi}{r_{\phi}}                     % modelo de recompensa aprendido
+\newcommand{\Dset}{\mathcal{D}}
+\newcommand{\traj}{\tau}
+\newcommand{\yw}{y_{w}}                          % resposta preferida
+\newcommand{\yl}{y_{\ell}}                       % resposta preterida
+\newcommand{\KLd}[2]{\mathrm{KL}\!\left(#1 \,\middle\|\, #2\right)}
+\newcommand{\sig}{\sigma}
+\newcommand{\Hent}{\mathcal{H}}
+\newcommand{\gth}{\nabla_{\thv}}
+\newcommand{\dpref}{d^{\pol}}                    % distribuição de estados induzida
+
+\begin{document}
+
+\begin{frame}[plain, noframenumbering]\titlepage\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Onde estamos}{Da recompensa dada à recompensa aprendida}
+
+  \begin{itemize}\setlength{\itemsep}{0.45ex}
+    \item \textbf{Aulas 2--3:} com modelo, calcular $\Vstar$ e $\polstar$ por
+      programação dinâmica. \textbf{Aula 4:} sem modelo, aprender $\Qhat$ de
+      amostras.
+    \item \textbf{Aulas 5--6:} parametrizar a política e subir o gradiente do
+      retorno --- REINFORCE, ator--crítico, TRPO, PPO.
+    \item \textbf{Aula 7:} sem recompensa escrita? Primeira resposta:
+      \emph{copie um especialista}.
+    \item \textbf{Hoje:} por que copiar não basta; \emph{inferir} a recompensa;
+      \emph{preferências humanas} --- o caminho até o RLHF e o DPO.
+  \end{itemize}
+
+  \begin{ideiabox}
+    A partir de hoje $\rec$ vira \emph{objeto de aprendizado} --- quase todos
+    os problemas novos nascem daí.
+  \end{ideiabox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}[shrink]{Recapitulação da aula passada}
+
+  \begin{quizbox}{}
+    Quais afirmações sobre o \textbf{REINFORCE} são verdadeiras?
+    \begin{enumerate}\setlength{\itemsep}{0ex}
+      \item[(a)] Uma linha de base reduz a variância das atualizações.
+      \item[(b)] O método converge para um ótimo \emph{global}.
+      \item[(c)] Pode partir de uma política determinística subótima e ainda
+        convergir a um ótimo local.
+      \item[(d)] Um passo de gradiente pode \emph{piorar} a política.
+    \end{enumerate}
+    \vspace{-0.3em}\paradiscussao
+  \end{quizbox}
+
+  \pause
+
+  \begin{respbox}
+    \textbf{(a) e (d).} \;(b): o objetivo é não convexo em $\thv$. \;(c): uma
+    política determinística nunca amostra as demais ações → sem gradiente →
+    presa onde começou.
+  \end{respbox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Plano de hoje}
+
+  \begin{columns}[T]
+  \begin{column}{0.49\textwidth}
+    \begin{enumerate}\setlength{\itemsep}{0.5ex}
+      \item \textbf{Imitação e erros compostos}\\
+        {\small por que clonar degrada como $T^2$; o que o DAGGER faz}
+      \item \textbf{Aprendizado de recompensa}\\
+        {\small RL inverso, não unicidade de $\rec$, máxima entropia}
+      \item \textbf{Humanos no laço}\\
+        {\small espectro de esforço humano; comparações baratas}
+    \end{enumerate}
+  \end{column}
+  \begin{column}{0.49\textwidth}
+    \begin{enumerate}\setlength{\itemsep}{0.5ex}
+      \setcounter{enumi}{3}
+      \item \textbf{Modelo de Bradley--Terry}\\
+        {\small de preferências ruidosas a uma recompensa escalar}
+      \item \textbf{RLHF}\\
+        {\small o \emph{pipeline} de três etapas e a penalidade KL}
+      \item \textbf{DPO}\\
+        {\small eliminar o modelo de recompensa por álgebra}
+    \end{enumerate}
+  \end{column}
+  \end{columns}
+
+  \begin{ideiabox}
+    Fio condutor: ``de onde vem o sinal de recompensa quando não há placar?''
+  \end{ideiabox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Por que isto virou o assunto central}{RL como etapa final de treinamento de modelos de linguagem}
+
+  \begin{center}
+  \scalebox{0.92}{\begin{tikzpicture}[font=\scriptsize, node distance=6mm]
+    \node[draw=rlCinza, thick, fill=rlFundo, rounded corners=3pt,
+          text width=27mm, align=center, minimum height=13mm] (pt)
+      {\textbf{Pré-treino}\\[0.2em] prever o próximo \emph{token}\\ (trilhões de palavras)};
+    \node[draw=rlAzulClaro, thick, fill=rlAzulClaro!8, rounded corners=3pt,
+          text width=27mm, align=center, minimum height=13mm, right=9mm of pt] (sft)
+      {\textbf{Ajuste supervisionado}\\[0.2em] imitar respostas escritas por pessoas};
+    \node[draw=rlLaranja, very thick, fill=rlLaranja!10, rounded corners=3pt,
+          text width=27mm, align=center, minimum height=13mm, right=9mm of sft] (rl)
+      {\textbf{RL sobre preferências}\\[0.2em] otimizar o que as pessoas de fato aprovam};
+    \draw[trans] (pt) -- (sft);
+    \draw[trans destac] (sft) -- (rl);
+    \node[below=3mm of pt, text=rlCinza, text width=27mm, align=center]
+      {aprendizado auto-supervisionado};
+    \node[below=3mm of sft, text=rlCinza, text width=27mm, align=center]
+      {\textbf{clonagem de comportamento}\\ (Aula 7)};
+    \node[below=3mm of rl, text=rlLaranja, text width=27mm, align=center]
+      {\textbf{hoje}};
+  \end{tikzpicture}}
+  \end{center}
+
+  \begin{itemize}\setlength{\itemsep}{0.3ex}
+    \item Duas primeiras etapas: supervisionadas. Terceira: RL --- e é a que
+      exige que exista uma \emph{recompensa}.
+    \item Ninguém sabe escrever ``responda de forma útil e honesta'' como uma
+      $\rec(s,a)$; todos sabem dizer \emph{qual de duas respostas é melhor}.
+  \end{itemize}
+\end{frame}
+
+%% ============================================================
+\section{Imitação e erros compostos}
+%% ============================================================
+
+%% ------------------------------------------------------------
+\begin{frame}{O problema de aprendizagem por imitação}
+
+  \begin{defbox}{Aprendizagem por imitação}
+    Dados: espaços $\gS$ e $\gA$, possivelmente um modelo de transição
+    $\tran{s'}{s,a}$, e um conjunto de demonstrações
+    \[
+      \Dset = \bigl\{(s_0, a_0, s_1, a_1, \dots)\bigr\},
+      \qquad a_t \sim \polE(\cdot \mid s_t),
+    \]
+    geradas por um \textbf{especialista} $\polE$. \emph{Não há função de
+    recompensa.} Objetivo: obter uma política tão boa quanto $\polE$.
+  \end{defbox}
+
+  \begin{itemize}\setlength{\itemsep}{0.3ex}
+    \item \textbf{Clonagem de comportamento} (Aula 7): classificação ---
+      aprenda $\pol(a\mid s)$ por perda supervisionada sobre os pares
+      $(s,a)$.
+    \item Simples, rápido, sem interação com o ambiente --- resultados
+      históricos (ALVINN, 1989) e atuais (o ``SFT'' dos LLMs).
+  \end{itemize}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}[shrink]{O que a clonagem de comportamento supõe --- e o que ela ignora}
+
+  \begin{columns}[T]
+  \begin{column}{0.5\textwidth}
+    \begin{defbox}{A hipótese emprestada}
+      Aprendizado supervisionado supõe pares $(x,y)$ \textbf{i.i.d.},
+      extraídos da \emph{mesma} distribuição no treino e no teste.
+    \end{defbox}
+    \smallskip
+    No MDP, falso duas vezes: estados de uma trajetória \textbf{dependentes}
+    no tempo; a distribuição deles depende da \textbf{política} que os gera.
+  \end{column}
+  \begin{column}{0.48\textwidth}
+    \begin{alertabox}
+      \textbf{Deslocamento de distribuição.} Treino: $s_t \sim d^{\polE}$;
+      teste: $s_t \sim d^{\pol}$. O classificador é bom \emph{onde o
+      especialista esteve} --- e um erro basta para sair dessa região.
+    \end{alertabox}
+  \end{column}
+  \end{columns}
+
+  \begin{ideiabox}
+    O problema estrutural da imitação: as ações do aluno mudam as perguntas da
+    prova. {\scriptsize\color{rlCinza}\;(Ross \& Bagnell, 2011.)}
+  \end{ideiabox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Erros independentes no tempo: o caso benigno}
+
+  Suponha que, a cada passo, a política clonada erre com probabilidade
+  $\varepsilon$, e que \emph{um erro não afete os estados seguintes}:
+  \[
+    \E[\text{total de erros}] \;\le\; \varepsilon\,T .
+  \]
+
+  \begin{center}
+  \scalebox{0.95}{\begin{tikzpicture}[font=\scriptsize]
+    \draw[trans, rlAzul, very thick] (0,0) -- (9,0);
+    \foreach \x in {0,1,...,9}{\fill[rlAzul!35] (\x,0) circle (1.1pt);}
+    \foreach \x in {2,6}{
+      \fill[rlLaranja] (\x,0) circle (2.2pt);
+      \draw[rlLaranja, thick] (\x,0) -- ++(0,-0.45);
+      \node[below, text=rlLaranja] at (\x,-0.45) {erro};}
+    \node[above, text=rlCinza] at (4.5,0.15) {trajetória do especialista};
+    \node[right, text=rlAzul] at (9.1,0) {$t$};
+  \end{tikzpicture}}
+  \end{center}
+
+  \begin{ideiabox}
+    Agente ``volta ao trilho'' sozinho após cada erro: custo \textbf{linear}
+    no horizonte --- a intuição do supervisionado.
+  \end{ideiabox}
+
+  Pergunta da aula: \emph{o que muda quando um erro desloca a trajetória?}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Erros compostos: o custo real}
+
+  \begin{columns}[T]
+  \begin{column}{0.53\textwidth}
+    Um erro em $t$ leva o agente a um estado que o especialista nunca visitou.
+    Sem garantia --- pessimismo: \emph{todos} os $T-t$ passos restantes
+    comprometidos:
+    \begin{align*}
+      \E[\text{erros}] &\lesssim
+        \varepsilon\bigl(T + (T-1) + \dots + 1\bigr)\\[0.2em]
+        &= \varepsilon\,\frac{T(T+1)}{2}
+        \;\propto\; \mdestaque{rlLaranja}{\varepsilon\,T^{2}}
+    \end{align*}
+
+    \smallskip
+    {\scriptsize\color{rlCinza} Argumento heurístico; o resultado formal é o
+    Teorema 2.1 de Ross \& Bagnell (AISTATS 2010).}
+  \end{column}
+  \begin{column}{0.45\textwidth}
+    \begin{center}
+    \scalebox{0.9}{\begin{tikzpicture}[font=\scriptsize]
+      % eixo
+      \draw[->, rlCinza] (0,0) -- (4.6,0) node[right] {$T$};
+      \draw[->, rlCinza] (0,0) -- (0,3.2) node[above] {erros};
+      % linear
+      \draw[rlAzulClaro, very thick] (0,0) -- (4.3,1.29);
+      \node[text=rlAzulClaro, right] at (3.3,0.75) {$\varepsilon T$};
+      % quadratico
+      \draw[rlLaranja, very thick] plot[domain=0:4.3, samples=40]
+        (\x, {0.16*\x*\x});
+      \node[text=rlLaranja, left] at (3.5,2.6) {$\varepsilon T^{2}$};
+    \end{tikzpicture}}
+    \end{center}
+    \begin{alertabox}
+      Com $\varepsilon = 1\%$ e $T = 1000$: $10$ vs.\ $\sim\!10^{4}$ erros. A
+      política ``com 99\% de acerto'' é inutilizável.
+    \end{alertabox}
+  \end{column}
+  \end{columns}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{A geometria do problema}
+
+  \begin{center}
+  \scalebox{0.95}{\begin{tikzpicture}[font=\scriptsize]
+    % faixa de estados visitados pelo especialista
+    \fill[rlAzul!7, rounded corners=6pt] (0,-0.55) .. controls (3,-0.15) and (5,0.95) .. (8.4,1.15)
+      -- (8.4,1.95) .. controls (5,1.75) and (3,0.65) .. (0,0.25) -- cycle;
+    \node[text=rlAzul!70, anchor=west] at (0.15,1.6) {suporte dos dados do especialista};
+    % trajetoria do especialista
+    \draw[rlAzul, very thick] (0,-0.15) .. controls (3,0.25) and (5,1.35) .. (8.4,1.55);
+    \node[text=rlAzul, anchor=west] at (8.5,1.55) {$\polE$};
+    % trajetoria do agente
+    \draw[rlLaranja, very thick] (0,-0.15) .. controls (2.2,0.1) and (2.9,-0.1) .. (3.4,-0.45)
+      .. controls (4.6,-1.3) and (6.2,-2.0) .. (8.4,-2.35);
+    \node[text=rlLaranja, anchor=west] at (8.5,-2.35) {$\pol$ clonada};
+    % ponto do erro
+    \fill[rlVermelho] (3.4,-0.45) circle (2.4pt);
+    \node[text=rlVermelho, anchor=north west] at (3.5,-0.55) {primeiro erro};
+    % chaves
+    \draw[trans, rlCinza] (7.0,-1.9) -- (7.0,0.95);
+    \node[text=rlCinza, anchor=west, text width=25mm] at (7.1,-0.5)
+      {erro que \emph{cresce}: nenhum dado aqui};
+  \end{tikzpicture}}
+  \end{center}
+
+  \begin{ideiabox}
+    O erro não é ``ruído em torno da resposta certa'': é \textbf{desvio que se
+    realimenta} --- longe do suporte dos dados, pior a política; pior a
+    política, mais longe ela vai.
+  \end{ideiabox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Teste sua compreensão}
+
+  \begin{quizbox}{}
+    Uma equipe treina um piloto automático por clonagem de comportamento e o
+    carro sai da pista após alguns minutos. A proposta é \emph{coletar dez vezes
+    mais demonstrações do motorista}.
+
+    \smallskip
+    Isso resolve o problema? Em que sentido ajuda e em que sentido não? Que
+    dado atacaria a causa em vez do sintoma?
+    \paradiscussao
+  \end{quizbox}
+
+  \pause
+
+  \begin{respbox}
+    Reduz $\varepsilon$, mas \textbf{não muda o expoente}. Mais dados do
+    motorista são mais dados da região \emph{onde ele dirige bem} --- e o
+    problema está fora dela. Ataca a causa obter rótulos \textbf{nos estados
+    que a política aprendida visita}.
+  \end{respbox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{DAGGER: agregação de conjuntos de dados}
+
+  \begin{center}
+  \scalebox{0.88}{\begin{tikzpicture}[font=\scriptsize, node distance=13mm]
+    \node[draw=rlAzul, thick, fill=rlAzul!7, rounded corners=3pt,
+          text width=30mm, align=center, minimum height=11mm] (treina)
+      {\textbf{Treinar $\pol_i$}\\ por classificação sobre $\Dset$};
+    \node[draw=rlLaranja, very thick, fill=rlLaranja!10, rounded corners=3pt,
+          text width=30mm, align=center, minimum height=11mm, right=17mm of treina] (roda)
+      {\textbf{Executar $\pol_i$}\\ no ambiente, coletar estados visitados};
+    \node[draw=rlTeal, thick, fill=rlTeal!10, rounded corners=3pt,
+          text width=30mm, align=center, minimum height=11mm, below=11mm of roda] (rotula)
+      {\textbf{Perguntar ao especialista}\\ qual ação ele tomaria \emph{ali}};
+    \node[draw=rlAzulClaro, thick, fill=rlAzulClaro!8, rounded corners=3pt,
+          text width=30mm, align=center, minimum height=11mm, below=11mm of treina] (agrega)
+      {\textbf{Agregar}\\ $\Dset \leftarrow \Dset \cup \Dset_i$};
+    \draw[trans destac] (treina) -- (roda);
+    \draw[trans destac] (roda) -- (rotula);
+    \draw[trans destac] (rotula) -- (agrega);
+    \draw[trans destac] (agrega) -- (treina);
+  \end{tikzpicture}}
+  \end{center}
+
+  \begin{itemize}\setlength{\itemsep}{0.3ex}
+    \item Ideia: \emph{rótulos do especialista ao longo do caminho que a
+      política aprendida percorre}.
+    \item Política determinística com bom desempenho \textbf{sob a
+      distribuição de estados que ela mesma induz}.
+    \item Redução a aprendizado \emph{online} sem arrependimento --- o custo
+      volta a ser $O(\varepsilon T)$.
+  \end{itemize}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}[shrink]{DAGGER: o algoritmo}
+
+  \begin{algbox}{DAGGER (Ross et al., 2011)}
+    {\footnotesize
+    \begin{itemize}\setlength{\itemsep}{0.15ex}
+      \item Inicialize $\Dset \leftarrow \emptyset$ e $\pol_1$ (por exemplo, o
+        próprio $\polE$ ou uma clonagem inicial)
+      \item \textbf{para} $i = 1, 2, \dots, N$ \textbf{faça}
+        \begin{itemize}\setlength{\itemsep}{0.1ex}
+          \item Defina $\hat\pol_i = \beta_i\,\polE + (1-\beta_i)\,\pol_i$
+            \hfill{\scriptsize(mistura; $\beta_i \to 0$)}
+          \item Execute $\hat\pol_i$ e colete as trajetórias de estados visitados
+          \item Consulte o especialista em cada estado visitado:
+            $\Dset_i = \{(s, \polE(s))\}$
+          \item Agregue: $\Dset \leftarrow \Dset \cup \Dset_i$
+          \item Treine $\pol_{i+1}$ minimizando a perda de classificação sobre
+            \emph{todo} o $\Dset$
+        \end{itemize}
+      \item \textbf{fim para}: devolva a melhor $\pol_i$ segundo validação
+    \end{itemize}}
+  \end{algbox}
+
+  \begin{ideiabox}
+    A mistura $\beta_i$ evita tempo demais em estados catastróficos no início,
+    quando $\pol_i$ ainda é ruim --- o instrutor que segura o volante.
+  \end{ideiabox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{DAGGER: a limitação decisiva}
+
+  \begin{quizbox}{}
+    O DAGGER converte um erro $O(\varepsilon T^2)$ em $O(\varepsilon T)$. Qual é
+    o preço --- e por que ele inviabiliza o método em boa parte das aplicações
+    modernas?
+    \paradiscussao
+  \end{quizbox}
+
+  \pause
+
+  \begin{respbox}
+    Ele exige um \textbf{especialista disponível durante todo o treinamento},
+    capaz de rotular estados arbitrários sob demanda.
+    \begin{itemize}\setlength{\itemsep}{0.1ex}
+      \item \textbf{Custo}: a supervisão escala com estados visitados, não com
+        demonstrações.
+      \item \textbf{Contexto}: ``o que você faria \emph{agora}?'' num quadro
+        congelado produz rótulos ruins.
+      \item \textbf{Segurança}: para rotular um estado é preciso chegar até ele
+        --- e alguns não devem ser visitados.
+    \end{itemize}
+  \end{respbox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Balanço da imitação}
+
+  \begin{center}\footnotesize
+  \begin{tabular}{@{}p{0.27\linewidth}p{0.2\linewidth}p{0.2\linewidth}p{0.2\linewidth}@{}}
+    \toprule
+    & \textbf{Clonagem} & \textbf{DAGGER} & \textbf{RL inverso} \\
+    \midrule
+    Erro no horizonte & $O(\varepsilon T^2)$ & $O(\varepsilon T)$ &
+      depende do planejador \\
+    Interage com o ambiente & não & sim & sim \\
+    Precisa do especialista \emph{durante} o treino & não & \textbf{sim} & não \\
+    O que produz & uma política & uma política & uma \textbf{recompensa} \\
+    Generaliza para novas dinâmicas & não & não & \textbf{sim} \\
+    \bottomrule
+  \end{tabular}
+  \end{center}
+
+  \begin{ideiabox}
+    Última linha: a \emph{recompensa} é a descrição mais \textbf{compacta e
+    transferível} da tarefa. Mude o carro ou a estrada: a política se refaz;
+    a intenção, não.
+  \end{ideiabox}
+\end{frame}
+
+%% ============================================================
+\section{Aprendizado de recompensa}
+%% ============================================================
+
+%% ------------------------------------------------------------
+\begin{frame}{Inverter o problema}
+
+  \begin{defbox}{Aprendizado por reforço inverso}
+    Dados $\gS$, $\gA$, o modelo de transição $\tran{s'}{s,a}$ e demonstrações
+    $(s_0, a_0, s_1, a_1, \dots)$ com $a_t \sim \polE(\cdot\mid s_t)$, mas
+    \textbf{sem} função de recompensa: inferir uma $\rec$ sob a qual o
+    comportamento observado seja ótimo.
+  \end{defbox}
+
+  \begin{center}
+  \scalebox{0.95}{\begin{tikzpicture}[font=\scriptsize, node distance=8mm]
+    \node[draw=rlAzul, thick, fill=rlAzul!7, rounded corners=3pt,
+          text width=24mm, align=center, minimum height=9mm] (r) {$\rec$};
+    \node[draw=rlAzul, thick, fill=rlAzul!7, rounded corners=3pt,
+          text width=24mm, align=center, minimum height=9mm, right=22mm of r] (p) {$\polstar$};
+    \draw[trans] (r) -- node[above, text=rlCinza] {RL \emph{direto}: planejar} (p);
+    \draw[trans destac] ([yshift=-5mm]p.south) -- node[below, text=rlLaranja]
+      {RL \emph{inverso}: explicar} ([yshift=-5mm]r.south);
+    \draw[rlLaranja, thick] (p.south) -- ([yshift=-5mm]p.south);
+    \draw[rlLaranja, thick] (r.south) -- ([yshift=-5mm]r.south);
+  \end{tikzpicture}}
+  \end{center}
+
+  \begin{itemize}\setlength{\itemsep}{0.25ex}
+    \item Recompensa: descrição \textbf{mais sucinta} da tarefa (Ng \&
+      Russell, 2000); recuperada, replaneja-se em outra dinâmica.
+    \item Antes de qualquer algoritmo: uma pergunta de identificabilidade.
+  \end{itemize}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}[shrink]{Teste sua compreensão}
+
+  \begin{quizbox}{}
+    Suponha que a política do especialista $\polE$ seja \emph{ótima}. Sobre a
+    recompensa $\rec$ que a explica:
+    \begin{enumerate}\setlength{\itemsep}{0.1ex}
+      \item[1.] existe uma única $\rec$ que torna $\polE$ ótima;
+      \item[2.] existem muitas $\rec$ que tornam $\polE$ ótima;
+      \item[3.] depende do MDP.
+    \end{enumerate}
+    Justifique exibindo, se possível, um contraexemplo.
+    \paradiscussao
+  \end{quizbox}
+
+  \pause
+
+  \begin{respbox}
+    \textbf{Existe um conjunto infinito de $\rec$ compatíveis.} O caso mais
+    brutal: $\rec \equiv 0$ torna \emph{toda} política ótima. Sem restrições, o
+    problema é mal posto --- e o RL inverso consiste em escolher \emph{qual}
+    solução preferir.
+  \end{respbox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}[shrink]{As três fontes de ambiguidade}
+
+  \begin{columns}[T]
+  \begin{column}{0.5\textwidth}
+    \begin{alertabox}
+      \textbf{1. Degenerescência.} $\rec\equiv 0$ (ou qualquer constante)
+      explica qualquer comportamento.
+    \end{alertabox}
+    \begin{alertabox}
+      \textbf{2. Escala.} Se $\rec$ explica $\polE$, $c\,\rec$ com
+      $c>0$ também: $\argmax$ não muda.
+    \end{alertabox}
+  \end{column}
+  \begin{column}{0.48\textwidth}
+    \begin{alertabox}
+      \textbf{3. Modelagem por potencial.} Para qualquer $\Phi:\gS\to\R$,
+      \[
+        \rec'(s,a,s') = \rec(s,a,s') + \gamma\Phi(s') - \Phi(s)
+      \]
+      preserva \emph{exatamente} as políticas ótimas
+      {\scriptsize(Ng, Harada \& Russell, 1999)}.
+    \end{alertabox}
+  \end{column}
+  \end{columns}
+
+  \begin{ideiabox}
+    Invariância 2 reaparece em Bradley--Terry: recompensa de LLM sem escala
+    absoluta. Escolher entre infinitas soluções: \textbf{estrutura} +
+    \textbf{critério de desempate}.
+  \end{ideiabox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}[shrink]{Estrutura: recompensa linear em atributos}
+
+  Suponha $\rec(s) = w^{\!\top}\!x(s)$, com atributos $x(s)\in\R^{n}$ conhecidos.
+  O valor vira o produto interno com a \textbf{esperança de atributos}:
+  \[
+    \Vpi = \E\Bigl[\sum_{t\ge 0}\gamma^{t}\, w^{\!\top} x(s_t) \,\Bigm|\, \pol\Bigr]
+      = w^{\!\top} \underbrace{\E\Bigl[\sum_{t\ge 0}\gamma^{t} x(s_t) \Bigm| \pol\Bigr]}_{\textstyle \mu(\pol)}
+      = w^{\!\top}\mu(\pol).
+  \]
+
+  \begin{teobox}{Consequência}
+    Se $\norm{w}_1 \le 1$ e $\norm{\mu(\pol) - \mu(\polE)}_1 \le \epsilon$, então
+    $\abs{ w^{\!\top}\mu(\pol) - w^{\!\top}\mu(\polE)} \le \epsilon$ para todo
+    $w$ admissível: \textbf{casar as esperanças de atributos basta}.
+  \end{teobox}
+
+  \begin{ideiabox}
+    Em vez de descobrir ``o que o especialista queria'', basta
+    \emph{comportar-se como ele estatisticamente}.
+  \end{ideiabox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Desempate: o princípio da máxima entropia}
+
+  Muitas distribuições sobre trajetórias casam as esperanças de atributos.
+  \textbf{Escolha a menos comprometida com o que não foi observado} --- a de
+  maior entropia:
+  \[
+    \max_{P}\; -\sum_{\traj} P(\traj)\log P(\traj)
+    \quad\text{sujeito a}\quad
+    \sum_{\traj} P(\traj)\, x(\traj) = \tilde{x}_{E},
+    \quad \sum_{\traj}P(\traj) = 1 .
+  \]
+
+  \pause
+  A solução por multiplicadores de Lagrange é uma família exponencial:
+  \[
+    \mdestaque{rlLaranja}{P(\traj \mid w) \;=\; \frac{1}{Z(w)}\,
+      \exp\bigl(w^{\!\top} x(\traj)\bigr)},
+    \qquad
+    x(\traj) = \sum_{t} \gamma^{t} x(s_t).
+  \]
+
+  \begin{ideiabox}
+    Leitura: especialista \textbf{aproximadamente} ótimo --- trajetórias
+    melhores exponencialmente mais prováveis, mas erros possíveis.
+  \end{ideiabox}
+
+  {\scriptsize\color{rlCinza}Ziebart et al., \emph{Maximum Entropy Inverse
+  Reinforcement Learning}, AAAI 2008.}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{MaxEnt IRL: como se aprende $w$}
+
+  Máxima verossimilhança sobre as demonstrações $\Dset$, com
+  $w^{*} = \argmax_{w} \sum_{\traj \in \Dset} \log P(\traj\mid w)$:
+  \[
+    \nabla_w \mathcal{L} = \underbrace{\tilde{x}_{E}}_{\text{atributos observados}}
+      - \underbrace{\E_{\traj \sim P(\cdot\mid w)}\bigl[x(\traj)\bigr]}_{\text{atributos do modelo atual}} .
+  \]
+
+  \begin{algbox}{MaxEnt IRL}
+    {\footnotesize
+    \textbf{Repita} até convergir: (i) \emph{laço interno} --- resolva o MDP com
+    a recompensa atual $w^{\!\top}x(s)$ e obtenha $\pol$ e as visitas esperadas
+    de estados; (ii) calcule o gradiente acima e atualize $w$.}
+  \end{algbox}
+
+  \begin{alertabox}
+    Laço interno: \emph{resolver um MDP inteiro a cada passo de gradiente}.
+    Guided Cost Learning (Finn et al., 2016) troca por amostragem por
+    importância --- equivalência com GANs: a recompensa é o discriminador.
+  \end{alertabox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Balanço: aprendizagem por imitação}
+
+  \begin{itemize}\setlength{\itemsep}{0.4ex}
+    \item \textbf{É poderosa.} Demonstrações: a forma mais natural de
+      comunicar uma tarefa a uma máquina, e existem em abundância.
+    \item \textbf{Muitas extensões}: imitação a partir de observação (sem
+      ações), com um único exemplo, a partir de vídeo humano.
+    \item \textbf{Máxima entropia é a ideia central}: transformar
+      ``explicar comportamento'' em verossimilhança bem posta.
+    \item \textbf{Mas} pressupõe um especialista que \emph{sabe fazer} a
+      tarefa. E se as pessoas só souberem \emph{reconhecer} uma execução boa?
+  \end{itemize}
+
+  \begin{ideiabox}
+    Ponte: escrever um soneto é difícil; dizer qual de dois é melhor, nem
+    tanto --- o RLHF é construído sobre essa assimetria.
+  \end{ideiabox}
+\end{frame}
+
+%% ============================================================
+\section{Pessoas no laço de treinamento}
+%% ============================================================
+
+%% ------------------------------------------------------------
+\begin{frame}{Como uma pessoa pode ajudar a treinar um agente}
+
+  \begin{center}
+  \scalebox{0.9}{\begin{tikzpicture}[font=\scriptsize]
+    \draw[trans, very thick, rlCinza] (0,0) -- (11,0);
+    \node[below, text=rlCinza] at (5.5,-0.9) {\textbf{esforço humano}};
+    \node[right, text=rlCinza] at (11.05,0) {alto};
+    \node[left, text=rlCinza] at (-0.05,0) {baixo};
+
+    \foreach \x/\rot/\cor in {
+      1.6/{Demonstrações\\ (uma vez)}/rlAzulClaro,
+      5.5/{Rótulos par a par\\ (contínuos, baratos)}/rlLaranja,
+      9.4/{DAGGER / ensino\\ constante}/rlVermelho}{
+      \fill[\cor] (\x,0) circle (3pt);
+      \draw[\cor, thick] (\x,0) -- ++(0,0.55);
+      \node[above, text=\cor, align=center, text width=28mm] at (\x,0.55) {\rot};}
+
+    \node[below, text width=30mm, align=center, text=rlCinza] at (1.6,-0.15)
+      {só funciona no suporte dos dados};
+    \node[below, text width=30mm, align=center, text=rlLaranja] at (5.5,-0.15)
+      {\textbf{ponto de equilíbrio?}};
+    \node[below, text width=30mm, align=center, text=rlCinza] at (9.4,-0.15)
+      {não escala};
+  \end{tikzpicture}}
+  \end{center}
+
+  \begin{itemize}\setlength{\itemsep}{0.25ex}
+    \item Formas: demonstrar, corrigir, pontuar, comparar, restringir,
+      interromper.
+    \item A escolha importa: agentes que igualem o desempenho humano
+      \textbf{e} respeitem valores humanos.
+  \end{itemize}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Recompensa dada por pessoas: o caminho ingênuo}
+
+  \begin{itemize}\setlength{\itemsep}{0.35ex}
+    \item \textbf{TAMER} (Knox \& Stone, 2008): ``bom'' ou ``ruim'' enquanto o
+      agente age; treina-se um modelo do reforço humano.
+    \item \textbf{Robôs ensináveis} (Thomaz \& Breazeal, 2008): pessoas
+      \emph{não} dão reforço como a teoria supõe --- antecipam, premiam
+      intenção e \emph{orientam}, não só avaliam.
+  \end{itemize}
+
+  \begin{alertabox}
+    Pedir números falha por \textbf{calibração} (o ``7'' de uma pessoa não é o
+    de outra, nem o dela na semana seguinte), \textbf{ruído} (variância alta) e
+    \textbf{esforço} (atenção contínua).
+  \end{alertabox}
+
+  \begin{ideiabox}
+    Saída (psicometria, pré-RL): não pergunte \emph{quanto}; pergunte
+    \emph{qual dos dois}.
+  \end{ideiabox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Comparações par a par}
+
+  \vspace{-0.2em}
+  \begin{columns}[T]
+  \begin{column}{0.49\textwidth}
+    \begin{defbox}{Por que comparar é mais fácil}
+      \begin{itemize}\setlength{\itemsep}{0.15ex}
+        \item Mais fácil que escrever uma recompensa à mão.
+        \item Mais confiável que atribuir nota escalar.
+        \item Exige só julgamento \emph{relativo}, estável entre avaliadores.
+      \end{itemize}
+    \end{defbox}
+  \end{column}
+  \begin{column}{0.49\textwidth}
+    \begin{itemize}\setlength{\itemsep}{0.3ex}
+      \item Recomendação há décadas: \emph{interleaving} mais sensível que
+        medir cada ordenação.
+      \item Pode-se \textbf{escolher quais pares perguntar}: aprendizado ativo
+        de preferências {\scriptsize(Sadigh et al., 2017)}.
+    \end{itemize}
+  \end{column}
+  \end{columns}
+
+  \begin{alertabox}
+    Perda: comparações dão apenas uma \textbf{ordem}, e RL precisa de um
+    \emph{número}. Reconstruir a escala é o papel do modelo de Bradley--Terry.
+  \end{alertabox}
+\end{frame}
+
+%% ============================================================
+\section{Do par ao número: Bradley--Terry}
+%% ============================================================
+
+%% ------------------------------------------------------------
+\begin{frame}{O modelo de Bradley--Terry (1952)}
+
+  Caso simples: $k$ ações $b_1,\dots,b_k$, sem estado nem contexto (um
+  \emph{bandido} de $k$ braços). Comparações \textbf{ruidosas}, recompensa
+  latente $r(\cdot)$:
+  \[
+    \mdestaque{rlLaranja}{\Prob(b_i \succ b_j)
+      = \frac{\exp\bigl(r(b_i)\bigr)}{\exp\bigl(r(b_i)\bigr) + \exp\bigl(r(b_j)\bigr)}
+      = \sig\bigl(r(b_i) - r(b_j)\bigr) = p_{ij}}
+  \]
+
+  \begin{columns}[T]
+  \begin{column}{0.52\textwidth}
+    \begin{itemize}\setlength{\itemsep}{0.2ex}
+      \item \emph{Softmax} entre dois itens --- ou regressão logística sobre a
+        \textbf{diferença} de recompensas.
+      \item \textbf{Transitividade estocástica}: $p_{ik}$ fica determinado por
+        $p_{ij}$ e $p_{jk}$ --- hipótese forte, testável.
+    \end{itemize}
+  \end{column}
+  \begin{column}{0.46\textwidth}
+    \begin{center}
+    \scalebox{0.85}{\begin{tikzpicture}[font=\scriptsize]
+      \draw[->, rlCinza] (-2.4,0) -- (2.6,0) node[right] {$r(b_i)-r(b_j)$};
+      \draw[->, rlCinza] (0,-0.15) -- (0,1.9) node[above] {$p_{ij}$};
+      \draw[rlCinza, dashed] (-2.4,1.6) -- (2.4,1.6) node[right, text=rlCinza] {$1$};
+      \draw[rlCinza, dashed] (-2.4,0.8) -- (2.4,0.8);
+      \node[left, text=rlCinza] at (0,0.8) {$\tfrac12$};
+      \draw[rlLaranja, very thick] plot[domain=-2.4:2.4, samples=60]
+        (\x, {1.6/(1+exp(-2.2*\x))});
+    \end{tikzpicture}}
+    \end{center}
+  \end{column}
+  \end{columns}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{A recompensa latente não é única --- de novo}
+
+  \begin{teobox}{Invariância a translação}
+    Para qualquer constante $c$, substituir $r(\cdot)$ por $r(\cdot) + c$ deixa
+    \emph{todas} as probabilidades $p_{ij}$ inalteradas, pois só entra a
+    diferença $r(b_i) - r(b_j)$.
+  \end{teobox}
+
+  \begin{itemize}\setlength{\itemsep}{0.3ex}
+    \item Sem hipóteses adicionais, o modelo latente de recompensa não é
+      identificável (mesma lição do RL inverso).
+    \item Bradley--Terry: a \textbf{hipótese estrutural} que reduz a
+      indeterminação a uma única constante --- normalizável fixando, por
+      exemplo, $\sum_i r(b_i) = 0$.
+  \end{itemize}
+
+  \begin{alertabox}
+    Consequência prática: o valor absoluto que um modelo de recompensa de LLM
+    devolve \textbf{não significa nada}. Só diferenças entre respostas ao
+    \emph{mesmo} prompt são interpretáveis --- por isso a normalização por
+    prompt é padrão na implementação.
+  \end{alertabox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}[shrink]{Que item é ``o melhor''? Três respostas}
+
+  \begin{defbox}{Vencedor de Condorcet}
+    $b_i$ tal que $\Prob(b_i \succ b_j) > 0{,}5$ para \emph{todo} $j \ne i$.
+    Pode não existir.
+  \end{defbox}
+
+  \begin{columns}[T]
+  \begin{column}{0.49\textwidth}
+    \begin{defbox}{Vencedor de Copeland}
+      $b_i$ com o maior número de vitórias par a par: pontuação igual ao número
+      de itens que ele vence menos o número dos que o vencem.
+    \end{defbox}
+  \end{column}
+  \begin{column}{0.49\textwidth}
+    \begin{defbox}{Vencedor de Borda}
+      $b_i$ que maximiza a pontuação esperada, onde a pontuação contra $b_j$ é
+      $1$ se $b_i \succ b_j$, $0{,}5$ em caso de empate, e $0$ caso contrário.
+    \end{defbox}
+  \end{column}
+  \end{columns}
+
+  \begin{ideiabox}
+    Bandidos ``em duelo'' buscavam o vencedor de Copeland. \textbf{Sob
+    Bradley--Terry os três critérios coincidem} (transitividade estocástica
+    elimina ciclos) --- quando o modelo \emph{falha}, a escolha importa.
+    {\scriptsize\color{rlCinza}(Yue et al., JCSS 2012.)}
+  \end{ideiabox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Ajustando os parâmetros: entropia cruzada}
+
+  Suponha $N$ tuplas $(b_i, b_j, \mu)$: $\mu = 1$ se a pessoa marcou
+  $b_i \succ b_j$, $0{,}5$ em caso de empate, $0$ caso contrário. Maximizar a
+  verossimilhança = minimizar a entropia cruzada:
+  \[
+    \mathcal{L}(r) = -\!\!\sum_{(b_i,b_j,\mu)\in\Dset}\!\!
+      \Bigl[\mu \log \Prob(b_i \succ b_j) + (1-\mu)\log \Prob(b_j \succ b_i)\Bigr].
+  \]
+
+  \begin{ideiabox}
+    Isto é \textbf{regressão logística} com atributos $e_i - e_j$ e
+    coeficientes $r$ --- convexa, solução única dada a normalização.
+  \end{ideiabox}
+
+  \begin{alertabox}
+    Se os dados forem \emph{separáveis} (um item nunca perde), a verossimilhança
+    empurra $r \to \infty$: regularização não é opcional.
+  \end{alertabox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{De itens para trajetórias}
+
+  Mesma construção trocando ``item'' por \emph{trajetória}: $\traj^1 =
+  (s_0, a_7, s_{14},\dots)$ e $\traj^2 = (s_0, a_6, s_{12},\dots)$, somas de
+  recompensas latentes $R^1 = \sum_{i} r^1_i$ e $R^2 = \sum_i r^2_i$:
+  \[
+    \hat{\Prob}\bigl(\traj^1 \succ \traj^2\bigr)
+      = \frac{\exp\bigl(\sum_i r^1_i\bigr)}
+             {\exp\bigl(\sum_i r^1_i\bigr) + \exp\bigl(\sum_i r^2_i\bigr)}
+      = \sig\bigl(R^1 - R^2\bigr).
+  \]
+
+  \begin{itemize}\setlength{\itemsep}{0.3ex}
+    \item Agora $r$ é uma \textbf{rede neural} $\rphi(s,a)$, treinada pela
+      mesma perda de entropia cruzada.
+    \item Com $\rphi$ em mãos: RL comum --- rode PPO com a recompensa
+      aprendida.
+  \end{itemize}
+
+  \begin{alertabox}
+    O que a soma implica: a preferência é atribuída à trajetória \emph{inteira},
+    mas o modelo aprende uma recompensa \emph{por passo} --- \textbf{atribuição
+    de crédito}, agora dentro do sinal de supervisão.
+  \end{alertabox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{O resultado que abriu a porta}
+
+  \begin{columns}[T]
+  \begin{column}{0.55\textwidth}
+    \textbf{Christiano et al. (2017)}, \emph{Deep RL from Human Preferences}:
+    \begin{itemize}\setlength{\itemsep}{0.3ex}
+      \item Tarefa: agente simulado executa um \emph{backflip} --- sem
+        recompensa escrita possível.
+      \item Interface: dois clipes curtos; qual está mais próximo do desejado.
+      \item Custo total: cerca de \textbf{900 comparações} de um avaliador
+        humano.
+      \item Recompensa treinada \emph{em paralelo} com a política; consultas
+        onde ele está mais incerto.
+    \end{itemize}
+  \end{column}
+  \begin{column}{0.43\textwidth}
+    \begin{ideiabox}
+      Novecentos bits de feedback compraram o que nenhuma recompensa escrita à
+      mão havia produzido: \emph{avaliar} é muito mais barato que
+      \emph{especificar}.
+    \end{ideiabox}
+    \begin{alertabox}
+      O mesmo algoritmo, sem mudança conceitual, cinco anos depois alinharia
+      modelos de linguagem.
+    \end{alertabox}
+  \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\section{RLHF: preferências em escala}
+%% ============================================================
+
+%% ------------------------------------------------------------
+\begin{frame}{O \emph{pipeline} de três etapas}
+
+  \begin{center}
+  \scalebox{0.86}{\begin{tikzpicture}[font=\scriptsize, node distance=8mm]
+    \node[draw=rlAzulClaro, thick, fill=rlAzulClaro!8, rounded corners=3pt,
+          text width=32mm, align=center, minimum height=17mm] (a)
+      {\textbf{1. Ajuste por instruções}\\[0.3em]
+       clonagem de comportamento sobre demonstrações escritas\\[0.2em]
+       $\Rightarrow\ \psft$};
+    \node[draw=rlTeal, thick, fill=rlTeal!10, rounded corners=3pt,
+          text width=32mm, align=center, minimum height=17mm, right=11mm of a] (b)
+      {\textbf{2. Modelo de recompensa}\\[0.3em]
+       Bradley--Terry sobre pares $(\yw,\yl)$ rotulados por pessoas\\[0.2em]
+       $\Rightarrow\ \rphi$};
+    \node[draw=rlLaranja, very thick, fill=rlLaranja!10, rounded corners=3pt,
+          text width=32mm, align=center, minimum height=17mm, right=11mm of b] (c)
+      {\textbf{3. Otimização por RL}\\[0.3em]
+       PPO maximizando $\rphi$ com penalidade KL contra $\pref$\\[0.2em]
+       $\Rightarrow\ \polth$};
+    \draw[trans destac] (a) -- (b);
+    \draw[trans destac] (b) -- (c);
+    \draw[trans, dashed] (a.south) .. controls +(0,-1.1) and +(0,-1.1) ..
+      node[below, text=rlCinza, pos=0.5] {$\pref \defeq \psft$: ponto de partida \emph{e} âncora} (c.south);
+  \end{tikzpicture}}
+  \end{center}
+
+  \begin{itemize}\setlength{\itemsep}{0.25ex}
+    \item Etapa 1: exatamente a clonagem de comportamento da Aula 7.
+    \item Etapas 2 e 3: as duas metades de ``como maximizar algo que não
+      sabemos escrever?''
+  \end{itemize}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Etapa 2: aprender o modelo de recompensa}
+
+  Coleta: prompt $x$, várias respostas com $\psft$, pessoa ordena um par.
+  $\yw$ preferida (\emph{winning}), $\yl$ preterida (\emph{losing}).
+
+  \[
+    \mathcal{L}(\phi) = -\,\E_{(x,\yw,\yl)\sim\Dset}
+      \Bigl[\log \sig\bigl(\rphi(x,\yw) - \rphi(x,\yl)\bigr)\Bigr]
+  \]
+
+  \begin{columns}[T]
+  \begin{column}{0.52\textwidth}
+    \begin{itemize}\setlength{\itemsep}{0.2ex}
+      \item $\rphi$: o próprio LLM com a camada final trocada por uma saída
+        escalar.
+      \item Uma resposta inteira recebe \textbf{um} número: a soma de
+        recompensas por token do slide anterior colapsa numa recompensa
+        terminal.
+    \end{itemize}
+  \end{column}
+  \begin{column}{0.46\textwidth}
+    \begin{ideiabox}
+      \textbf{Valide o modelo de recompensa antes de otimizar contra ele.}
+      Acurácia em julgamentos humanos retidos; modelos grandes com dados
+      suficientes se aproximam da concordância entre dois humanos --- o teto
+      real.
+    \end{ideiabox}
+  \end{column}
+  \end{columns}
+
+  {\scriptsize\color{rlCinza}Stiennon et al., \emph{Learning to summarize from
+  human feedback}, NeurIPS 2020.}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Etapa 3: otimizar sem destruir o modelo}
+
+  \[
+    \max_{\polth}\;
+      \E_{x\sim\Dset,\; y\sim\polth(\cdot\mid x)}
+      \Bigl[\, \termo{\rphi(x,y)}{recompensa aprendida}
+        \;-\; \beta\, \termo{\log \frac{\polth(y\mid x)}{\pref(y\mid x)}}{
+          penalidade por se afastar} \Bigr]
+  \]
+
+  \begin{itemize}\setlength{\itemsep}{0.3ex}
+    \item Em esperança o segundo termo é
+      $\beta\,\KLd{\polth(\cdot\mid x)}{\pref(\cdot\mid x)}$; paga-se um preço
+      sempre que $\polth(y\mid x) > \pref(y\mid x)$.
+    \item Otimização: PPO, tratando cada token como uma ação.
+  \end{itemize}
+
+  \begin{alertabox}
+    \textbf{Por que a penalidade é indispensável.} $\rphi$ é um modelo ajustado a
+    dados finitos, válido apenas onde $\psft$ gera texto. Maximizá-la sem
+    restrição leva o modelo a \emph{explorar as falhas do avaliador} --- o
+    fenômeno de \emph{reward hacking}. A KL mantém a política dentro do domínio
+    onde $\rphi$ ainda é confiável.
+  \end{alertabox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Sobre-otimização: a lei de Goodhart, com números}
+
+  \begin{columns}[T]
+  \begin{column}{0.47\textwidth}
+    \begin{center}
+    \scalebox{0.9}{\begin{tikzpicture}[font=\scriptsize]
+      \draw[->, rlCinza] (0,0) -- (5.0,0);
+      \node[text=rlCinza, below] at (2.5,-0.15) {$\sqrt{\KLd{\polth}{\pref}}$};
+      \draw[->, rlCinza] (0,0) -- (0,3.1) node[above, align=center] {qualidade};
+      % proxy: cresce sempre
+      \draw[rlAzulClaro, very thick] plot[domain=0:4.2, samples=50]
+        (\x, {2.7*(1-exp(-0.7*\x))});
+      \node[text=rlAzulClaro, above right, font=\tiny] at (1.9,2.35) {recompensa $\rphi$ (medida)};
+      % real: sobe e desce
+      \draw[rlLaranja, very thick] plot[domain=0:3.8, samples=50]
+        (\x, {2.4*(1-exp(-0.9*\x)) - 0.16*\x*\x});
+      \node[text=rlLaranja, below, font=\tiny] at (3.0,0.55) {qualidade real};
+      \draw[rlVermelho, dashed, thick] (1.9,0) -- (1.9,2.1);
+      \node[text=rlVermelho, above, align=center, font=\scriptsize] at (1.9,2.15) {ponto de\\ virada};
+    \end{tikzpicture}}
+    \end{center}
+  \end{column}
+  \begin{column}{0.51\textwidth}
+    \begin{ideiabox}
+      ``Quando uma medida se torna um alvo, ela deixa de ser uma boa medida.''
+      $\rphi$ é um \textbf{substituto} da preferência humana; otimizá-lo demais
+      melhora o substituto e piora o objeto.
+    \end{ideiabox}
+    \begin{itemize}\setlength{\itemsep}{0.2ex}
+      \item $\beta$: o controle desse compromisso.
+      \item A distância KL entre política e referência é a variável natural do
+        eixo horizontal --- não o número de passos de otimização.
+    \end{itemize}
+  \end{column}
+  \end{columns}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{O que se observou na prática}
+
+  \begin{itemize}\setlength{\itemsep}{0.4ex}
+    \item \textbf{RLHF supera pré-treino $+$ ajuste supervisionado} em avaliação
+      humana --- vantagem cresce com a escala
+      {\scriptsize(Stiennon et al., 2020)}.
+    \item \textbf{InstructGPT} (Ouyang et al., 2022): o \emph{pipeline} em
+      dezenas de milhares de tarefas; modelo muito menor, alinhado, foi
+      preferido a um bem maior sem alinhamento.
+    \item \textbf{Comparações controladas} (Dubois et al., 2023), GPT-4 como
+      avaliador substituto: PPO funciona, mas linhas de base simples ---
+      \emph{best-of-$n$} e treinar sobre as saídas ``boas'' --- vão
+      surpreendentemente longe.
+  \end{itemize}
+
+  \begin{ideiabox}
+    Lição de engenharia: boa parte do ganho vem de \textbf{ter um bom modelo de
+    recompensa}, não da sofisticação do otimizador. RL é a parte cara e frágil:
+    dá para eliminá-la?
+  \end{ideiabox}
+\end{frame}
+
+%% ============================================================
+\section{DPO: preferência direta}
+%% ============================================================
+
+%% ------------------------------------------------------------
+\begin{frame}[shrink]{O que incomoda no RLHF}
+
+  \begin{columns}[T]
+  \begin{column}{0.49\textwidth}
+    \begin{alertabox}
+      \begin{itemize}\setlength{\itemsep}{0ex}
+        \item \textbf{Quatro modelos na memória}: política, referência,
+          recompensa e crítico.
+        \item \textbf{Amostragem online} a cada passo --- lento e caro.
+        \item \textbf{PPO é sensível} a passo, recorte e normalização.
+        \item Duas etapas de treino, com erros que se compõem.
+        \vspace{-0.6em}
+      \end{itemize}
+    \end{alertabox}
+  \end{column}
+  \begin{column}{0.49\textwidth}
+    \begin{ideiabox}
+      A recompensa é só um \emph{intermediário} entre preferências e política.
+      Relação em forma fechada → \textbf{substituir uma pela outra} e treinar a
+      política direto sobre os pares. {\scriptsize\color{rlCinza}(Rafailov et
+      al., 2023.)}
+    \end{ideiabox}
+  \end{column}
+  \end{columns}
+
+  \vspace{-0.6em}
+  \begin{center}
+  \scalebox{0.72}{\begin{tikzpicture}[font=\scriptsize, node distance=7mm]
+    \node[draw=rlCinza, thick, fill=rlFundo, rounded corners=2pt, minimum height=7mm,
+          text width=20mm, align=center] (p) {preferências};
+    \node[draw=rlTeal, thick, fill=rlTeal!10, rounded corners=2pt, minimum height=7mm,
+          text width=20mm, align=center, right=11mm of p] (r) {recompensa $\rphi$};
+    \node[draw=rlAzul, thick, fill=rlAzul!7, rounded corners=2pt, minimum height=7mm,
+          text width=20mm, align=center, right=11mm of r] (pi) {política $\polth$};
+    \draw[trans] (p) -- node[above, text=rlCinza] {entropia cruzada} (r);
+    \draw[trans] (r) -- node[above, text=rlCinza] {PPO} (pi);
+    \draw[trans destac] (p.south) .. controls +(0,-0.9) and +(0,-0.9) ..
+      node[below, text=rlLaranja] {\textbf{DPO}: um único passo supervisionado} (pi.south);
+  \end{tikzpicture}}
+  \end{center}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Passo 1: a solução em forma fechada}
+
+  \begin{teobox}{Política ótima do objetivo com regularização KL}
+    O máximo de
+    $\;\E_{y\sim\pol}[r(x,y)] - \beta\,\KLd{\pol(\cdot\mid x)}{\pref(\cdot\mid x)}$
+    é atingido por
+    \[
+      \pol_{r}(y\mid x) = \frac{1}{Z(x)}\,\pref(y\mid x)\,
+        \exp\!\Bigl(\tfrac{1}{\beta} r(x,y)\Bigr),
+      \qquad
+      Z(x) = \sum_{y}\pref(y\mid x)\exp\!\Bigl(\tfrac{1}{\beta} r(x,y)\Bigr).
+    \]
+  \end{teobox}
+
+  \pause
+  \textbf{Prova em três linhas.} Divida por $\beta$ e complete o logaritmo:
+  \begin{align*}
+    \max_{\pol}\ \E_{y\sim\pol}\Bigl[\tfrac{1}{\beta}r - \log\tfrac{\pol}{\pref}\Bigr]
+    &= \min_{\pol}\ \E_{y\sim\pol}\Bigl[\log\frac{\pol(y\mid x)}
+        {\tfrac{1}{Z(x)}\pref(y\mid x)e^{r(x,y)/\beta}}\Bigr] - \log Z(x)\\
+    &= \min_{\pol}\ \KLd{\pol(\cdot\mid x)}{\pol_r(\cdot\mid x)} - \log Z(x).
+  \end{align*}
+  Como $Z(x)$ não depende de $\pol$ e a divergência KL é mínima (e nula) apenas
+  quando os argumentos coincidem, o mínimo é $\pol = \pol_r$. \hfill$\blacksquare$
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Passo 2: inverter a relação}
+
+  A forma fechada é inútil como \emph{algoritmo}: $Z(x)$ soma sobre todas as
+  respostas possíveis --- intratável. Mas ela pode ser \textbf{invertida}.
+
+  \[
+    \pol_{r}(y\mid x) = \frac{1}{Z(x)}\pref(y\mid x) e^{r(x,y)/\beta}
+    \quad\Longleftrightarrow\quad
+    \mdestaque{rlLaranja}{r(x,y) = \beta \log \frac{\pol_{r}(y\mid x)}{\pref(y\mid x)}
+      + \beta\log Z(x)}
+  \]
+
+  \begin{ideiabox}
+    Leitura: \emph{toda} função de recompensa pode ser escrita como uma razão
+    logarítmica entre uma política e a referência --- positiva se a política
+    gosta da resposta \emph{mais} que o modelo de referência, negativa se gosta
+    menos.
+  \end{ideiabox}
+
+  \begin{itemize}\setlength{\itemsep}{0.25ex}
+    \item O termo problemático $\beta\log Z(x)$ depende apenas de $x$.
+    \item E o modelo de Bradley--Terry, felizmente, só enxerga \emph{diferenças}
+      de recompensa para o mesmo $x$.
+  \end{itemize}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Passo 3: substituir --- e ver $Z$ desaparecer}
+
+  Partindo de $\Prob(\yw \succ \yl \mid x) = \sig\bigl(r(x,\yw) - r(x,\yl)\bigr)$
+  e substituindo a expressão anterior:
+  \[
+    r(x,\yw) - r(x,\yl)
+      = \beta\log\frac{\polth(\yw\mid x)}{\pref(\yw\mid x)}
+      - \beta\log\frac{\polth(\yl\mid x)}{\pref(\yl\mid x)}
+      + \underbrace{\beta\log Z(x) - \beta\log Z(x)}_{\textstyle = \,0}
+  \]
+
+  \pause
+  Levando à perda de entropia cruzada, obtém-se um objetivo que só envolve a
+  política:
+  \begin{teobox}{Perda do DPO}
+    \[
+      \mathcal{L}_{\mathrm{DPO}}(\polth;\pref) = -\,\E_{(x,\yw,\yl)\sim\Dset}
+      \left[\log \sig\!\left(
+        \beta\log\frac{\polth(\yw\mid x)}{\pref(\yw\mid x)}
+        - \beta\log\frac{\polth(\yl\mid x)}{\pref(\yl\mid x)}
+      \right)\right]
+    \]
+  \end{teobox}
+
+  Perda \textbf{supervisionada} sobre um conjunto \emph{fixo} de pares --- sem
+  amostragem, sem crítico, sem modelo de recompensa explícito.
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{O que o gradiente do DPO faz}
+
+  \[
+    \scalebox{0.92}{$\displaystyle
+    \gth \mathcal{L}_{\mathrm{DPO}}
+      = -\beta\, \E_{(x,\yw,\yl)}\Bigl[\;
+        \underbrace{\sig\bigl(\hat r_{\thv}(x,\yl) - \hat r_{\thv}(x,\yw)\bigr)}
+          _{\textstyle \text{peso: quão errado o modelo está}}
+        \Bigl(
+          \underbrace{\gth\log\polth(\yw\mid x)}_{\text{aumentar}}
+          - \underbrace{\gth\log\polth(\yl\mid x)}_{\text{diminuir}}
+        \Bigr)\Bigr]$}
+  \]
+  com $\hat r_{\thv}(x,y) = \beta\log\frac{\polth(y\mid x)}{\pref(y\mid x)}$
+  a \textbf{recompensa implícita} definida pela própria política.
+
+  \begin{ideiabox}
+    Gradiente de política ``suba o que deu certo, desça o que deu errado'' ---
+    com \textbf{peso adaptativo}: quase zero nos pares que o modelo já ordena
+    corretamente, esforço nos que ele ainda erra. É o que impede o colapso da
+    máxima verossimilhança ingênua sobre $\yw$.
+  \end{ideiabox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Teste sua compreensão}
+
+  \begin{quizbox}{}
+    O DPO nunca constrói um modelo de recompensa. Ainda assim, dizemos que ele
+    tem uma ``recompensa implícita''.
+
+    \smallskip
+    (i) Onde ela está? (ii) O termo $\beta\log Z(x)$ cancelou --- isso significa
+    que ele é irrelevante, ou que apenas não é \emph{necessário}? (iii) Que
+    hipótese do RLHF o DPO herda inteira, sem enfraquecer?
+    \paradiscussao
+  \end{quizbox}
+
+  \pause
+
+  \begin{respbox}
+    (i) Na razão $\beta\log(\polth/\pref)$: os pesos da política \emph{são} o
+    modelo de recompensa reparametrizado. \;(ii) Ele existe e fixa a
+    normalização; só não precisa ser conhecido, pois a perda depende apenas de
+    diferenças com o mesmo $x$. \;(iii) O \textbf{modelo de Bradley--Terry}. Se
+    ele falha, DPO e RLHF falham juntos.
+  \end{respbox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{O que se ganha e o que se perde}
+
+  \begin{center}\small
+  \begin{tabular}{@{}p{0.3\linewidth}p{0.31\linewidth}p{0.31\linewidth}@{}}
+    \toprule
+    & \textbf{RLHF (PPO)} & \textbf{DPO} \\
+    \midrule
+    Modelos em memória & 4 & 2 \\
+    Dados & \emph{online} (regerados) & \emph{offline}, fixos \\
+    Estabilidade & sensível a hiperparâmetros & perda supervisionada \\
+    Rotular dados novos & possível a qualquer momento & exige nova coleta \\
+    Compromisso recompensa/KL & explorado eficientemente & idem, com menos custo \\
+    Explorar fora do conjunto & sim & \textbf{não} \\
+    \bottomrule
+  \end{tabular}
+  \end{center}
+
+  \begin{alertabox}
+    A última linha é a limitação real: o DPO só pode reordenar o que já está no
+    conjunto de dados; ele nunca descobre uma resposta melhor que ninguém
+    escreveu. Daí as variantes \emph{iterativas} (geração, rotulagem, DPO).
+  \end{alertabox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Evidência empírica e adoção}
+
+  \begin{columns}[T]
+  \begin{column}{0.49\textwidth}
+    \begin{defbox}{Experimento controlado}
+      \begin{enumerate}\setlength{\itemsep}{0ex}
+        \item Gerar resenhas positivas de filmes com GPT-2 XL.
+        \item Usar um classificador de sentimento como recompensa ``de ouro''.
+        \item Construir preferências sintéticas a partir dela.
+        \item Otimizar com PPO e com DPO.
+      \end{enumerate}
+      Resultado: para o \emph{mesmo} desvio KL, o DPO obtém recompensa igual ou
+      maior --- fronteira de compromisso melhor.
+    \end{defbox}
+  \end{column}
+  \begin{column}{0.49\textwidth}
+    \begin{itemize}\setlength{\itemsep}{0.3ex}
+      \item Com recompensa de ouro conhecida, a comparação é limpa: sem dúvida
+        sobre a qualidade do modelo de recompensa.
+      \item Em escala, DPO e variantes: padrão em famílias abertas (Zephyr,
+        Mistral, Llama 3).
+      \item Extensões próximas: \textbf{CPL}, mesma ideia para preferências
+        sobre \emph{trajetórias} de controle, fora da linguagem.
+    \end{itemize}
+  \end{column}
+  \end{columns}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{O mapa depois do DPO}
+
+  \begin{center}
+  \scalebox{0.83}{\begin{tikzpicture}[font=\scriptsize, node distance=6mm]
+    \node[draw=rlAzul, very thick, fill=rlAzul!7, rounded corners=3pt,
+          text width=26mm, align=center, minimum height=11mm] (bt)
+      {\textbf{Bradley--Terry}\\ preferências $\to$ recompensa};
+    \node[draw=rlTeal, thick, fill=rlTeal!10, rounded corners=3pt,
+          text width=26mm, align=center, minimum height=11mm, above right=3mm and 16mm of bt] (rlhf)
+      {\textbf{RLHF}\\ recompensa explícita $+$ PPO};
+    \node[draw=rlLaranja, very thick, fill=rlLaranja!10, rounded corners=3pt,
+          text width=26mm, align=center, minimum height=11mm, below right=3mm and 16mm of bt] (dpo)
+      {\textbf{DPO}\\ recompensa implícita, perda direta};
+    \node[draw=rlAzulClaro, thick, fill=rlAzulClaro!8, rounded corners=3pt,
+          text width=30mm, align=center, minimum height=11mm, right=16mm of rlhf] (grpo)
+      {\textbf{GRPO / RLVR}\\ recompensa \emph{verificável}: dispensa o modelo};
+    \node[draw=rlAzulClaro, thick, fill=rlAzulClaro!8, rounded corners=3pt,
+          text width=30mm, align=center, minimum height=11mm, right=16mm of dpo] (var)
+      {\textbf{IPO, KTO, ORPO}\\ afrouxam hipóteses de Bradley--Terry};
+    \draw[trans destac] (bt) -- (rlhf);
+    \draw[trans destac] (bt) -- (dpo);
+    \draw[trans] (rlhf) -- (grpo);
+    \draw[trans] (dpo) -- (var);
+  \end{tikzpicture}}
+  \end{center}
+
+  \begin{ideiabox}
+    Ramo de cima move o estado da arte em raciocínio: correção \emph{verificável}
+    (uma prova, um teste unitário, uma resposta numérica) → recompensa dada de
+    novo --- a sobre-otimização desta aula desaparece.
+  \end{ideiabox}
+\end{frame}
+
+%% ============================================================
+\section{Balanço}
+%% ============================================================
+
+%% ------------------------------------------------------------
+\begin{frame}{O que você deve levar desta aula}
+
+  \begin{defbox}[fontupper=\small]{Capacidades esperadas}
+    \begin{itemize}\setlength{\itemsep}{0ex}
+      \item Explicar a degradação $O(\varepsilon T^2)$ da clonagem, e por que
+        mais dados não corrigem o expoente.
+      \item Descrever o DAGGER, sua garantia e por que ele não escala.
+      \item Argumentar que a recompensa do RL inverso não é única; listar as
+        três invariâncias.
+      \item Escrever Bradley--Terry e a perda correspondente, para itens e para
+        trajetórias.
+      \item Descrever as três etapas do RLHF e o papel da penalidade KL.
+      \item \textbf{Derivar} o DPO e interpretar seu gradiente.
+    \end{itemize}
+  \end{defbox}
+
+  \begin{ideiabox}
+    Moral: sem placar, alguém precisa fornecê-lo --- \emph{quem} fornece,
+    \emph{a que custo}, \emph{quanto confiar}.
+  \end{ideiabox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Para ir além}
+
+  \begin{columns}[T]
+  \begin{column}{0.49\textwidth}
+    \textbf{Artigos fundamentais}
+    \begin{itemize}\setlength{\itemsep}{0ex}
+      \item Ross, Gordon \& Bagnell (2011) --- DAGGER.
+      \item Ng \& Russell (2000) --- RL inverso.
+      \item Ziebart et al. (2008) --- MaxEnt IRL.
+      \item Christiano et al. (2017) --- preferências humanas.
+      \item Ouyang et al. (2022) --- InstructGPT.
+      \item Rafailov et al. (2023) --- DPO.
+    \end{itemize}
+  \end{column}
+  \begin{column}{0.49\textwidth}
+    \textbf{Contexto mais amplo}
+    \begin{itemize}\setlength{\itemsep}{0ex}
+      \item Preferências humanas: interseção de \textbf{escolha social},
+        \textbf{economia computacional} e IA --- literatura anterior ao
+        aprendizado de máquina.
+      \item Teoremas de impossibilidade (Arrow) afetam ``alinhar'' um modelo a
+        um \emph{grupo} com preferências conflitantes.
+    \end{itemize}
+  \end{column}
+  \end{columns}
+
+  \begin{alertabox}
+    Pergunta que a técnica não responde: \emph{de quem} são as preferências
+    usadas para rotular os pares. Escolha de projeto, não detalhe de
+    implementação.
+  \end{alertabox}
+\end{frame}
+
+\end{document}

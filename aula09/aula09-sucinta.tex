@@ -1,0 +1,1407 @@
+%% ============================================================
+%%  Aula 9 — Aprendizagem por reforço eficiente em dados I:
+%%           bandidos multi-braços, arrependimento e otimismo
+%%  Versão sucinta: roteiro do apresentador (poucas palavras,
+%%  mesmas definições e figuras do aula09.tex)
+%%  Adaptação em pt-BR do CS234 (Stanford, Emma Brunskill), Lecture 9
+%%  Prof. Marcelo Keese Albertini — Universidade Federal de Uberlândia
+%%  Compilar com XeLaTeX (2x) — latexmk -xelatex aula09.tex
+%% ============================================================
+\documentclass[aspectratio=169, 10pt]{beamer}
+%% .sty do projeto na raiz do repositório (../)
+\makeatletter
+\def\input@path{{./}{../}}
+\makeatother
+
+
+\usetheme{AprendizadoRL}      % ANTES do babel — fontspec precisa vir primeiro
+\usepackage{babel}
+\babelprovide[import, main]{brazilian}
+\usepackage{booktabs}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+
+\title[Aula 9 — Bandidos e arrependimento]{Aula 9: Aprendizagem por reforço\\ eficiente em dados I}
+\subtitle[Aprendizagem por Reforço]{Bandidos multi-braços \textbullet\ Arrependimento \textbullet\ $\epsilon$-guloso \textbullet\ Otimismo e UCB}
+\author[Prof. Marcelo K. Albertini]{Prof. Marcelo Keese Albertini \\
+  \footnotesize Universidade Federal de Uberlândia \\
+  \footnotesize adaptado de Emma Brunskill, CS234 (Stanford)}
+\institute{Universidade Federal de Uberlândia}
+\date{2026}
+
+% ---- Nota discreta: as perguntas ficam para o professor conduzir em aula
+\newcommand{\paradiscussao}{\smallskip
+  {\footnotesize\color{rlCinza}\itshape Pergunta para discussão conduzida em aula.}}
+
+% ---- Macros locais desta aula
+\newcommand{\Qhat}{\widehat{Q}}
+\newcommand{\muhat}{\hat{\mu}}
+\newcommand{\Nc}{N}                         % contagem
+\newcommand{\gap}{\Delta}
+\newcommand{\UCB}{\mathrm{UCB}}
+\newcommand{\LCB}{\mathrm{LCB}}
+\newcommand{\KL}{D_{\mathrm{KL}}}
+\newcommand{\one}{\mathbb{1}}
+\newcommand{\Reg}{L}
+\newcommand{\Ber}{\mathrm{Bernoulli}}
+\newcommand{\Bet}{\mathrm{Beta}}
+
+% ---- Estilos TikZ locais
+\tikzset{
+  caixatit/.style={draw=rlAzul!35, very thick, rounded corners=2.5pt,
+                   fill=rlAzul!5, align=center, inner sep=3mm,
+                   text width=27mm, font=\small},
+  braco/.style={draw=rlAzul, very thick, fill=rlAzul!8, rounded corners=2pt,
+                minimum width=9mm, minimum height=5mm, font=\scriptsize},
+}
+
+\begin{document}
+
+\begin{frame}[plain, noframenumbering]\titlepage\end{frame}
+
+%% ============================================================
+\begin{frame}{Retomando a aula anterior}
+  \framesubtitle{Aprendizagem a partir de preferências humanas}
+
+  \begin{quizbox}[fontupper=\footnotesize]{}
+    Quais afirmações são verdadeiras?
+    \begin{enumerate}\setlength{\itemsep}{0ex}
+      \item RLHF e DPO ambos aprendem uma representação \alert{explícita}
+            de um modelo de recompensa a partir de preferências.
+      \item Ambos estão limitados a ser, no máximo, tão bons quanto os
+            melhores exemplos dos pares de preferência.
+      \item O DPO não utiliza política de referência.
+    \end{enumerate}
+    \paradiscussao
+  \end{quizbox}
+
+  \pause
+
+  \begin{respbox}[fontupper=\footnotesize]
+    \textbf{Nenhuma das três.} (1) DPO dispensa o modelo explícito: a
+    recompensa fica \emph{implícita} em
+    $\log\frac{\pol_\theta}{\pol_{\text{ref}}}$. (2) Otimizar uma recompensa
+    aprendida permite \emph{superar} os exemplos vistos. (3)
+    $\pol_{\text{ref}}$ é parte constitutiva da perda do DPO.
+  \end{respbox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Onde estamos no curso}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \begin{itemize}
+        \item \textbf{Aulas 1--2:} planejamento com modelo conhecido.
+        \item \textbf{Aulas 3--4:} avaliação e controle sem modelo.
+        \item \textbf{Aulas 5--7:} gradientes de política, métodos modernos.
+        \item \textbf{Aula 8:} aprendizagem a partir de preferências.
+        \item \textbf{Aulas 9--10:} \alert{eficiência de dados} — quantas
+              interações são \emph{necessárias}?
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{ideiabox}
+        Antes: \emph{``o algoritmo converge para a política ótima?''}
+        Agora: \emph{``quantos erros ele comete no caminho?''}
+      \end{ideiabox}
+    \end{column}
+  \end{columns}
+
+  \bigskip
+  \begin{alertabox}
+    Convergência assintótica é critério barato: testar todas as ações um
+    milhão de vezes e depois agir otimamente ``converge'' — e é inútil se
+    cada teste custa um paciente, um cliente ou uma hora de robô.
+  \end{alertabox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Os quatro ingredientes, revisitados}
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      A aprendizagem por reforço envolve:
+      \begin{itemize}
+        \item \textbf{Otimização} — encontrar boas decisões.
+        \item \textbf{Generalização} — inferir sobre o que não foi visto.
+        \item \textbf{Consequências adiadas} — hoje afeta amanhã.
+        \item \alert{\textbf{Exploração}} — decidir o que experimentar.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{defbox}{Estratégia desta aula}
+        Isolar a \textbf{exploração} removendo temporariamente as
+        consequências adiadas. O objeto resultante — o \emph{bandido
+        multi-braços} — é simples o bastante para admitir análise exata,
+        e as ideias sobrevivem intactas quando as consequências adiadas
+        voltam (Aula 10).
+      \end{defbox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{O que vamos construir hoje}
+  \begin{columns}[T]
+    \begin{column}{0.33\textwidth}
+      {\color{rlTeal}\bfseries CENÁRIOS}\\[0.3em]
+      {\small Onde o agente age.}
+      \begin{itemize}\small
+        \item Bandidos (decisão única)
+        \item MDPs (Aula 10)
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.33\textwidth}
+      {\color{rlAzulClaro}\bfseries ARCABOUÇOS}\\[0.3em]
+      {\small Como se mede qualidade.}
+      \begin{itemize}\small
+        \item Arrependimento
+        \item Arrependimento bayesiano
+        \item PAC (Aula 10)
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.33\textwidth}
+      {\color{rlLaranja}\bfseries ABORDAGENS}\\[0.3em]
+      {\small Classes de algoritmos.}
+      \begin{itemize}\small
+        \item Guloso, $\epsilon$-guloso
+        \item Otimismo (UCB)
+        \item Casamento de probabilidade
+      \end{itemize}
+    \end{column}
+  \end{columns}
+
+  \bigskip
+  \begin{ideiabox}
+    A matriz cenário $\times$ arcabouço $\times$ abordagem não é ponto a
+    ponto: \textbf{uma mesma abordagem costuma atender vários arcabouços em
+    vários cenários} — o otimismo, visto hoje em bandidos, reaparece quase
+    sem alteração em MDPs.
+  \end{ideiabox}
+\end{frame}
+
+%% ============================================================
+\section{Bandidos multi-braços}
+
+\begin{frame}{Como julgar um algoritmo de aprendizagem}
+  Critérios que já usamos, em ordem crescente de exigência:
+  \begin{enumerate}
+    \item \textbf{Custo computacional} por iteração.
+    \item \textbf{Converge?} Existe um ponto fixo e o algoritmo o alcança?
+    \item \textbf{Converge para o \emph{ótimo}?}
+    \item \textbf{Com que rapidez} alcança a política ótima?
+    \item \alert{\textbf{Quantos erros comete no caminho?}}
+  \end{enumerate}
+
+  \bigskip
+  \begin{alertabox}
+    O critério (5) é o único que fala do \emph{custo da própria
+    aprendizagem} — e o que importa em ensaios clínicos, precificação,
+    recomendação e robótica: cada decisão subótima é dano real, não número
+    numa curva de treino.
+  \end{alertabox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Bandido multi-braços}
+  \begin{defbox}{Bandido multi-braços}
+    Uma tupla $(\gA, \mathcal{R})$ onde
+    \begin{itemize}\setlength{\itemsep}{0.2ex}
+      \item $\gA$ é um conjunto \emph{conhecido} de $m$ ações (``braços'');
+      \item $\mathcal{R}_a(r) = \Prob[r \mid a]$ é uma distribuição de
+            recompensas \emph{desconhecida}, uma para cada braço.
+    \end{itemize}
+    A cada passo o agente escolhe $a_t \in \gA$; o ambiente devolve
+    $r_t \sim \mathcal{R}_{a_t}$. Objetivo: maximizar $\sum_{\tau} r_\tau$.
+  \end{defbox}
+
+  \vspace{-2mm}
+  \begin{columns}[T]
+    \begin{column}{0.54\textwidth}
+      \begin{itemize}\small
+        \item Sem estado: a ação de hoje não altera o problema de amanhã.
+        \item O único acoplamento entre passos é \textbf{informacional}:
+              o que aprendi ontem muda o que escolho hoje.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.78, transform shape]
+        \node[estado destacado, minimum size=11mm] (s) {$s$};
+        \foreach \i/\ang/\col in {1/140/rlLaranja, 2/180/rlAzulClaro, 3/220/rlTeal}{
+          \draw[trans, \col, very thick] (s) to[out=\ang, in=\ang-60, looseness=9] node[pos=0.5, left, font=\scriptsize, text=\col] {$a_\i$} (s);}
+        \node[font=\scriptsize, text=rlCinza, below=7mm of s, align=center]
+          {MDP de \textbf{um único estado}:\\ todas as ações voltam a $s$.};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Bandido, bandido contextual, MDP}
+  \centering
+  \begin{tikzpicture}[node distance=6mm]
+    \node[caixatit] (b) {\textbf{Bandido}\\[0.2em]
+      \scriptsize um estado\\ \scriptsize sem consequência adiada\\[0.3em]
+      \scriptsize $a \to r$};
+    \node[caixatit, right=14mm of b] (cb) {\textbf{Bandido contextual}\\[0.2em]
+      \scriptsize estado sorteado i.i.d.\\ \scriptsize sem consequência adiada\\[0.3em]
+      \scriptsize $s \to a \to r$};
+    \node[caixatit, right=14mm of cb] (mdp) {\textbf{MDP}\\[0.2em]
+      \scriptsize estado evolui\\ \scriptsize consequência adiada\\[0.3em]
+      \scriptsize $s \to a \to r,\, s'$};
+    \draw[trans destac] (b) -- node[above, font=\scriptsize, text=rlCinza] {+ contexto} (cb);
+    \draw[trans destac] (cb) -- node[above, font=\scriptsize, text=rlCinza] {+ dinâmica} (mdp);
+  \end{tikzpicture}
+
+  \vspace{1em}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{ideiabox}
+        A exploração é \emph{difícil} nos três casos, por razões diferentes:
+        no bandido, basta decidir \emph{o que testar}. No MDP, é preciso
+        decidir também \emph{como chegar} ao lugar onde vale a pena testar
+        --- exploração profunda.
+      \end{ideiabox}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{itemize}
+        \item Anúncios, notícias e recomendação: bandidos contextuais, na
+              prática, movimentam bilhões.
+        \item Ensaios clínicos adaptativos: bandidos puros com
+              restrições éticas.
+        \item Toda a teoria de hoje é o caso base das cotas de amostra
+              para MDPs.
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Exemplo condutor: como tratar um dedo do pé quebrado}
+  \begin{columns}[T]
+    \begin{column}{0.55\textwidth}
+      \begin{itemize}
+        \item Decidir o melhor tratamento para pacientes com fratura de
+              dedo do pé.
+        \item Três opções: \textbf{(1)} cirurgia, \textbf{(2)}
+              imobilização com esparadrapo no dedo vizinho
+              (\emph{buddy taping}), \textbf{(3)} não fazer nada.
+        \item Desfecho binário: consolidou ($+1$) ou não ($0$) após seis
+              semanas, por radiografia.
+        \item Cada braço é uma variável de Bernoulli com parâmetro
+              desconhecido $\theta_i$.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.43\textwidth}
+      \begin{alertabox}
+        Exemplo \textbf{fictício} — os números não representam a eficácia
+        real de nenhum tratamento ortopédico.
+      \end{alertabox}
+      \begin{defbox}{Parâmetros verdadeiros (desconhecidos)}
+        \centering\small
+        \begin{tabular}{lc}
+          cirurgia $a_1$     & $\theta_1 = 0{,}95$ \\
+          esparadrapo $a_2$  & $\theta_2 = 0{,}90$ \\
+          nada $a_3$         & $\theta_3 = 0{,}10$ \\
+        \end{tabular}
+      \end{defbox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Teste sua compreensão: modelando o problema}
+  \begin{quizbox}[fontupper=\footnotesize]{}
+    Modelando o tratamento como bandido de 3 braços, cada um Bernoulli
+    com parâmetro desconhecido $\theta_i$, quais são verdadeiras?
+    \begin{enumerate}\setlength{\itemsep}{0ex}
+      \item Puxar um braço / tomar uma ação corresponde a o dedo ter
+            consolidado ou não.
+      \item Um bandido descreve melhor este problema do que um MDP porque
+            tratar cada paciente envolve múltiplas decisões.
+      \item Depois de tratar um paciente, se $\theta_i \ne 0$ e
+            $\theta_i \ne 1$ para todo $i$, às vezes o dedo consolida e às
+            vezes não.
+    \end{enumerate}
+    \paradiscussao
+  \end{quizbox}
+
+  \pause
+
+  \begin{respbox}[fontupper=\footnotesize]
+    Apenas a \textbf{(3)}. \;
+    \textbf{(1)} é falsa: puxar o braço é \emph{escolher o tratamento} --- a
+    consolidação é a \emph{recompensa}. \;
+    \textbf{(2)} tem a conclusão certa pelo motivo errado: o bandido serve
+    porque cada paciente envolve \emph{uma única} decisão. \;
+    \textbf{(3)} é a definição de recompensa estocástica.
+  \end{respbox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{O algoritmo guloso}
+  \begin{algbox}{Guloso}
+    Estime o valor de cada ação por avaliação de Monte Carlo:
+    \[
+      \Qhat_t(a) \;=\; \frac{1}{\Nc_t(a)} \sum_{i=1}^{t} r_i\,\one(a_i = a)
+      \;\approx\; Q(a) = \E[R(a)],
+    \]
+    e escolha sempre a ação de maior valor estimado:
+    \[
+      a_t \;=\; \argmax_{a \in \gA} \Qhat_{t-1}(a).
+    \]
+  \end{algbox}
+
+  \begin{columns}[T]
+    \begin{column}{0.55\textwidth}
+      Forma incremental, sem guardar o histórico:
+      \[
+        \Qhat_{t}(a_t) \;=\; \Qhat_{t-1}(a_t)
+          + \frac{1}{\Nc_t(a_t)}\bigl(r_t - \Qhat_{t-1}(a_t)\bigr).
+      \]
+    \end{column}
+    \begin{column}{0.43\textwidth}
+      \begin{ideiabox}
+        O mesmo molde das aulas anteriores, com $\alpha = 1/\Nc$: a média
+        exata.
+      \end{ideiabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{O guloso trava}
+  \framesubtitle{Uma rodada de amostragem inicial, e o destino selado}
+
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \begin{algbox}{Execução}
+        \textbf{1.} Amostre cada braço uma vez:
+        \begin{itemize}\setlength{\itemsep}{0.1ex}\small
+          \item $a_1$, $r \sim \Ber(0{,}95)$, obtém $\mathbf{0}$
+                $\Rightarrow \Qhat(a_1) = 0$
+          \item $a_2$, $r \sim \Ber(0{,}90)$, obtém $\mathbf{+1}$
+                $\Rightarrow \Qhat(a_2) = 1$
+          \item $a_3$, $r \sim \Ber(0{,}10)$, obtém $\mathbf{0}$
+                $\Rightarrow \Qhat(a_3) = 0$
+        \end{itemize}
+        \textbf{2.} Qual a probabilidade de o guloso escolher cada braço
+        em seguida? (empates resolvidos uniformemente)
+      \end{algbox}
+      \pause
+      \begin{respbox}
+        $\Prob(a_2) = 1$. O máximo é único.
+      \end{respbox}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \pause
+      \begin{alertabox}
+        \textbf{O guloso jamais encontrará o melhor braço.} Escolhido
+        $a_2$, os outros dois permanecem congelados em $\Qhat = 0$: nunca
+        mais são testados. A cirurgia --- de fato superior --- ficou
+        eliminada por um único paciente azarado.
+      \end{alertabox}
+      \begin{ideiabox}
+        A falha não é de estimação, é de \emph{cobertura}: o estimador de
+        Monte Carlo é não viesado apenas para os braços que continuam
+        sendo amostrados.
+      \end{ideiabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\section{Arrependimento}
+
+\begin{frame}{Um critério formal: arrependimento}
+  \begin{defbox}{Arrependimento (\emph{regret})}
+    Valor de ação: $\;Q(a) = \E[r \mid a]$. \quad
+    Valor ótimo: $\;V^{*} = Q(a^{*}) = \max_{a \in \gA} Q(a)$.
+    \smallskip
+
+    \textbf{Perda de oportunidade} em um passo:
+    \[ \ell_t = \E\bigl[V^{*} - Q(a_t)\bigr], \]
+    onde a esperança é sobre a política de decisão usada para escolher $a_t$.
+    \smallskip
+
+    \textbf{Arrependimento total} até $t$:
+    \[
+      \Reg_t \;=\; \E\Bigl[\sum_{\tau=1}^{t} V^{*} - Q(a_\tau)\Bigr].
+    \]
+  \end{defbox}
+
+  \vspace{-2.5mm}
+  \begin{ideiabox}
+    Maximizar recompensa acumulada $\iff$ minimizar arrependimento total:
+    mesmo objetivo, sinal trocado, deslocamento $tV^{*}$. Mas o
+    arrependimento é \emph{comparável entre problemas}.
+  \end{ideiabox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Decomposição: lacunas $\times$ contagens}
+  \begin{itemize}
+    \item $\Nc_t(a)$: número de vezes que a ação $a$ foi escolhida até $t$.
+    \item \textbf{Lacuna} $\gap_a$: diferença de valor entre $a$ e a ação
+          ótima, $\;\gap_a = V^{*} - Q(a)$.
+  \end{itemize}
+
+  \[
+    \Reg_t \;=\; \E\Bigl[\sum_{\tau=1}^{t} V^{*} - Q(a_\tau)\Bigr]
+      \;=\; \sum_{a \in \gA} \E[\Nc_t(a)]\,\bigl(V^{*} - Q(a)\bigr)
+      \;=\; \mdestaque{rlLaranja}{\sum_{a \in \gA} \E[\Nc_t(a)]\,\gap_a}
+  \]
+
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \begin{ideiabox}
+        Bom algoritmo: \textbf{contagens pequenas onde as lacunas são
+        grandes}. O problema: as lacunas são exatamente o que não sabemos
+        --- se soubéssemos $\gap_a$, não haveria nada a aprender.
+      \end{ideiabox}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{alertabox}
+        Toda a dificuldade da exploração está nesta frase. Não é preciso
+        estimar $Q$ bem em todo braço: basta estimar bem o suficiente para
+        \emph{ordenar} --- menos amostras onde a lacuna é grande, mais onde
+        ela é pequena.
+      \end{alertabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Arrependimento do guloso, passo a passo}
+  \framesubtitle{$\theta = (0{,}95;\ 0{,}90;\ 0{,}10)$, portanto $\gap = (0;\ 0{,}05;\ 0{,}85)$}
+
+  \centering
+  \begin{tabular}{ccccc}
+    \toprule
+    \textbf{Ação} & \textbf{Ação ótima} & \textbf{Recompensa obs.}
+      & \textbf{Arrepend. do passo} & \textbf{Acumulado} \\
+    \midrule
+    $a_1$ & $a_1$ & 0 & 0{,}00 & 0{,}00 \\
+    $a_2$ & $a_1$ & 1 & 0{,}05 & 0{,}05 \\
+    $a_3$ & $a_1$ & 0 & 0{,}85 & 0{,}90 \\
+    $a_2$ & $a_1$ & 1 & 0{,}05 & 0{,}95 \\
+    $a_2$ & $a_1$ & 0 & 0{,}05 & 1{,}00 \\
+    \bottomrule
+  \end{tabular}
+
+  \vspace{0.8em}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{alertabox}
+        Linhas 2 e 4: \textbf{a recompensa observada foi $+1$ e mesmo assim
+        houve arrependimento} — não compara com o que aconteceu, mas com o
+        que aconteceria \emph{em média} sob a melhor ação.
+      \end{alertabox}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{ideiabox}
+        Em $a_2$ para sempre: cada passo adicional custa $0{,}05$. Ao fim
+        de $T$ decisões, $\Reg_T \approx 0{,}05\,T$: \textbf{arrependimento
+        linear}. A curva nunca achata.
+      \end{ideiabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Uma limitação incômoda --- e a saída}
+  \begin{alertabox}
+    Em qualquer aplicação real \textbf{não é possível calcular o
+    arrependimento}: ele exige conhecer a recompensa esperada da melhor
+    ação, que é justamente a incógnita. A tabela anterior só pôde ser
+    preenchida porque \emph{nós} fixamos $\theta$.
+  \end{alertabox}
+
+  \begin{defbox}{O que se faz em vez disso}
+    Demonstra-se uma \textbf{cota superior} para o arrependimento potencial
+    de um algoritmo \emph{em qualquer problema de bandido} de uma dada
+    classe. A garantia é uniforme sobre os ambientes, não estimada a
+    partir dos dados.
+  \end{defbox}
+
+  \vspace{-2mm}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{defbox}{Cota independente do problema}
+        Limita $\Reg_T$ como função apenas de $T$ e $m$
+        (e.g.\ $O(\sqrt{mT\log T})$). É a garantia de \emph{pior caso}.
+      \end{defbox}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{defbox}{Cota dependente do problema}
+        Limita $\Reg_T$ em função das lacunas $\gap_a$
+        (e.g.\ $O(\sum_a \log T / \gap_a)$). É afiada em problemas fáceis
+        e explode quando as lacunas somem.
+      \end{defbox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{As duas cotas descrevem o mesmo algoritmo}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.72\textwidth, height=4.6cm,
+      xlabel={$T$ (número de decisões)}, ylabel={$\Reg_T$},
+      xmin=1, xmax=1000, ymin=0, ymax=60,
+      axis lines=left, tick style={rlCinza}, label style={font=\scriptsize, color=rlCinza},
+      tick label style={font=\tiny, color=rlCinza},
+      legend style={font=\scriptsize, draw=none, fill=none, at={(0.02,0.98)}, anchor=north west},
+      grid=major, grid style={rlAzul!10}]
+      \addplot[rlVermelho, very thick, domain=1:1000, samples=100] {0.05*x};
+      \addlegendentry{linear --- guloso, $\epsilon$ fixo}
+      \addplot[rlAmbar, very thick, domain=1:1000, samples=100] {1.2*sqrt(x)};
+      \addlegendentry{$\sqrt{T}$ --- pior caso do UCB}
+      \addplot[rlVerde, very thick, domain=1:1000, samples=100] {4*ln(x)};
+      \addlegendentry{$\log T$ --- UCB com lacunas fixas}
+    \end{axis}
+  \end{tikzpicture}
+
+  \begin{ideiabox}
+    ``Bom'' = \textbf{sublinear}: $\Reg_T / T \to 0$ — a fração de decisões
+    erradas tende a zero. Explorar para sempre: linear; nunca explorar:
+    também. Existe algo no meio? Sim.
+  \end{ideiabox}
+\end{frame}
+
+%% ============================================================
+\section{$\epsilon$-guloso}
+
+\begin{frame}{O algoritmo $\epsilon$-guloso}
+  \begin{algbox}{$\epsilon$-guloso}
+    A cada passo:
+    \begin{itemize}\setlength{\itemsep}{0.2ex}
+      \item com probabilidade $1 - \epsilon$, escolha
+            $a_t = \argmax_{a \in \gA} \Qhat_t(a)$;
+      \item com probabilidade $\epsilon$, escolha uma ação uniformemente
+            ao acaso.
+    \end{itemize}
+  \end{algbox}
+
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \begin{itemize}
+        \item Garante que \emph{todo} braço continua sendo amostrado:
+              $\Nc_t(a) \to \infty$ para todo $a$.
+        \item Logo $\Qhat_t(a) \to Q(a)$ para todo $a$ (lei dos grandes
+              números) --- a falha de cobertura do guloso desaparece.
+        \item Já usamos isto nas Aulas 4 e 6, para MDPs.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{alertabox}
+        O preço é permanente: com $\epsilon$ fixo, uma fração $\epsilon$
+        dos passos é deliberadamente subótima --- \textbf{para sempre},
+        muito depois de já saber qual é o melhor braço.
+      \end{alertabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{$\epsilon$-guloso no exemplo dos dedos}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \begin{algbox}{Execução, com $\epsilon = 0{,}1$}
+        \textbf{1.} Amostre cada braço uma vez:
+        \begin{itemize}\setlength{\itemsep}{0.1ex}\small
+          \item $a_1$, $r \sim \Ber(0{,}95)$: $+1$, $\Qhat(a_1) = 1$
+          \item $a_2$, $r \sim \Ber(0{,}90)$: $+1$, $\Qhat(a_2) = 1$
+          \item $a_3$, $r \sim \Ber(0{,}10)$: $\;\;0$, $\Qhat(a_3) = 0$
+        \end{itemize}
+        \textbf{2.} Qual a probabilidade de puxar cada braço em seguida?
+        (empates uniformes)
+      \end{algbox}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \pause
+      \begin{respbox}
+        Empate entre $a_1$ e $a_2$ na parte gulosa:
+        \[
+          \Prob(a_1) = \Prob(a_2)
+            = \underbrace{\tfrac{0{,}9}{2}}_{\text{gulosa}}
+            + \underbrace{\tfrac{0{,}1}{3}}_{\text{aleat.}}
+            = 0{,}4833,
+        \]
+        \[
+          \Prob(a_3) = \tfrac{0{,}1}{3} = 0{,}0333.
+        \]
+      \end{respbox}
+      \pause
+      \begin{ideiabox}
+        \textbf{Sim, $a_3$ voltará a ser escolhido} --- cerca de $T/30$
+        pacientes receberão ``não fazer nada'', um tratamento que já
+        sabemos ser péssimo.
+      \end{ideiabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Teste sua compreensão: arrependimento do $\epsilon$-guloso}
+  \vspace{-2mm}
+  \begin{quizbox}{}
+    Lembre que $\Reg_t = \sum_{a} \E[\Nc_t(a)]\,\gap_a$, e que
+    informalmente um algoritmo tem \textbf{arrependimento linear} se toma
+    uma ação não ótima numa fração constante dos passos. Suponha que
+    exista $a$ com $\gap_a > 0$. Quais são verdadeiras?
+    \begin{enumerate}\setlength{\itemsep}{0.15ex}
+      \item $\epsilon$-guloso com $\epsilon = 0{,}1$ pode ter
+            arrependimento linear.
+      \item $\epsilon$-guloso com $\epsilon = 0$ pode ter arrependimento
+            linear.
+    \end{enumerate}
+    \paradiscussao
+  \end{quizbox}
+
+  \pause
+
+  \begin{respbox}
+    \textbf{As duas} --- por motivos opostos, o que é o ponto da pergunta.
+    $\epsilon = 0{,}1$: \emph{explora demais} — braços ruins numa fração
+    fixa $\epsilon/m$ dos passos, para sempre, e
+    $\Reg_T \ge \frac{\epsilon}{m}\bigl(\sum_a \gap_a\bigr) T$.
+    $\epsilon = 0$: \emph{explora de menos} — é o guloso, que pode travar
+    num braço subótimo e pagar $\gap\,T$. No exemplo dos dedos, a taxa com
+    $\epsilon = 0{,}1$ é $\frac{0{,}1}{3}(0{,}05 + 0{,}85) = 0{,}03$ por
+    passo.
+  \end{respbox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Explorar sempre e nunca explorar falham igual}
+  \centering
+  \begin{tikzpicture}
+    \node[caixatit, text width=32mm, draw=rlVermelho!45, fill=rlVermelho!5] (n) {\textbf{Nunca explorar}\\[0.3em]
+      \scriptsize $\epsilon = 0$\\[0.2em] \scriptsize trava em braço subótimo\\[0.3em]
+      \scriptsize $\Reg_T = \Theta(T)$};
+    \node[caixatit, text width=36mm, draw=rlVerde!55, fill=rlVerde!6, right=10mm of n] (m) {\textbf{Explorar decrescendo}\\[0.3em]
+      \scriptsize $\epsilon_t \downarrow 0$ na taxa certa,\\ \scriptsize ou otimismo\\[0.3em]
+      \scriptsize $\Reg_T = O(\log T)$};
+    \node[caixatit, text width=32mm, draw=rlVermelho!45, fill=rlVermelho!5, right=10mm of m] (s) {\textbf{Explorar sempre}\\[0.3em]
+      \scriptsize $\epsilon$ fixo\\[0.2em] \scriptsize erra fração fixa\\[0.3em]
+      \scriptsize $\Reg_T = \Theta(T)$};
+  \end{tikzpicture}
+
+  \vspace{0.9em}
+  \begin{teobox}{$\epsilon$ decrescente (Auer, Cesa-Bianchi e Fischer, 2002)}
+    Se $\gap = \min_{a : \gap_a > 0} \gap_a$ e escolhemos
+    $\displaystyle \epsilon_t = \min\Bigl\{1, \frac{c\,m}{\gap^2\,t}\Bigr\}$
+    com $c > 0$ apropriado, então o $\epsilon_t$-guloso atinge
+    arrependimento \textbf{logarítmico} em $T$.
+  \end{teobox}
+
+  \begin{alertabox}
+    O agendamento ótimo depende de $\gap$, que é desconhecido. Por isso o
+    $\epsilon$-guloso decrescente é teoricamente correto mas praticamente
+    frágil --- e por que vale a pena procurar algo que se adapte sozinho.
+  \end{alertabox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Interlúdio: explorar-depois-comprometer}
+  \framesubtitle{O algoritmo mais simples com arrependimento sublinear}
+
+  \begin{algbox}{ETC (\emph{explore-then-commit})}
+    Puxe cada braço exatamente $k$ vezes ($mk$ passos de exploração);
+    depois disso, escolha para sempre o braço de maior média empírica.
+  \end{algbox}
+
+  \begin{columns}[T]
+    \begin{column}{0.55\textwidth}
+      Com recompensas $1$-sub-gaussianas e dois braços:
+      \[
+        \Reg_T \;\le\; k\gap
+          \;+\; (T - 2k)\,\gap \exp\Bigl(-\frac{k\gap^2}{4}\Bigr).
+      \]
+      \begin{itemize}\small
+        \item 1º termo: o custo pago de explorar.
+        \item 2º: o risco de se comprometer com o braço errado.
+        \item Otimizando $k$ e o pior $\gap$: $\Reg_T = O(T^{2/3})$.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.43\textwidth}
+      \begin{ideiabox}[fontupper=\footnotesize]
+        Sublinear, portanto ``bom'' --- mas $T^{2/3}$ está longe de
+        $\sqrt{T}$: \textbf{separar} exploração e explotação em fases
+        estanques desperdiça o que se aprendeu \emph{durante} a exploração
+        para abandonar cedo um braço ruim.
+      \end{ideiabox}
+      \begin{alertabox}[fontupper=\footnotesize]
+        \textbf{Exploração e explotação devem ser entrelaçadas}, não
+        sequenciadas.
+      \end{alertabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Quão bom é possível ser? Limite inferior}
+  \begin{itemize}
+    \item O desempenho de \emph{qualquer} algoritmo é determinado pela
+          semelhança entre o braço ótimo e os demais.
+    \item Problemas difíceis têm braços que \emph{parecem} iguais mas têm
+          médias diferentes: é preciso muita amostra para separá-los.
+    \item Formalmente: a lacuna $\gap_a$ e a divergência
+          $\KL(\mathcal{R}_a \,\|\, \mathcal{R}_{a^{*}})$.
+  \end{itemize}
+
+  \begin{teobox}{Teorema (Lai e Robbins, 1985)}
+    O arrependimento total assintótico de qualquer algoritmo consistente é
+    ao menos logarítmico no número de passos:
+    \[
+      \lim_{t \to \infty} \Reg_t \;\ge\; \log t
+        \sum_{a \,:\, \gap_a > 0} \frac{\gap_a}{\KL(\mathcal{R}_a \,\|\, \mathcal{R}_{a^{*}})}.
+    \]
+  \end{teobox}
+
+  \begin{ideiabox}
+    Boa notícia disfarçada de má: o limite inferior é \textbf{sublinear}.
+    Nada proíbe um algoritmo de acertar quase sempre --- e $\log t$ é o
+    melhor que se pode esperar.
+  \end{ideiabox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Lendo o limite inferior nos números do exemplo}
+  Para braços de Bernoulli,
+  $\KL(\theta_a \| \theta_{*}) = \theta_a \log \frac{\theta_a}{\theta_{*}}
+   + (1-\theta_a)\log\frac{1-\theta_a}{1-\theta_{*}}$.
+
+  \vspace{0.4em}
+  \centering
+  \begin{tabular}{lcccc}
+    \toprule
+    \textbf{Braço} & $\theta_a$ & $\gap_a$
+      & $\KL(\theta_a\|\,0{,}95)$ & $\gap_a / \KL$ \\
+    \midrule
+    esparadrapo $a_2$ & 0{,}90 & 0{,}05 & 0{,}0207 & \textbf{2{,}42} \\
+    nada $a_3$        & 0{,}10 & 0{,}85 & 2{,}3762 & 0{,}36 \\
+    \bottomrule
+  \end{tabular}
+
+  \vspace{0.8em}
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      \begin{alertabox}
+        A inversão é o ponto: o braço \textbf{quase tão bom} ($a_2$, lacuna
+        minúscula) contribui \emph{sete vezes mais} para o limite inferior
+        do que o braço obviamente ruim. Distinguir $0{,}90$ de $0{,}95$
+        custa muitas amostras; descartar $0{,}10$ custa poucas.
+      \end{alertabox}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{ideiabox}
+        Em $T = 1000$, o piso de Lai--Robbins vale
+        $(2{,}42 + 0{,}36)\log 1000 \approx 19$. Compare com o
+        arrependimento do guloso, $\approx 50$, e com o do
+        $\epsilon$-guloso fixo, $\approx 30$. Há espaço.
+      \end{ideiabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\section{Otimismo diante da incerteza}
+
+\begin{frame}{O princípio do otimismo}
+  \begin{defbox}{Otimismo diante da incerteza}
+    Escolha ações que \textbf{poderiam} ter valor alto --- não as que
+    \emph{parecem} ter valor alto.
+  \end{defbox}
+
+  \pause
+  Por quê? Há apenas dois desfechos possíveis, e ambos são bons:
+
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{teobox}{Desfecho 1 --- acertamos}
+        Braço com média alta de fato: colhemos recompensa alta. Nenhum
+        arrependimento.
+      \end{teobox}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{teobox}{Desfecho 2 --- aprendemos}
+        Média baixa: puxá-lo reduz (em esperança) sua média estimada
+        \emph{e} a incerteza. O braço é rebaixado e não volta a enganar.
+      \end{teobox}
+    \end{column}
+  \end{columns}
+
+  \pause
+  \begin{ideiabox}
+    Otimismo é \textbf{autocorretivo}: só se pode estar excessivamente
+    otimista por um número limitado de puxadas — cada puxada corrige o
+    excesso. Essa contagem --- ``quantas vezes posso me enganar antes de
+    ser desmentido?'' --- vira a demonstração da cota.
+  \end{ideiabox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Cotas superiores de confiança}
+  \begin{defbox}{UCB}
+    Estime uma cota superior de confiança $U_t(a)$ para cada valor de
+    ação, tal que $Q(a) \le U_t(a)$ com alta probabilidade. A cota
+    depende de $\Nc_t(a)$: quanto mais puxamos, mais estreita. Então
+    \[
+      a_t \;=\; \argmax_{a \in \gA} \; U_t(a).
+    \]
+  \end{defbox}
+
+  \centering
+  \begin{tikzpicture}[yscale=1.5]
+    \foreach \i/\q/\w/\lab in {1/0.62/0.16/{$a_1$}, 2/0.50/0.42/{$a_2$}, 3/0.30/0.10/{$a_3$}}{
+      \draw[rlAzul!30, very thick] (\i*2.3, \q-\w) -- (\i*2.3, \q+\w);
+      \draw[rlAzul!30, very thick] (\i*2.3-0.12, \q-\w) -- (\i*2.3+0.12, \q-\w);
+      \draw[rlAzul!30, very thick] (\i*2.3-0.12, \q+\w) -- (\i*2.3+0.12, \q+\w);
+      \fill[rlAzul] (\i*2.3, \q) circle (1.6pt);
+      \node[font=\scriptsize, text=rlCinza, below=1mm] at (\i*2.3, 0.05) {\lab};
+      \node[font=\tiny, text=rlAzul, left=1mm] at (\i*2.3, \q) {$\Qhat$};
+      \node[font=\tiny, text=rlLaranja, right=1mm] at (\i*2.3, \q+\w) {$U$};}
+    \draw[rlLaranja, thick, dashed] (1.8, 0.92) -- (7.6, 0.92);
+    \node[font=\scriptsize, text=rlLaranja, right] at (7.6, 0.92) {maior $U$};
+    \node[font=\scriptsize, text=rlCinza, align=left, right] at (8.6, 0.5)
+      {$a_2$ é escolhido:\\ estimativa \emph{menor},\\ incerteza \emph{maior}.};
+  \end{tikzpicture}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{De onde vem a largura da barra}
+  \begin{defbox}{Variável $\sigma$-sub-gaussiana}
+    $X$ com $\E[X] = 0$ é $\sigma$-sub-gaussiana se
+    $\E[e^{\lambda X}] \le e^{\lambda^2\sigma^2/2}$ para todo
+    $\lambda \in \R$. Sua cauda decai ao menos tão rápido quanto a de uma
+    gaussiana de desvio $\sigma$.
+  \end{defbox}
+
+  \begin{teobox}{Corolário 5.5 (Lattimore e Szepesvári, \emph{Bandit Algorithms})}
+    Sejam $X_i - \mu$ independentes e $\sigma$-sub-gaussianas, e
+    $\muhat = \frac{1}{n}\sum_{t=1}^{n} X_t$. Então, para todo
+    $\varepsilon \ge 0$,
+    \[
+      \Prob(\muhat \ge \mu + \varepsilon) \le \exp\Bigl(-\frac{n\varepsilon^2}{2\sigma^2}\Bigr),
+      \qquad
+      \Prob(\muhat \le \mu - \varepsilon) \le \exp\Bigl(-\frac{n\varepsilon^2}{2\sigma^2}\Bigr).
+    \]
+  \end{teobox}
+
+  \begin{ideiabox}
+    Recompensas em $[0,1]$ --- como as do nosso exemplo --- são
+    $\tfrac12$-sub-gaussianas pelo lema de Hoeffding. Usar $\sigma = 1$ é
+    apenas conservador: barras mais largas que o necessário, nunca mais
+    estreitas.
+  \end{ideiabox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Invertendo a desigualdade}
+  Pergunta operacional: ``\emph{dado} um risco $\delta$ que aceito correr,
+  qual $\varepsilon$?''
+
+  \[
+    \delta \;=\; \exp\Bigl(-\frac{n\varepsilon^2}{2\sigma^2}\Bigr)
+    \quad\Longleftrightarrow\quad
+    \varepsilon \;=\; \sqrt{\frac{2\sigma^2 \log(1/\delta)}{n}}.
+  \]
+
+  \begin{teobox}{Cota superior de confiança}
+    Para qualquer $\delta \in (0,1]$, com probabilidade ao menos
+    $1 - \delta$,
+    \[
+      \mu \;\le\; \mdestaque{rlLaranja}{\muhat + \sqrt{\frac{2\sigma^2\log(1/\delta)}{n}}}.
+    \]
+  \end{teobox}
+
+  \begin{alertabox}
+    Cota \emph{unilateral}. Para controlar $\abs{\muhat - \mu}$ é preciso
+    aplicar as duas caudas com união de eventos: tomando
+    $\delta' = \delta/2$, com probabilidade ao menos $1 - \delta$,
+    $\;\abs{\mu - \muhat} \le \sqrt{2\sigma^2\log(2/\delta)/n}$.
+  \end{alertabox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{O algoritmo UCB1}
+  \begin{algbox}{UCB1 (Auer, Cesa-Bianchi e Fischer, 2002)}
+    Supondo recompensas $1$-sub-gaussianas ($\sigma^2 = 1$):
+    \[
+      a_t \;=\; \argmax_{a \in \gA}
+        \Bigl[\; \underbrace{\Qhat(a)}_{\text{explotação}}
+        \;+\; \underbrace{\sqrt{\frac{2\log(1/\delta)}{\Nc_t(a)}}}_{\text{bônus de exploração}} \;\Bigr].
+    \]
+  \end{algbox}
+
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \begin{itemize}
+        \item Sem parâmetro de exploração para ajustar: o bônus é
+              \emph{deduzido}, não escolhido.
+        \item O bônus decai como $1/\sqrt{\Nc}$ --- braços pouco testados
+              recebem crédito automaticamente.
+        \item Braços nunca testados têm bônus infinito: o algoritmo começa
+              amostrando cada braço uma vez.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{ideiabox}
+        \textbf{A escolha de $\delta$.} Fixo, o bônus não encolhe com o
+        tempo. Tomando $\delta = 1/t^2$ obtém-se a versão \emph{anytime},
+        $\Qhat(a) + \sqrt{4\log t / \Nc_t(a)}$ --- a fórmula clássica com
+        $\log t$ no numerador, que é a que se usa na prática.
+      \end{ideiabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{UCB1 no exemplo dos dedos}
+  \framesubtitle{$\delta = 0{,}1$, logo o bônus vale $2{,}146/\sqrt{\Nc(a)}$; início com cada braço puxado uma vez, obtendo $(+1, +1, 0)$}
+
+  \centering\scriptsize
+  \begin{tabular}{ccccccc}
+    \toprule
+    $t$ & $U(a_1)$ & $U(a_2)$ & $U(a_3)$ & \textbf{escolhe} & $r$
+      & \textbf{arrepend. acum.} \\
+    \midrule
+    3 & \textbf{3,146} & 3,146 & 2,146 & $a_1$ & $+1$ & 0,90 \\
+    4 & 2,517 & \textbf{3,146} & 2,146 & $a_2$ & $+1$ & 0,95 \\
+    5 & \textbf{2,517} & 2,517 & 2,146 & $a_1$ & $+1$ & 0,95 \\
+    6 & 2,239 & \textbf{2,517} & 2,146 & $a_2$ & $\;\;0$ & 1,00 \\
+    7 & \textbf{2,239} & 1,906 & 2,146 & $a_1$ & $+1$ & 1,00 \\
+    8 & 2,073 & 1,906 & \textbf{2,146} & $a_3$ & $\;\;0$ & 1,85 \\
+    9 & \textbf{2,073} & 1,906 & 1,517 & $a_1$ & $+1$ & 1,85 \\
+    \bottomrule
+  \end{tabular}
+
+  \vspace{0.7em}
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      \begin{ideiabox}
+        Em $t = 8$, $a_3$ é escolhido \emph{apesar} de $\Qhat(a_3) = 0$:
+        bônus intocado desde a primeira puxada ultrapassou os dos outros
+        dois, que encolheram. O otimismo cobra a dívida de exploração ---
+        uma vez.
+      \end{ideiabox}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{alertabox}
+        Em $t = 9$, com resultado $0$, $U(a_3)$ despenca para $1{,}517$ e o
+        braço sai de cena --- ao passo que o $\epsilon$-guloso voltaria a
+        ele em $3{,}3\%$ dos passos \emph{indefinidamente}.
+      \end{alertabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\section{A cota de arrependimento do UCB}
+
+\begin{frame}{O nível de confiança $\delta$ é sutil}
+  \begin{itemize}
+    \item A cota $\Prob(\mu > \muhat + \varepsilon) \le \delta$ vale para
+          \textbf{um} braço, em \textbf{um} instante, com $n$ \textbf{fixo}.
+    \item O algoritmo consulta $m$ braços a cada um de $T$ passos, e $\Nc$
+          é aleatório, escolhido pelo próprio algoritmo.
+    \item Precisamos que \emph{nenhuma} dessas cotas falhe. União de
+          eventos:
+          $\;\Prob\bigl(\bigcup_i E_i\bigr) \le \sum_i \Prob(E_i)$.
+  \end{itemize}
+
+  \begin{alertabox}
+    Todas simultâneas com probabilidade $1 - \delta$: cada cota precisa de
+    risco $\delta/(mT)$. Como $\delta$ entra como $\log(1/\delta)$, o
+    preço é apenas $\log(mT)$ --- \textbf{logarítmico no número de cotas}.
+    União de eventos, brutal como parece, é aceitável aqui.
+  \end{alertabox}
+
+  \begin{ideiabox}
+    Este é o motivo técnico da escolha $\delta = 1/n^2$ na demonstração a
+    seguir: $n$ passos $\times$ risco $1/n^2$ dá risco total $1/n$, que
+    contribui com $n \cdot \frac1n = 1$ puxada extra --- desprezível.
+  \end{ideiabox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Cota de arrependimento do UCB --- montagem}
+  Sejam $\gap_i = \mu^{*} - \mu_i$ e $\Nc_i(n)$ as puxadas do braço $i$ até
+  o passo $n$. Já sabemos:
+  \[
+    \Reg_n = \sum_{i \,:\, \gap_i > 0} \gap_i \, \E[\Nc_i(n)].
+  \]
+
+  \vspace{-4mm}
+  \begin{defbox}{O ``bom evento'' $G_i$}
+    A média do braço $i$ nunca ultrapassa sua cota, e a cota do braço ótimo
+    nunca cai abaixo de $\mu^{*}$:
+    \[
+      G_i \;\defeq\; \Bigl\{ \mu_i \le \min_{t} \UCB_i(t, \delta) \Bigr\}
+        \cap \Bigl\{ \mu^{*} < \min_t \UCB_{a^{*}}(t, \delta) \Bigr\},
+      \quad\text{com } \UCB_i(t,\delta) = \Qhat_i(t-1) + \sqrt{\tfrac{2\log(1/\delta)}{\Nc_{t-1}(i)}}.
+    \]
+  \end{defbox}
+
+  \vspace{-0.4em}
+  \[
+    \E[\Nc_i(n)] \;\le\; \underbrace{u_i}_{\text{no bom evento}}
+      \;+\; \underbrace{\Prob(G_i^{c})\, n}_{\text{fora dele}},
+    \qquad u_i \defeq \frac{2\log(1/\delta)}{\gap_i^2}.
+  \]
+  \vspace{-0.5em}
+  \vspace{-3mm}
+  \begin{ideiabox}
+    \textbf{No bom evento: puxadas limitadas por argumento determinístico;
+    fora dele, por $n$ — probabilidade minúscula.}
+  \end{ideiabox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Cota de arrependimento do UCB --- o passo central}
+  \begin{teobox}{Afirmação}
+    Se $G_i$ vale, então o braço subótimo $i \ne a^{*}$ é puxado no máximo
+    $u_i = 2\log(1/\delta)/\gap_i^2$ vezes.
+  \end{teobox}
+
+  {\small
+  \textbf{Demonstração (por contradição).} Suponha $G_i$ e que
+  $\Nc_t(i) > u_i$ em algum instante $t$ em que $i$ seria escolhido. Como o
+  bônus decresce em $\Nc$,
+  \[
+    \UCB_i(t,\delta) \;\le\; \mu_i + \sqrt{\frac{2\log(1/\delta)}{u_i}}
+      \;=\; \mu_i + \sqrt{\gap_i^2}
+      \;=\; \mu_i + \gap_i \;=\; \mu^{*}.
+  \]
+  Mas, por definição de $G_i$, $\;\mu^{*} < \UCB_{a^{*}}(t,\delta)$. Logo
+  $\UCB_i(t,\delta) < \UCB_{a^{*}}(t,\delta)$ e o braço $i$
+  \textbf{não pode} ser selecionado em $t$ --- contradição. \hfill $\square$
+  }
+
+  \begin{ideiabox}
+    A conta em uma frase: \textbf{$u_i$ puxadas encolhem o bônus até ele
+    caber exatamente dentro da lacuna}. A partir daí o otimismo já não
+    consegue disfarçar a inferioridade do braço. Note que $u_i \propto
+    1/\gap_i^2$: braços quase tão bons quanto o ótimo são puxados muitas
+    vezes --- e isso é \emph{correto}, porque errar entre eles custa pouco.
+  \end{ideiabox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Cota de arrependimento do UCB --- fecho}
+  Tomando $\delta = 1/n^2$: o risco por cota é $1/n^2$, e a união sobre os
+  $n$ instantes dá $\Prob(G_i^{c}) \le n\delta = 1/n$. Assim
+  \[
+    \E[\Nc_i(n)] \;\le\; \frac{2\log(n^2)}{\gap_i^2} + n \cdot \frac{1}{n}
+      \;=\; \frac{4\log n}{\gap_i^2} + 1,
+  \]
+  e portanto
+
+  \begin{teobox}{Cota dependente do problema}
+    \[
+      \Reg_n \;\lesssim\; \sum_{i \,:\, \gap_i > 0} \frac{4\log n}{\gap_i}
+        \;+\; \sum_i \gap_i .
+    \]
+  \end{teobox}
+
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      \begin{ideiabox}
+        \textbf{Logarítmico em $n$} --- a ordem do piso de Lai e Robbins. O
+        UCB é ótimo em taxa; a diferença está na constante.
+      \end{ideiabox}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{alertabox}
+        O segundo somatório é o custo irredutível de puxar cada braço uma
+        vez. E a cota \emph{explode} quando $\gap_i \to 0$: não pode ser a
+        história toda.
+      \end{alertabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{A cota independente do problema}
+  Cota anterior inútil com lacuna minúscula. Solução: \textbf{partir os
+  braços em dois grupos} num limiar $\gap$ à escolha.
+  \vspace{-0.3em}
+
+  \vspace{-4mm}
+  \[
+    \Reg_n \;\le\;
+      \underbrace{n\gap}_{\substack{\text{braços com } \gap_i \le \gap:\\ \text{errar custa pouco}}}
+      \;+\;
+      \underbrace{\sum_{i \,:\, \gap_i > \gap} \frac{4\log n}{\gap_i}}_{\substack{\text{braços com } \gap_i > \gap:\\ \text{são descartados rápido}}}
+      \;\le\; n\gap + \frac{4m\log n}{\gap}.
+  \]
+
+  \vspace{-0.5em}
+  Minimizando em $\gap$: $\gap^{\star} = \sqrt{4m\log n / n}$, e
+
+  \vspace{-3mm}
+  \begin{teobox}{Cota de pior caso}
+    \[
+      \Reg_n \;\le\; 4\sqrt{m\,n\log n} \;=\; O\bigl(\sqrt{m\,n\log n}\bigr).
+    \]
+  \end{teobox}
+
+  \begin{ideiabox}
+    Piso minimax $\Omega(\sqrt{m n})$: UCB1 a um fator $\sqrt{\log n}$
+    (MOSS, KL-UCB eliminam). \textbf{O mesmo algoritmo} satisfaz as duas
+    cotas: adapta-se sozinho à dificuldade do problema.
+  \end{ideiabox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Verificando as cotas nos números do exemplo}
+  \framesubtitle{$m = 3$, $\gap = (0;\ 0{,}05;\ 0{,}85)$, $n = 1000$}
+
+  \centering\small
+  \begin{tabular}{lr}
+    \toprule
+    \textbf{Referência} & $\Reg_{1000}$ \\
+    \midrule
+    Piso de Lai--Robbins & $\approx 19$ \\
+    Cota do UCB, dependente do problema & $\approx 586$ \\
+    Cota do UCB, independente do problema & $\approx 576$ \\
+    Guloso (travado em $a_2$) & $\approx 50$ \\
+    $\epsilon$-guloso, $\epsilon = 0{,}1$ & $\approx 30$ \\
+    \bottomrule
+  \end{tabular}
+
+  \vspace{0.8em}
+  \vspace{-2mm}
+  \begin{alertabox}[fontupper=\footnotesize]
+    \textbf{Cotas do UCB piores que o desempenho observado dos métodos
+    ingênuos} — não é erro: cota de \emph{pior caso} vale para todo bandido
+    com estas lacunas; números do guloso, para \emph{esta} realização.
+  \end{alertabox}
+  \begin{ideiabox}[fontupper=\footnotesize]
+    A comparação honesta é assintótica: em $n = 10^6$ o guloso paga
+    $5\times10^4$ e o $\epsilon$-guloso $3\times10^4$, ambos lineares,
+    contra $\approx 1{,}2\times10^3$ da cota do UCB. As curvas se cruzam ---
+    e nunca mais se reencontram.
+  \end{ideiabox}
+\end{frame}
+
+%% ============================================================
+\section{Variações e encerramento}
+
+\begin{frame}{Teste sua compreensão: e se usássemos a cota \emph{inferior}?}
+  \begin{quizbox}{}
+    Uma alternativa seria escolher sempre o braço de maior \textbf{cota
+    inferior} de confiança,
+    $\;a_t = \argmax_a \bigl[\Qhat(a) - \sqrt{2\log(1/\delta)/\Nc_t(a)}\bigr]$.
+    Isso garante arrependimento baixo? Considere o caso de dois braços.
+    \paradiscussao
+  \end{quizbox}
+
+  \pause
+
+  \begin{respbox}[fontupper=\footnotesize]
+    \textbf{Não --- é pior que o guloso.} O bônus vira \emph{penalidade}
+    por incerteza: braços pouco testados ficam artificialmente ruins, e são
+    justamente os que precisavam ser testados. Com
+    $\mu_1 = 0{,}5$, $\mu_2 = 0{,}6$ e puxadas iniciais $r_1 = 1$,
+    $r_2 = 0$, temos $\LCB_1 = 1 - c > \LCB_2 = -c$. Cada nova puxada de
+    $a_1$ encolhe sua penalidade ($\LCB_1 \to 0{,}5$), enquanto $\LCB_2$
+    fica congelado. O braço $2$ nunca mais é testado: arrependimento
+    $0{,}1\,T$.
+  \end{respbox}
+
+  \begin{ideiabox}[fontupper=\footnotesize]
+    \textbf{O otimismo é autocorretivo; o pessimismo, autoconfirmatório.}
+    (O pessimismo tem seu lugar em RL \emph{offline}, onde não se pode
+    testar hipóteses e evitar o desconhecido é o que se deseja.)
+  \end{ideiabox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Uma segunda família: casamento de probabilidade}
+  \begin{defbox}{Arrependimento bayesiano}
+    Coloque uma \emph{priori} $p(\theta)$ sobre os parâmetros do bandido e
+    meça a média do arrependimento sob ela:
+    \[
+      \mathrm{BayesReg}_T \;=\; \E_{\theta \sim p}\bigl[\Reg_T(\theta)\bigr].
+    \]
+    Critério mais brando que o de pior caso --- e que admite algoritmos
+    notavelmente simples.
+  \end{defbox}
+
+  \begin{algbox}{Amostragem de Thompson (Thompson, 1933)}
+    A cada passo: \textbf{(1)} amostre um parâmetro da posteriori,
+    $\tilde\theta_a \sim p(\theta_a \mid \text{histórico})$ para cada $a$;
+    \textbf{(2)} aja \emph{como se} $\tilde\theta$ fosse a verdade,
+    $a_t = \argmax_a Q_{\tilde\theta}(a)$; \textbf{(3)} observe $r_t$ e
+    atualize a posteriori.
+  \end{algbox}
+
+  \vspace{-3mm}
+  \begin{ideiabox}
+    Cada braço é escolhido com probabilidade \emph{igual à probabilidade
+    posterior de ele ser o ótimo}. A exploração não é imposta por um bônus
+    --- ela emerge da incerteza da posteriori, e desaparece sozinha quando
+    a incerteza some.
+  \end{ideiabox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Thompson com braços de Bernoulli}
+  Priori conjugada: $\theta_a \sim \Bet(\alpha_a, \beta_a)$. Após observar
+  $r$, a atualização é contagem pura:
+  \[
+    \alpha_a \leftarrow \alpha_a + r, \qquad \beta_a \leftarrow \beta_a + (1 - r).
+  \]
+
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      Com priori uniforme $\Bet(1,1)$ e as mesmas três primeiras puxadas
+      $(+1, +1, 0)$:
+      \smallskip
+
+      \centering\small
+      \begin{tabular}{lccc}
+        \toprule
+        \textbf{Braço} & \textbf{Posteriori} & $\E[\theta]$
+          & $\Prob(\text{é o melhor})$ \\
+        \midrule
+        $a_1$ & $\Bet(2,1)$ & 0,667 & 0,467 \\
+        $a_2$ & $\Bet(2,1)$ & 0,667 & 0,467 \\
+        $a_3$ & $\Bet(1,2)$ & 0,333 & \textbf{0,066} \\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{ideiabox}
+        $\epsilon$-guloso daria $3{,}3\%$ a $a_3$ \emph{para sempre}.
+        Thompson dá $6{,}6\%$ \emph{agora}, quando ainda há dúvida
+        legítima, e essa fração cai sozinha à medida que a posteriori de
+        $a_3$ se concentra perto de $0{,}1$.
+      \end{ideiabox}
+      \begin{alertabox}
+        $\Prob(\text{melhor}) \ne$ ordenação das médias: $a_3$ tem média
+        posterior bem menor, mas $6{,}6\%$ de chance de ser o melhor ---
+        com uma única observação, a cauda ainda é gorda.
+      \end{alertabox}
+    \end{column}
+  \end{columns}
+
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Garantias e comparação com o otimismo}
+  \begin{teobox}{Garantias da amostragem de Thompson}
+    Arrependimento bayesiano $O(\sqrt{mT\log T})$. E, embora bayesiano por
+    construção, Thompson também satisfaz cotas \emph{frequentistas}
+    $O(\sum_i \log T / \gap_i)$, sendo assintoticamente ótimo para braços
+    de Bernoulli (Agrawal e Goyal, 2012; Kaufmann \emph{et al.}, 2012).
+  \end{teobox}
+
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{defbox}{A simetria com o UCB}
+        Ambos escolhem por um valor \emph{plausível}, não pelo esperado. O
+        UCB toma o \textbf{quantil superior} da incerteza; Thompson toma
+        uma \textbf{amostra} dela. Um é determinístico e pessimista quanto
+        ao risco; o outro é aleatório e calibrado.
+      \end{defbox}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{alertabox}
+        A aleatoriedade de Thompson é uma vantagem prática subestimada: em
+        sistemas com decisões \emph{em lote} (mil usuários atendidos com a
+        mesma política), o UCB daria a todos o mesmo braço, enquanto
+        Thompson diversifica automaticamente.
+      \end{alertabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Panorama comparativo}
+  \centering\small
+  \begin{tabular}{lccl}
+    \toprule
+    \textbf{Algoritmo} & \textbf{Arrepend.} & \textbf{Parâmetro}
+      & \textbf{Por que falha ou funciona} \\
+    \midrule
+    Guloso & $\Theta(T)$ & --- & trava; nunca corrige um azar inicial \\
+    $\epsilon$-guloso, $\epsilon$ fixo & $\Theta(T)$ & $\epsilon$
+      & explora uniformemente, para sempre \\
+    $\epsilon_t$-guloso, $\epsilon_t \propto 1/t$ & $O(\log T)$ & $c, \gap$
+      & ótimo em taxa, mas exige conhecer $\gap$ \\
+    ETC & $O(T^{2/3})$ & $k$ & separa as fases; não se adapta \\
+    \textbf{UCB1} & $O(\log T)$ & $\delta$ (ou nenhum)
+      & bônus deduzido; adapta-se às lacunas \\
+    \textbf{Thompson} & $O(\log T)$ & priori
+      & explora na medida da dúvida posterior \\
+    \midrule
+    \emph{Piso (Lai--Robbins)} & $\Omega(\log T)$ & ---
+      & \emph{ninguém faz melhor} \\
+    \bottomrule
+  \end{tabular}
+
+  \vspace{0.9em}
+  \begin{ideiabox}
+    Empiricamente, Thompson costuma bater o UCB1 apesar de garantias
+    semelhantes --- o bônus do UCB é calibrado para o pior caso, enquanto a
+    posteriori usa a forma real da incerteza. Em compensação, o UCB não
+    exige escolher uma priori nem amostrar dela.
+  \end{ideiabox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Resumo da aula}
+  \begin{itemize}
+    \item O \textbf{bandido multi-braços} isola a exploração ao remover as
+          consequências adiadas: um MDP de um estado só.
+    \item O \textbf{arrependimento} $\Reg_T = \sum_a \E[\Nc_T(a)]\gap_a$
+          mede o custo da aprendizagem. ``Bom'' $=$ sublinear.
+    \item O \textbf{guloso} tem arrependimento linear por falta de
+          cobertura; o \textbf{$\epsilon$-guloso fixo}, por excesso
+          permanente de exploração.
+    \item \textbf{Lai e Robbins}: nenhum algoritmo faz melhor que
+          $\Omega(\log T)$, com constante $\gap_a/\KL$.
+    \item O \textbf{otimismo} resolve o dilema sem conhecer as lacunas: o
+          bônus $\sqrt{2\log(1/\delta)/\Nc}$ sai da concentração, e a
+          demonstração conta quantas puxadas bastam para o bônus caber
+          dentro da lacuna.
+    \item \textbf{UCB1}: $O(\sum_i \log T/\gap_i)$ e $O(\sqrt{mT\log T})$
+          --- ótimo em taxa nos dois arcabouços.
+  \end{itemize}
+
+  \begin{ideiabox}
+    Bandidos são o lugar mais simples para ver estas ideias, mas elas se
+    estendem a MDPs quase sem alteração. \textbf{Próxima aula:}
+    exploração em MDPs --- aprendizagem PAC, otimismo em modelos
+    (\textsc{R-max}, UCRL) e cotas de complexidade amostral.
+  \end{ideiabox}
+\end{frame}
+
+%% ============================================================
+\begin{frame}{Créditos e leituras}
+  \begin{itemize}
+    \item Material adaptado e expandido de \textbf{CS234: Reinforcement
+          Learning}, Emma Brunskill, Stanford University; parte da
+          estrutura remonta às notas de David Silver (UCL/DeepMind).
+    \item \textbf{Referência central:} Lattimore \& Szepesvári,
+          \emph{Bandit Algorithms} (Cambridge, 2020) --- Capítulos 4 a 8
+          cobrem toda a aula, com as demonstrações completas.
+    \item Sutton \& Barto, \emph{Reinforcement Learning: An Introduction},
+          2\textsuperscript{a} ed., Capítulo 2.
+    \item \textbf{Artigos:} Lai \& Robbins (1985); Auer, Cesa-Bianchi \&
+          Fischer, \emph{Machine Learning} (2002); Thompson (1933);
+          Agrawal \& Goyal (2012); Kaufmann, Korda \& Munos (2012);
+          Russo \emph{et al.}, \emph{A Tutorial on Thompson Sampling} (2018).
+    \item \textbf{Expansões desta versão} em relação ao original: bandidos
+          contextuais, explorar-depois-comprometer, leitura numérica do
+          piso de Lai--Robbins, cota independente do problema com a
+          otimização do limiar, contraexemplo detalhado da cota inferior,
+          e a seção de amostragem de Thompson.
+  \end{itemize}
+\end{frame}
+
+\end{document}

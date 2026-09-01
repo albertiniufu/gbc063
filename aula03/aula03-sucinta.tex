@@ -1,0 +1,968 @@
+%% ============================================================
+%%  Aula 3 — Avaliação de Política Sem Modelo
+%%  Versão sucinta: roteiro do apresentador (poucas palavras,
+%%  mesmas definições e figuras do aula03.tex)
+%%  Curso de Aprendizagem por Reforço (pt-BR)
+%%  Adaptado e expandido a partir de: Emma Brunskill, CS234
+%%  (Stanford), Lecture 3. Estrutura inspirada também em
+%%  David Silver (Lecture 4) e Sutton & Barto (cap. 5–6).
+%%  Compilar com XeLaTeX.
+%% ============================================================
+\documentclass[aspectratio=169, 11pt]{beamer}
+%% .sty do projeto na raiz do repositório (../)
+\makeatletter
+\def\input@path{{./}{../}}
+\makeatother
+
+
+\usetheme{AprendizadoRL}      % ANTES do babel — fontspec precisa vir primeiro
+\usepackage{babel}
+\babelprovide[import, main]{brazilian}
+
+\title[Aula 3 — Avaliação sem modelo]{Aula 3: Avaliação de Política Sem Modelo\\
+  Estimando $\Vpi$ sem saber como o mundo funciona}
+\subtitle[Aprendizagem por Reforço]{Monte Carlo \textbullet\ Diferença Temporal \textbullet\ Equivalência de Certeza}
+\author[Prof. Marcelo K. Albertini]{Prof. Marcelo Keese Albertini \\
+  \footnotesize Universidade Federal de Uberlândia \\
+  \footnotesize adaptado de Emma Brunskill, CS234 (Stanford)}
+\institute{Aprendizagem por Reforço}
+\date{2026}
+
+% Nota discreta: as perguntas ficam para o professor conduzir em aula
+\newcommand{\paradiscussao}{\vspace{-0.2em}
+  {\footnotesize\color{rlCinza}\itshape Pergunta para discussão conduzida em aula.}}
+
+\begin{document}
+
+\begin{frame}[plain, noframenumbering]\titlepage\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Roteiro}
+  \begin{itemize}
+    \item \textbf{Aula passada:} MRPs e MDPs; avaliação e controle de
+      políticas \emph{com} o modelo verdadeiro ($P$ e $\rec$ conhecidas).
+    \item \textbf{Hoje:} avaliar $\pol$ \alert{sem} conhecer $P$ nem
+      $\rec$ — apenas interagindo com o ambiente.
+    \item \textbf{Próxima aula:} \emph{controle} sem modelo — boa política
+      a partir da experiência.
+  \end{itemize}
+
+  \begin{ideiabox}
+    Até hoje o agente ``lia o manual do mundo''; agora aprende
+    \emph{vivendo}: executa $\pol$, observa e estima o quanto ela vale.
+  \end{ideiabox}
+
+  \medskip
+  {\small\color{rlCinza} Leitura recomendada: Sutton \& Barto,
+  seções 5.1, 5.5 e 6.1–6.3; David Silver, aula 4 (\emph{Model-Free Prediction}).}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Avaliação por experiência direta}
+  \textbf{Problema.} Estimar o retorno esperado de $\pol$ só com dados
+  coletados do ambiente.
+  \begin{itemize}\setlength{\itemsep}{0.2ex}
+    \item Quase toda aplicação real (robótica, saúde, recomendação):
+      \alert{não temos} o modelo verdadeiro.
+    \item Hoje os dados vêm da própria $\pol$ (\emph{on-policy});
+      \emph{off-policy} fica para adiante.
+  \end{itemize}
+
+  \begin{quizbox}{}
+    Que propriedades um bom método de avaliação de política deveria ter?
+  \end{quizbox}
+  \paradiscussao
+
+  \pause
+  \begin{respbox}
+    Consistência, eficiência estatística, atualização barata e pouca
+    memória — a régua da aula inteira.
+  \end{respbox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{O cardápio de hoje}
+  Quatro maneiras de estimar $\Vpi$ sem os modelos verdadeiros:
+  \begin{enumerate}
+    \item \textbf{Monte Carlo (MC):} valor $=$ média dos retornos observados.
+    \item \textbf{Diferença Temporal (TD):} atualiza a cada passo,
+      com a própria estimativa como ``palpite'' do futuro.
+    \item \textbf{Equivalência de certeza:} estima modelo por máxima
+      verossimilhança e planeja nele como se verdadeiro.
+    \item \textbf{Avaliação em lote} (\emph{batch}): dados fixos e finitos —
+      e um exemplo em que MC e TD discordam.
+  \end{enumerate}
+
+  \begin{ideiabox}
+    Os três primeiros: cantos de um mesmo mapa — profundidade (quanto do
+    futuro) $\times$ largura (quantos futuros); voltamos a ele no fim.
+  \end{ideiabox}
+\end{frame}
+
+%% ============================================================
+\section{Recordando a aula anterior}
+%% ============================================================
+
+\begin{frame}{Aquecimento: iteração de valor $\times$ iteração de política}
+  \begin{quizbox}{}
+    Em um MDP tabular, assintoticamente, a iteração de valor sempre produz
+    uma política com o \textbf{mesmo valor} da política devolvida pela
+    iteração de política. Verdadeiro ou falso?
+  \end{quizbox}
+  \paradiscussao
+
+  \pause
+  \begin{respbox}
+    \textbf{Verdadeiro.} Ambas convergem para $\Vstar$ e devolvem política
+    com valor ótimo — os \emph{caminhos} até lá é que diferem.
+  \end{respbox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Aquecimento: quantas iterações a iteração de valor pode levar?}
+  \begin{quizbox}{}
+    A iteração de valor pode precisar de \textbf{mais} de
+    $\abs{\gA}^{\abs{\gS}}$ iterações para computar a função valor ótima?
+    (Suponha $\abs{\gA}$ e $\abs{\gS}$ pequenos o bastante para cada rodada
+    ser exata.)
+  \end{quizbox}
+  \paradiscussao
+
+  \pause
+  \begin{respbox}
+    \textbf{Sim.} MDP com um único estado e uma única ação,
+    $r(s,a) = 1$, $\gamma = 0{,}9$, $V_0(s) = 0$: $\abs{\gA}^{\abs{\gS}} = 1$,
+    mas $\Vstar(s) = \tfrac{1}{1-\gamma} = 10$; após a primeira iteração
+    $V_1(s) = 1$ — convergência \emph{assintótica}. (A iteração de
+    \emph{política} para em no máximo $\abs{\gA}^{\abs{\gS}}$ passos.)
+  \end{respbox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Retorno e funções valor}
+  \begin{defbox}{Retorno $G_t$}
+    Soma descontada das recompensas do passo $t$ em diante:
+    $G_t = r_t + \gamma r_{t+1} + \gamma^2 r_{t+2} + \gamma^3 r_{t+3} + \cdots$
+  \end{defbox}
+
+  \begin{defbox}{Função valor de estado $\Vpi(s)$}
+    Retorno esperado ao partir de $s$ e seguir $\pol$:
+    \[ \Vpi(s) = \E_{\pol}\left[\, G_t \mid s_t = s \,\right] \]
+  \end{defbox}
+
+  \begin{defbox}{Função valor de estado-ação $\Qpi(s,a)$}
+    Retorno esperado ao partir de $s$, executar $a$ e depois seguir $\pol$:
+    $\Qpi(s,a) = \E_{\pol}\left[\, G_t \mid s_t = s,\, a_t = a \,\right]$
+  \end{defbox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Programação dinâmica para avaliação (com modelo)}
+  Com $P$ e $\rec$ conhecidas, Bellman dá um algoritmo iterativo:
+  \[
+    V^{\pol}_{k}(s) \;=\; \termo{\rec(s,\pol(s))}{recompensa imediata}
+      \;+\; \gamma \termo{\sum_{s' \in \gS} \tran{s'}{s,\pol(s)}\, V^{\pol}_{k-1}(s')}{estimativa do futuro}
+  \]
+
+  \begin{itemize}
+    \item $V^{\pol}_k(s)$: valor de $s$ com horizonte $k$; antes da
+      convergência, \emph{estimativa} de $\Vpi(s)$.
+    \item Termo direito: substitui a esperança do futuro
+      $\E_{\pol}[r_{t+1} + \gamma r_{t+2} + \cdots]$ pela estimativa
+      $V^{\pol}_{k-1}$ da iteração anterior.
+  \end{itemize}
+
+  \begin{defbox}{\emph{Bootstrapping}}
+    Atualizar uma estimativa usando \emph{outra estimativa} no lugar da
+    quantidade verdadeira. A PD faz bootstrapping; guarde o termo — ele
+    é a alma do TD.
+  \end{defbox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{O que a PD usa — e o que não teremos hoje}
+  \centering
+  \backupdiagrama
+
+  \medskip
+  \begin{itemize}
+    \item PD: média \textbf{sobre todos} os $s'$, ponderada por
+      $\tran{s'}{s,\pol(s)}$ — precisa do modelo.
+    \item Hoje só temos \alert{amostras}: um $s'$ por vez, sorteado pelo
+      próprio ambiente.
+  \end{itemize}
+
+  \begin{alertabox}
+    Sem modelo não dá para somar sobre $s'$ — a aula inteira contorna isso.
+  \end{alertabox}
+\end{frame}
+
+%% ============================================================
+\section{Avaliação de política por Monte Carlo}
+%% ============================================================
+
+\begin{frame}{A ideia mais simples possível}
+  \[
+    \Vpi(s) = \E_{\tau \sim \pol}\left[\, G_t \mid s_t = s \,\right]
+    \qquad \text{(esperança sobre trajetórias $\tau$ geradas por $\pol$)}
+  \]
+
+  \begin{ideiabox}
+    Valor é uma esperança — esperanças se estimam com médias:
+    rode a política, anote o retorno por estado, tire a média:
+    \alert{valor $=$ retorno médio}.
+  \end{ideiabox}
+
+  \begin{itemize}
+    \item Não requer modelo de dinâmica nem de recompensa.
+    \item Nem sequer assume que o estado é Markoviano!
+    \item Requer episódios \textbf{finitos}: $G_t$ só se calcula no fim.
+    \item Episódios podem ter comprimentos diferentes (estados terminais).
+  \end{itemize}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{MC de primeira visita}
+  \begin{algbox}{MC de primeira visita (\emph{first-visit})}
+    \begin{itemize}\setlength{\itemsep}{0.2ex}
+      \item Inicialize $N(s) = 0$, $G(s) = 0$ para todo $s \in \gS$
+      \item Repita:
+      \begin{itemize}\setlength{\itemsep}{0.15ex}
+        \item Amostre um episódio $i$: $s_{i,1}, a_{i,1}, r_{i,1}, s_{i,2}, \ldots, s_{i,T_i}, a_{i,T_i}, r_{i,T_i}$
+        \item Calcule $G_{i,t} = r_{i,t} + \gamma r_{i,t+1} + \gamma^2 r_{i,t+2} + \cdots + \gamma^{T_i - t} r_{i,T_i}$
+        \item Para cada passo $t$ do episódio:
+          se $t$ é a \alert{primeira} visita ao estado $s$ neste episódio:
+          \begin{itemize}
+            \item $N(s) \leftarrow N(s) + 1$; \quad $G(s) \leftarrow G(s) + G_{i,t}$
+            \item $\Vpi(s) \leftarrow G(s)/N(s)$
+          \end{itemize}
+      \end{itemize}
+    \end{itemize}
+  \end{algbox}
+
+  Cada estado: \textbf{no máximo uma amostra por episódio} — amostras
+  independentes entre episódios.
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{MC de toda visita}
+  \begin{algbox}{MC de toda visita (\emph{every-visit})}
+    \begin{itemize}\setlength{\itemsep}{0.2ex}
+      \item Idêntico ao anterior, exceto pela condição destacada:
+      \item Para cada passo $t$ do episódio, com $s = s_{i,t}$
+        (\alert{toda} visita conta, não só a primeira):
+      \begin{itemize}
+        \item $N(s) \leftarrow N(s) + 1$; \quad $G(s) \leftarrow G(s) + G_{i,t}$
+        \item $\Vpi(s) \leftarrow G(s)/N(s)$
+      \end{itemize}
+    \end{itemize}
+  \end{algbox}
+
+  \begin{itemize}
+    \item Política revisita $s$ no episódio: cada visita gera uma amostra
+      de retorno.
+    \item Amostras \emph{correlacionadas} (compartilham o fim do episódio) —
+      consequências estatísticas adiante.
+  \end{itemize}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Exemplo resolvido: \emph{Mars Rover}}
+  \centering
+  \scalebox{0.9}{\marsrover{1,7}}
+
+  \medskip
+  \begin{exbox}{— MC no Mars Rover}
+    Recompensas $\rec = [+1,\ 0,\ 0,\ 0,\ 0,\ 0,\ +10]$ para qualquer ação;
+    $s_1$ e $s_7$ terminam o episódio. Trajetória observada:
+    \[
+      (s_3, a_1, 0,\ s_2, a_1, 0,\ s_2, a_1, 0,\ s_1, a_1, +1,\ \text{terminal})
+    \]
+    Com $\gamma < 1$, calcule as estimativas MC de \textbf{primeira visita}
+    e de \textbf{toda visita} para $V(s_2)$.
+  \end{exbox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Exemplo resolvido: solução}
+  Retornos a partir de cada passo da trajetória
+  $(s_3, 0)\!\to\!(s_2, 0)\!\to\!(s_2, 0)\!\to\!(s_1, +1)\!\to\!\text{fim}$:
+  \begin{align*}
+    G_{1} &= 0 + \gamma\cdot 0 + \gamma^2\cdot 0 + \gamma^3\cdot 1 = \gamma^3
+      && \text{(a partir de $s_3$)}\\
+    G_{2} &= 0 + \gamma\cdot 0 + \gamma^2\cdot 1 = \gamma^2
+      && \text{(1ª visita a $s_2$)}\\
+    G_{3} &= 0 + \gamma\cdot 1 = \gamma
+      && \text{(2ª visita a $s_2$)}\\
+    G_{4} &= 1 && \text{(a partir de $s_1$)}
+  \end{align*}
+
+  \begin{itemize}
+    \item \textbf{Primeira visita:} só $G_2$ conta para $s_2$:\quad
+      $\mdestaque{rlLaranja}{V(s_2) = \gamma^2}$
+    \item \textbf{Toda visita:} média de $G_2$ e $G_3$:\quad
+      $\mdestaque{rlLaranja}{V(s_2) = \tfrac{\gamma^2 + \gamma}{2}}$
+  \end{itemize}
+
+  \medskip
+  Além disso: $V(s_3) = \gamma^3$, $V(s_1) = 1$; nunca visitados
+  ($s_4$ a $s_7$) permanecem na inicialização.
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{MC incremental: a mesma média, sem guardar somas}
+  A média se atualiza amostra a amostra. Ao visitar $s$ e observar
+  $G_{i,t}$, com $N(s) \leftarrow N(s)+1$:
+  \[
+    \Vpi(s) \;=\; \Vpi(s)\,\frac{N(s)-1}{N(s)} + \frac{G_{i,t}}{N(s)}
+    \;=\; \Vpi(s) + \frac{1}{N(s)}\bigl(G_{i,t} - \Vpi(s)\bigr)
+  \]
+
+  Generalizando $\tfrac{1}{N(s)}$ para uma taxa de aprendizado $\alpha$:
+  \[
+    \mdestaque{rlLaranja}{\Vpi(s_{i,t}) \;=\; \Vpi(s_{i,t})
+      + \alpha\,\bigl(G_{i,t} - \Vpi(s_{i,t})\bigr)}
+  \]
+
+  \begin{ideiabox}
+    O molde de quase tudo no curso:
+    $\;\text{estimativa} \leftarrow \text{estimativa}
+      + \alpha\,(\text{alvo} - \text{estimativa})$ —
+    muda-se o alvo, nasce um algoritmo.
+  \end{ideiabox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Interlúdio estatístico: como julgar um estimador?}
+  Modelo com parâmetro $\theta$ gera dados $x \sim P(x \mid \theta)$;
+  estimador $\hat{\theta} = \hat{\theta}(x)$ tenta recuperar $\theta$.
+
+  \begin{defbox}{Viés, variância e EQM}
+    \vspace{-1.2em}
+    \begin{align*}
+      \text{Vi\'es}(\hat{\theta})
+        &= \E_{x\mid\theta}[\hat{\theta}\,] - \theta\\
+      \operatorname{Var}(\hat{\theta})
+        &= \E_{x\mid\theta}\bigl[(\hat{\theta} - \E[\hat{\theta}\,])^2\bigr]\\
+      \operatorname{EQM}(\hat{\theta})
+        &= \operatorname{Var}(\hat{\theta})
+          + \text{Vi\'es}(\hat{\theta})^2
+    \end{align*}
+  \end{defbox}
+
+  \begin{defbox}{Estimador consistente}
+    Com $n$ amostras e estimativa $\hat{\theta}_n$: para todo
+    $\epsilon > 0$,\;
+    $\lim_{n \to \infty} \Prob\bigl(\abs{\hat{\theta}_n - \theta} > \epsilon\bigr) = 0$.
+  \end{defbox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Viés zero implica consistência?}
+  \begin{quizbox}{}
+    Se um estimador é não-viesado (viés $=0$), ele é necessariamente
+    consistente?
+  \end{quizbox}
+  \paradiscussao
+
+  \pause
+  \begin{respbox}
+    \textbf{Não.} Estimar a média de uma Gaussiana usando \emph{apenas a
+    primeira} observação, $\hat{\theta}_n = x_1$: não-viesado
+    ($\E[x_1] = \theta$), mas ignora os demais dados — a distribuição do
+    erro não encolhe. Consistência exige \emph{aproveitar} os dados novos.
+  \end{respbox}
+
+  \begin{ideiabox}
+    Viés é ``mirar no lugar errado''; variância é ``tremer a mão'' —
+    o EQM cobra os dois.
+  \end{ideiabox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Propriedades dos estimadores MC}
+  \begin{itemize}
+    \item \textbf{Primeira visita:} estimador \alert{não-viesado} de
+      $\E_{\pol}[G_t \mid s_t = s]$; pela lei dos grandes números,
+      $\Vpi(s) \to \E_{\pol}[G_t \mid s_t = s]$ quando $N(s) \to \infty$.
+    \item \textbf{Toda visita:} \alert{viesado} (amostras correlacionadas
+      no episódio), porém \textbf{consistente} — com frequência EQM
+      \emph{menor} na prática.
+    \item \textbf{Incremental:} propriedades dependem da taxa $\alpha$.
+  \end{itemize}
+
+  \begin{teobox}{Condições de convergência (Robbins–Monro)}
+    Com $\alpha$ variando por atualização
+    ($\alpha_n(s_j)$ na $n$-ésima atualização do estado $s_j$),
+    o MC incremental converge para $\Vpi(s_j)$ se
+    \[
+      \sum_{n=1}^{\infty} \alpha_n(s_j) = \infty
+      \qquad \text{e} \qquad
+      \sum_{n=1}^{\infty} \alpha_n^2(s_j) < \infty.
+    \]
+  \end{teobox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Limitações do Monte Carlo}
+  \begin{alertabox}
+    $G_t$ acumula a aleatoriedade de \emph{todas} as ações, transições e
+    recompensas até o fim do episódio: \textbf{variância alta} em geral.
+  \end{alertabox}
+
+  \begin{itemize}
+    \item Reduzir a variância pode exigir \emph{muitos} dados — inviável
+      quando coletar é caro, lento ou arriscado (medicina, robôs, educação).
+    \item Exige cenário \textbf{episódico}: o episódio precisa
+      \emph{terminar} antes de qualquer atualização.
+    \item Nada de tarefas contínuas / horizonte infinito.
+  \end{itemize}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Resumo: Monte Carlo}
+  \begin{itemize}
+    \item Estima a esperança $\Vpi(s) = \E_{\pol}[G_t \mid s_t = s]$
+      por média empírica de retornos.
+    \item Simples; não requer modelo; \textbf{não assume Markov}.
+    \item Converge para o valor verdadeiro sob hipóteses brandas.
+    \item Às vezes preferível à PD \emph{mesmo com o modelo} — $\gS$
+      gigantesco e só interessam alguns estados, ou estado não Markoviano.
+  \end{itemize}
+\end{frame}
+
+%% ============================================================
+\section{Aprendizagem por Diferença Temporal}
+%% ============================================================
+
+\begin{frame}{A ideia central do RL}
+  Sutton e Barto apontam a aprendizagem por diferença temporal (TD) como
+  \emph{a} ideia mais central e original de toda a RL.
+
+  \medskip
+  \begin{itemize}
+    \item Combinação de MC (\textbf{amostra}) com PD (\textbf{bootstrapping}).
+    \item Livre de modelo.
+    \item Episódico \emph{e} horizonte infinito.
+    \item Atualiza $V$ \alert{imediatamente} após cada tupla $(s, a, r, s')$.
+  \end{itemize}
+
+  \begin{ideiabox}
+    MC espera o episódio acabar para saber ``quanto valeu''; TD usa a
+    recompensa de um passo e o \emph{próprio palpite} sobre o próximo estado.
+  \end{ideiabox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Do MC ao TD em uma linha}
+  Atualização do MC incremental (alvo $=$ retorno completo $G_{i,t}$):
+  \[
+    \Vpi(s) = \Vpi(s) + \alpha\,\bigl(\textcolor{rlCinza}{G_{i,t}} - \Vpi(s)\bigr)
+  \]
+
+  Mas $G_t = r_t + \gamma G_{t+1}$, e $\E[G_{t+1}] $ é o valor do próximo
+  estado... que já estamos estimando! Troque o futuro observado pela
+  estimativa atual:
+  \[
+    \Vpi(s_t) = \Vpi(s_t)
+      + \alpha\,\bigl(\mdestaque{rlLaranja}{r_t + \gamma \Vpi(s_{t+1})} - \Vpi(s_t)\bigr)
+  \]
+
+  \begin{defbox}{Alvo TD e erro TD}
+    O \textbf{alvo TD} é $r_t + \gamma \Vpi(s_{t+1})$; o \textbf{erro TD} é
+    \[
+      \delta_t = r_t + \gamma \Vpi(s_{t+1}) - \Vpi(s_t).
+    \]
+    A atualização é simplesmente $\Vpi(s_t) \leftarrow \Vpi(s_t) + \alpha\,\delta_t$.
+  \end{defbox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Algoritmo TD(0)}
+  \begin{algbox}{TD(0), ou TD de 1 passo}
+    \begin{itemize}\setlength{\itemsep}{0.2ex}
+      \item Entrada: taxa de aprendizado $\alpha$
+      \item Inicialize $\Vpi(s) = 0$ para todo $s \in \gS$
+      \item Repita:
+      \begin{itemize}
+        \item Amostre uma tupla $(s_t, a_t, r_t, s_{t+1})$ executando $\pol$
+        \item $\Vpi(s_t) \leftarrow \Vpi(s_t)
+          + \alpha\bigl(\,\termo{r_t + \gamma \Vpi(s_{t+1})}{alvo TD} - \Vpi(s_t)\bigr)$
+      \end{itemize}
+    \end{itemize}
+  \end{algbox}
+
+  \begin{itemize}
+    \item Cada tupla é usada uma vez, na hora — sem armazenar episódios
+      nem esperar que terminem.
+    \item Por isso serve para tarefas contínuas, sem estados terminais.
+    \item ``(0)'' indica olhar 1 passo à frente; família TD($\lambda$)
+      interpola TD(0) e Monte Carlo.
+  \end{itemize}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Exemplo resolvido: TD no Mars Rover}
+  Mesmo cenário: $\rec = [+1, 0, 0, 0, 0, 0, +10]$,
+  $\pol(s) = a_1$ para todo $s$; $s_1, s_7$ terminam o episódio.
+  Mesma trajetória, processada agora tupla a tupla, com $\alpha = 1$
+  e $V$ inicializado em zero:
+
+  \medskip
+  \centering
+  \begin{tikzpicture}[node distance=9mm]
+    \node[estado] (a) {$s_3$};
+    \node[estado, right=of a] (b) {$s_2$};
+    \node[estado, right=of b] (c) {$s_2$};
+    \node[estado destacado, right=of c] (d) {$s_1$};
+    \node[estado terminal, right=of d] (e) {$\top$};
+    \draw[trans] (a) -- node[probl, above=1pt] {$r=0$} (b);
+    \draw[trans] (b) -- node[probl, above=1pt] {$r=0$} (c);
+    \draw[trans] (c) -- node[probl, above=1pt] {$r=0$} (d);
+    \draw[trans destac] (d) -- node[recomp, above=2pt] {$r=+1$} (e);
+  \end{tikzpicture}
+
+  \medskip
+  \raggedright
+  \begin{enumerate}\setlength{\itemsep}{0.2ex}
+    \item $(s_3, 0, s_2)$:\quad $V(s_3) \leftarrow 0 + \gamma\cdot 0 = 0$
+    \item $(s_2, 0, s_2)$:\quad $V(s_2) \leftarrow 0 + \gamma\cdot 0 = 0$
+    \item $(s_2, 0, s_1)$:\quad $V(s_2) \leftarrow 0 + \gamma\cdot 0 = 0$
+    \item $(s_1, +1, \top)$:\quad $V(s_1) \leftarrow 1 + \gamma\cdot 0 = 1$
+  \end{enumerate}
+
+  Resultado: $V = [1,\ 0,\ 0,\ 0,\ 0,\ 0,\ 0]$.
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{MC e TD divergem — no mesmo episódio!}
+  Para a mesma trajetória (tomando $\gamma = 1$):
+  \begin{center}
+  \renewcommand{\arraystretch}{1.3}
+  \begin{tabular}{lccc}
+    & $V(s_1)$ & $V(s_2)$ & $V(s_3)$ \\ \hline
+    MC (primeira visita) & $1$ & $1$ & $1$ \\
+    TD(0), $\alpha = 1$  & $1$ & $0$ & $0$ \\
+  \end{tabular}
+  \end{center}
+
+  \begin{itemize}
+    \item MC propaga o desfecho $+1$ \textbf{para trás}, a todos os
+      estados visitados no episódio.
+    \item TD(0) usa cada tupla \textbf{uma única vez} — quando $s_2$ foi
+      atualizado, $V(s_1)$ ainda era $0$: a notícia não teve tempo de
+      se propagar.
+    \item Com mais episódios (ou repassando os dados), TD também propaga;
+      a diferença é a \emph{velocidade} de influência de cada dado.
+  \end{itemize}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Teste sua compreensão: o papel de $\alpha$}
+  \begin{quizbox}{}
+    Quais afirmações sobre o TD(0) são verdadeiras?
+    \begin{enumerate}\setlength{\itemsep}{0ex}
+      \item Com $\alpha = 0$, o alvo TD pesa mais que a estimativa antiga.
+      \item Com $\alpha = 1$, a estimativa é substituída pelo alvo TD.
+      \item Com $\alpha = 1$, em estados com vários sucessores possíveis,
+        $V$ pode oscilar para sempre.
+      \item Há MDPs determinísticos em que o TD com $\alpha = 1$ converge.
+    \end{enumerate}
+  \end{quizbox}
+  \paradiscussao
+
+  \pause
+  \begin{respbox}
+    \textbf{2, 3 e 4.} Com $\alpha = 0$ nada é atualizado (1 falsa);
+    com $\alpha = 1$ a estimativa vira o alvo (2); alvo estocástico faz
+    $V$ quicar (3); alvo determinístico é fixo e converge (4).
+  \end{respbox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Resumo: Diferença Temporal}
+  \begin{itemize}
+    \item Amostra do ambiente (como MC) \textbf{e} bootstrapping (como PD).
+    \item Livre de modelo; episódico e contínuo.
+    \item Atualiza a cada tupla $(s, a, r, s')$ — aprendizado \emph{online}.
+    \item Estimador \alert{viesado}: no começo, o alvo depende da
+      inicialização de $V$.
+    \item Variância \textbf{bem menor} que a do MC: o alvo contém uma única
+      ação, recompensa e transição aleatórias.
+    \item Consistente se $\alpha$ satisfaz Robbins–Monro (as mesmas do MC
+      incremental).
+  \end{itemize}
+\end{frame}
+
+%% ============================================================
+\section{Equivalência de certeza}
+%% ============================================================
+
+\begin{frame}{E se estimássemos o modelo?}
+  Terceira via, \emph{baseada em modelo}: aprender $\hat{P}$ e $\hat{r}$
+  dos dados e \textbf{planejar} como se fossem verdadeiros.
+
+  \begin{defbox}{Modelo de máxima verossimilhança (contagens)}
+    Para cada par $(s,a)$ com $N(s,a)$ visitas até agora:
+    \[
+      \hat{P}(s' \mid s, a) = \frac{\#\,\{(s,a) \to s'\}}{N(s,a)},
+      \qquad
+      \hat{r}(s, a) = \frac{\text{soma das recompensas de } (s,a)}{N(s,a)}.
+    \]
+  \end{defbox}
+
+  \begin{algbox}{Avaliação por equivalência de certeza}
+    \begin{itemize}\setlength{\itemsep}{0.2ex}
+      \item A cada tupla $(s, a, r, s')$: atualize contagens e modelo
+        $(\hat{P}, \hat{r})$
+      \item Calcule $\Vpi$ no MDP estimado com qualquer método de PD da
+        aula 2 \emph{(inicializar todos os pares $(s,a)$)}
+    \end{itemize}
+  \end{algbox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Equivalência de certeza: custo e propriedades}
+  \begin{itemize}
+    \item \textbf{Custo alto:} replanejar a cada atualização —
+      $O(\abs{\gS}^3)$ analítico, ou $O(\abs{\gS}^2 \abs{\gA})$ por
+      iteração.
+    \item \textbf{Eficiência estatística excelente:} cada tupla melhora o
+      modelo inteiro; o planejamento espreme toda a informação.
+    \item \textbf{Consistente} quando o processo é de fato Markoviano.
+    \item Estende-se à avaliação \emph{off-policy}: o modelo estimado não
+      depende de qual política gerou os dados.
+  \end{itemize}
+
+  \begin{ideiabox}
+    O nome diz tudo: tratamos a estimativa \emph{como se} houvesse certeza —
+    eficiente com poucos dados, caro em computação: o oposto exato do TD.
+  \end{ideiabox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Exemplo resolvido: equivalência de certeza no Mars Rover}
+  \framesubtitle{Mesma trajetória:
+    $(s_3, a_1, 0,\ s_2, a_1, 0,\ s_2, a_1, 0,\ s_1, a_1, +1,\ \text{terminal})$}
+  \textbf{Modelo estimado por contagens:}
+  \begin{itemize}\setlength{\itemsep}{0.15ex}
+    \item $\hat{r} = [+1,\ 0,\ 0,\ 0,\ 0,\ 0,\ 0]$
+      (só vimos recompensas em $s_1$, $s_2$, $s_3$)
+    \item $\hat{p}(s_2 \mid s_3, a_1) = 1$;\quad
+      $\hat{p}(\text{terminal} \mid s_1, a_1) = 1$
+    \item $s_2$: duas visitas, uma ficou e outra desceu $\Rightarrow$
+      $\hat{p}(s_2 \mid s_2, a_1) = \hat{p}(s_1 \mid s_2, a_1) = \tfrac{1}{2}$
+  \end{itemize}
+
+  \textbf{Planejando no modelo} (resolvendo $V = \hat{r} + \gamma \hat{P} V$):
+  \vspace{-0.4em}
+  \begin{align*}
+    V(s_1) &= 1\\
+    V(s_2) &= \gamma\bigl(\tfrac12 V(s_2) + \tfrac12 V(s_1)\bigr)
+      \;\Rightarrow\; V(s_2) = \tfrac{\gamma}{2 - \gamma}
+    \qquad
+    V(s_3) = \gamma\, V(s_2) = \tfrac{\gamma^2}{2-\gamma}
+  \end{align*}
+  \vspace{-1.2em}
+
+  Note: \textbf{um único episódio} já deu estimativas não-nulas aos três
+  estados — nenhum método anterior conseguiu.
+\end{frame}
+
+%% ============================================================
+\section{Avaliação em lote}
+%% ============================================================
+
+\begin{frame}{O cenário em lote (\emph{batch})}
+  Dados em fluxo até aqui. Agora: conjunto \textbf{fixo e finito} de $K$
+  episódios coletados sob $\pol$:
+  \vspace{-0.5em}
+  \[
+    \{\, s_{k,1}, a_{k,1}, r_{k,1}, \ldots, s_{k,T_k} \,\}_{k=1}^{K}
+  \]
+  \vspace{-1.4em}
+  \begin{itemize}\setlength{\itemsep}{0.2ex}
+    \item Regime típico quando coletar dados novos é caro ou arriscado
+      (prontuários médicos, logs de produção).
+    \item Ideia: \textbf{repassar} os mesmos episódios várias vezes,
+      aplicando MC ou TD(0) até as estimativas estabilizarem.
+  \end{itemize}
+  \vspace{-0.4em}
+
+  \begin{quizbox}{}
+    Repassando os mesmos dados infinitas vezes, MC e TD(0) convergem
+    para a \emph{mesma} resposta?
+  \end{quizbox}
+  \paradiscussao
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Um exemplo minúsculo que separa MC de TD}
+  Dois estados, $A$ e $B$; sem desconto ($\gamma = 1$); \textbf{8 episódios}
+  observados:
+
+  \begin{center}
+  \renewcommand{\arraystretch}{1.2}
+  \begin{tabular}{cl}
+    1 episódio & $A,\ 0,\ B,\ 0,\ \text{fim}$\\
+    6 episódios & $B,\ 1,\ \text{fim}$\\
+    1 episódio & $B,\ 0,\ \text{fim}$\\
+  \end{tabular}
+  \end{center}
+
+  \begin{exbox}{— o que os dados dizem?}
+    No regime em lote, quais os valores de $V(B)$ e de $V(A)$?
+  \end{exbox}
+
+  \pause
+  \begin{respbox}
+    $V(B) = \tfrac{6}{8} = 0{,}75$ — MC e TD concordam.
+    Para $V(A)$, eles \textbf{discordam}: MC responde $0$;
+    TD(0) responde $0{,}75$.
+  \end{respbox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Por que discordam — e o que cada um ``acredita''}
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+      \small\textbf{Monte Carlo.} Só há \emph{um} retorno observado a
+      partir de $A$, e ele valeu $0$: $V(A) = 0$ — ajusta-se aos
+      \alert{retornos que aconteceram}.
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \small\textbf{TD(0).} Nos dados, $A$ sempre levou a $B$ com $r=0$:
+      $V(A) = 0 + \gamma V(B) = 0{,}75$ — o TD \alert{acredita na
+      estrutura de Markov} e generaliza via $B$.
+    \end{column}
+  \end{columns}
+
+  \smallskip
+  \begin{teobox}[fontupper=\small]{Para onde cada método converge no lote}
+    \vspace{-0.2em}
+    \begin{itemize}\setlength{\itemsep}{0.1ex}
+      \item \textbf{MC:} valores que minimizam o erro quadrático médio
+        sobre os retornos observados.
+      \item \textbf{TD(0):} $\Vpi$ do MDP de máxima verossimilhança dos
+        dados — a solução da \alert{equivalência de certeza}.
+    \end{itemize}
+  \end{teobox}
+
+  \begin{ideiabox}
+    Mundo Markoviano: a resposta do TD aproveita melhor os dados; se não,
+    a do MC é a mais honesta.
+  \end{ideiabox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{O modelo que o TD constrói sem querer}
+  \framesubtitle{MDP de máxima verossimilhança estimado a partir dos 8 episódios}
+  \centering
+  \begin{tikzpicture}[node distance=22mm]
+    \node[estado] (A) {$A$};
+    \node[estado, right=of A] (B) {$B$};
+    \node[estado terminal, right=of B] (T) {$\top$};
+    \draw[trans destac] (A) -- node[probl, above=1pt] {$\hat p = 1$}
+                             node[recomp, below=3pt] {$\hat r = 0$} (B);
+    \draw[trans] (B) -- node[probl, above=1pt] {$\hat p = 1$}
+                       node[recomp, below=3pt] {$\hat r = 0{,}75$} (T);
+  \end{tikzpicture}
+
+  \smallskip
+  \raggedright
+  \begin{itemize}\setlength{\itemsep}{0.2ex}
+    \item Das 8 trajetórias, a única que passou por $A$ foi para $B$
+      com recompensa $0$ $\Rightarrow$ $\hat p(B \mid A) = 1$, $\hat r(A) = 0$.
+    \item De $B$, seis vezes a recompensa foi $1$ e duas vezes $0$
+      $\Rightarrow$ $\hat r(B) = 6/8 = 0{,}75$.
+    \item Planejar nesse modelo dá $V(A) = 0 + \gamma\,V(B) = 0{,}75$ —
+      \alert{exatamente a resposta do TD(0) em lote}.
+  \end{itemize}
+
+  \begin{ideiabox}
+    O TD nunca escreve $\hat P$ nem $\hat r$ na memória, mas converge para
+    a mesma resposta que a equivalência de certeza daria — o preço e o
+    prêmio de assumir Markov.
+  \end{ideiabox}
+\end{frame}
+
+%% ============================================================
+\section{Comparando os métodos}
+%% ============================================================
+
+\begin{frame}{Viés e variância dos alvos}
+  \begin{center}
+  \renewcommand{\arraystretch}{1.35}
+  \begin{tabular}{lcc}
+    \textbf{Alvo} & \textbf{Viés} & \textbf{Variância}\\ \hline
+    Retorno $G_t$ (MC)
+      & nenhum (1ª visita) & alta: episódio inteiro é aleatório\\
+    $r_t + \gamma \Vpi(s_{t+1})$ (TD)
+      & sim (depende de $\Vpi$ atual) & baixa: 1 passo aleatório\\
+  \end{tabular}
+  \end{center}
+
+  \begin{itemize}
+    \item \textbf{MC:} não-viesado (primeira visita), variância alta,
+      consistente — \emph{inclusive} com aproximação de função.
+    \item \textbf{TD(0):} viesado, variância menor; converge na
+      representação tabular, mas \alert{pode não convergir com aproximação
+      de função} (tema de aulas futuras).
+  \end{itemize}
+
+  \begin{ideiabox}
+    Dilema viés–variância clássico em roupa de RL: o TD troca um pouco de
+    viés por aprender mais rápido e com menos ruído.
+  \end{ideiabox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Um mapa para os três métodos}
+  \framesubtitle{Quantos futuros cada atualização considera (largura)
+    $\times$ até onde ela olha antes de usar uma estimativa (profundidade)}
+  \centering
+  \scalebox{0.82}{%
+  \begin{tikzpicture}[x=1cm, y=1cm]
+    % eixos
+    \draw[trans, rlAzul] (0,0) -- (8.6,0);
+    \draw[trans, rlAzul] (0,0) -- (0,4.4);
+    \node[font=\scriptsize\itshape, text=rlAzul, below] at (4.25,-0.5)
+      {largura do backup};
+    \node[font=\scriptsize\itshape, text=rlAzul, rotate=90, above] at (-0.55,2.2)
+      {profundidade do backup};
+    \node[font=\scriptsize, text=rlCinza, below] at (1.9,-0.03) {uma amostra};
+    \node[font=\scriptsize, text=rlCinza, below] at (6.6,-0.03) {esperança completa};
+    \node[font=\scriptsize, text=rlCinza, rotate=90, above] at (-0.03,1.1) {1 passo};
+    \node[font=\scriptsize, text=rlCinza, rotate=90, above] at (-0.03,3.6) {episódio};
+    % quadrantes
+    \node[draw=rlLaranja, very thick, fill=rlLaranja!12, rounded corners=1.5mm,
+          minimum width=2.5cm, minimum height=9mm, font=\small\bfseries]
+          at (1.9,1.1) {TD(0)};
+    \node[draw=rlAzulClaro, very thick, fill=rlAzulClaro!10, rounded corners=1.5mm,
+          minimum width=3.2cm, minimum height=9mm, font=\small\bfseries]
+          at (6.6,1.1) {PD (com modelo)};
+    \node[draw=rlTeal, very thick, fill=rlTeal!10, rounded corners=1.5mm,
+          minimum width=2.5cm, minimum height=9mm, font=\small\bfseries]
+          at (1.9,3.6) {Monte Carlo};
+    \node[draw=rlCinza, thick, dashed, fill=rlFundo, rounded corners=1.5mm,
+          minimum width=3.2cm, minimum height=9mm, font=\small]
+          at (6.6,3.6) {busca exaustiva};
+  \end{tikzpicture}}
+
+  \smallskip
+  \raggedright
+  A equivalência de certeza vive perto da PD: estima a esperança completa
+  — mas num modelo aprendido dos dados.
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{Tabela comparativa}
+  \centering
+  \renewcommand{\arraystretch}{1.15}
+  {\footnotesize
+  \begin{tabular}{lccc}
+    & \textbf{MC} & \textbf{TD(0)} & \textbf{Equiv. certeza}\\ \hline
+    Precisa de modelo?            & não & não & não (estima um)\\
+    Faz bootstrapping?            & não & sim & sim (via PD)\\
+    Exige episódios finitos?      & sim & não & não\\
+    Assume Markov?                & não & sim & sim\\
+    Viés                          & zero (1ª visita) & sim & sim (com poucos dados)\\
+    Variância                     & alta & baixa & baixa\\
+    Custo por atualização         & baixo & baixíssimo & alto\\
+    Eficiência estatística        & baixa & média & alta\\
+    Avaliação off-policy direta?  & não & não & sim\\
+  \end{tabular}}
+
+  \smallskip
+  \begin{alertabox}
+    Sem vencedor absoluto: a escolha depende do recurso escasso — dados,
+    computação ou memória — e de o estado ser Markoviano.
+  \end{alertabox}
+\end{frame}
+
+%% ------------------------------------------------------------
+\begin{frame}{O que levamos desta aula}
+  \begin{itemize}
+    \item Avaliação de política \textbf{sem modelo}: esperanças por
+      \emph{amostras} (MC), \emph{amostra + bootstrapping} (TD) ou
+      \emph{modelo estimado} (equivalência de certeza).
+    \item O molde universal
+      $\;\text{estimativa} \leftarrow \text{estimativa}
+        + \alpha(\text{alvo} - \text{estimativa})\;$
+      reaparece na aula que vem — trocando $V$ por $Q$ e avaliação por
+      \textbf{controle}.
+    \item Viés, variância, consistência e custo computacional são a régua
+      para comparar métodos — memorize a tabela.
+  \end{itemize}
+
+  \medskip
+  \textbf{Próxima aula:} controle sem modelo — SARSA e Q-learning.
+
+  \medskip
+  {\small\color{rlCinza} Material adaptado de Emma Brunskill,
+  \emph{CS234: Reinforcement Learning} (Stanford). Estrutura relacionada à
+  aula 4 de David Silver; leituras em Sutton \& Barto,
+  seções 5.1, 5.5 e 6.1–6.3.}
+\end{frame}
+
+%% ============================================================
+\section*{Exercícios opcionais}
+\begin{frame}[plain, noframenumbering]
+  \begin{tikzpicture}[remember picture, overlay]
+    \fill[rlAzul] (current page.south west) rectangle (current page.north east);
+    \node[anchor=west, text width=0.72\paperwidth]
+      at ([xshift=1.1cm]current page.west) {%
+        {\color{rlAmbar}\small\bfseries MATERIAL EXTRA}\\[0.55em]
+        {\color{white}\LARGE\bfseries Exercícios opcionais}\\[0.55em]
+        {\color{rlLaranja}\rule{3em}{2.4pt}}};
+  \end{tikzpicture}
+\end{frame}
+
+\begin{frame}{Exercício: MC incremental e suas variantes}
+  \begin{exbox}{— verdadeiro ou falso}
+    Considere o MC incremental
+    $\Vpi(s_{i,t}) \leftarrow \Vpi(s_{i,t}) + \alpha\,(G_{i,t} - \Vpi(s_{i,t}))$.
+    \begin{enumerate}\setlength{\itemsep}{0.15ex}
+      \item Com $\alpha = 1$, o MC incremental equivale ao MC de primeira visita.
+      \item Com $\alpha = \tfrac{1}{N(s_{i,t})}$, equivale ao MC de toda visita.
+      \item Usar $\alpha > \tfrac{1}{N(s_{i,t})}$ pode ajudar em domínios
+        não-estacionários.
+    \end{enumerate}
+  \end{exbox}
+
+  \pause
+  \begin{respbox}
+    \textbf{(1) Falso.} Com $\alpha = 1$ a estimativa vira o \emph{último}
+    retorno observado — não a média, e todas as visitas atualizam.
+    \textbf{(2) Verdadeiro.} É exatamente a média incremental sobre todas
+    as visitas.
+    \textbf{(3) Verdadeiro.} Pesos maiores para dados recentes permitem
+    ``esquecer'' um passado que já não descreve o ambiente.
+  \end{respbox}
+\end{frame}
+
+\begin{frame}{Exercício: complete o quadro do Mars Rover}
+  \begin{exbox}{— os três métodos lado a lado}
+    Para a trajetória
+    $(s_3, a_1, 0,\ s_2, a_1, 0,\ s_2, a_1, 0,\ s_1, a_1, +1,\ \text{terminal})$,
+    com $V$ inicializado em zero:
+    \begin{enumerate}\setlength{\itemsep}{0.15ex}
+      \item Verifique as estimativas de primeira visita com $\gamma = 1$:
+        $V = [1, 1, 1, 0, 0, 0, 0]$.
+      \item Verifique o TD(0) com $\alpha = 1$:
+        $V = [1, 0, 0, 0, 0, 0, 0]$.
+      \item Refaça a conta da equivalência de certeza resolvendo
+        $V = (I - \gamma \hat{P})^{-1} \hat{r}$ restrita aos estados
+        $\{s_1, s_2, s_3, \text{terminal}\}$ e confirme
+        $V(s_2) = \gamma/(2-\gamma)$.
+    \end{enumerate}
+  \end{exbox}
+
+  \begin{ideiabox}
+    Contraste: o TD usou cada tupla uma vez e propagou pouco; o MC
+    propagou o desfecho para todo o episódio; a equivalência de certeza
+    extraiu o máximo — ao preço de inverter uma matriz.
+  \end{ideiabox}
+\end{frame}
+
+\end{document}
