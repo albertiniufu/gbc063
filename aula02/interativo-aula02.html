@@ -74,6 +74,34 @@ h2{color:var(--azul); font-size:1.25rem; margin-bottom:.2rem;}
 .caixa.quiz{border:1.5px solid var(--ambar); border-left:4px solid var(--ambar); background:var(--fundo-quiz);}
 .caixa.quiz b.rotulo{color:var(--laranja);}
 
+/* ---------- botão de ajuda "?" e popover ---------- */
+.qbtn{
+  width:18px;height:18px;border-radius:50%;padding:0;font-size:11px;line-height:1;
+  font-family:'Fira Mono',ui-monospace,monospace;color:var(--cinza);
+  border:1px solid var(--borda);background:#fff;
+  display:inline-flex;align-items:center;justify-content:center;
+  vertical-align:middle;margin-left:6px;cursor:help;text-transform:none;flex:0 0 auto;
+}
+.qbtn:hover{color:var(--laranja);border-color:var(--laranja);background:#fff}
+.qbtn:focus-visible{outline:3px solid var(--ambar);outline-offset:2px}
+#pop{
+  position:fixed;z-index:70;max-width:min(370px,calc(100vw - 24px));
+  background:#fff;border:1px solid var(--borda);border-radius:10px;
+  box-shadow:0 4px 22px rgba(22,50,79,.08),0 12px 36px rgba(22,50,79,.25);
+  padding:13px 15px 14px;
+}
+#pop h4{margin:0 0 7px;font-size:13.5px;font-weight:600;color:var(--azul);
+        display:flex;justify-content:space-between;gap:12px;align-items:center}
+#pop .pop-x{width:22px;height:22px;border-radius:6px;padding:0;font-size:13px;line-height:1;
+            flex:0 0 auto;border:1px solid var(--borda);background:var(--fundo);
+            color:var(--cinza);cursor:pointer}
+#pop .pop-x:hover{color:var(--laranja);border-color:var(--laranja)}
+#pop .pop-corpo{font-size:13px;line-height:1.58;color:var(--cinza)}
+#pop .pop-corpo b{color:var(--azul)}
+#pop .pop-corpo .vd{color:var(--verde);font-weight:600}
+#pop .pop-corpo .tl{color:var(--teal);font-weight:600}
+#pop .pop-corpo .lj{color:var(--laranja);font-weight:600}
+
 /* ---------- controles ---------- */
 .controles{display:flex; flex-wrap:wrap; gap:.65rem 1.2rem; align-items:center;
            background:var(--fundo); border:1px solid var(--borda); border-radius:9px;
@@ -185,6 +213,7 @@ table.hist-pol tr.atual{background:#FEF6E7;}
 
   <div class="formula">
     V<sub>k+1</sub>(s) = max<sub>a</sub> [ R(s,a) + <i>γ</i> Σ<sub>s′</sub> P(s′|s,a) · V<sub>k</sub>(s′) ]
+    <button class="qbtn" data-ajuda="vi-backup" aria-label="Explicação: fórmula do backup de Bellman">?</button>
   </div>
 
   <div class="controles">
@@ -194,22 +223,22 @@ table.hist-pol tr.atual{background:#FEF6E7;}
       <button class="acao btn-neutro" id="vi-reset">↺ Reiniciar</button>
     </div>
     <div class="grupo">
-      <label for="vi-gamma">γ</label>
+      <label for="vi-gamma">γ <button class="qbtn" data-ajuda="gama" aria-label="Explicação: fator de desconto γ">?</button></label>
       <input type="range" id="vi-gamma" min="0" max="0.99" step="0.01" value="0.9">
       <span class="medidor" id="vi-gamma-val">0.90</span>
     </div>
     <div class="grupo">
-      <label for="vi-din">dinâmica</label>
+      <label for="vi-din">dinâmica <button class="qbtn" data-ajuda="dinamica" aria-label="Explicação: dinâmica determinística vs estocástica">?</button></label>
       <select id="vi-din">
         <option value="det">determinística (como no slide 11)</option>
         <option value="est">estocástica (escorrega com prob. 0,3)</option>
       </select>
     </div>
     <div class="grupo">
-      <label>iteração</label><span class="medidor" id="vi-k">0</span>
+      <label>iteração <button class="qbtn" data-ajuda="k-vi" aria-label="Explicação: contador de iterações">?</button></label><span class="medidor" id="vi-k">0</span>
     </div>
     <div class="grupo">
-      <label>‖V<sub>k+1</sub>−V<sub>k</sub>‖<sub>∞</sub></label>
+      <label>‖V<sub>k+1</sub>−V<sub>k</sub>‖<sub>∞</sub> <button class="qbtn" data-ajuda="delta-vi" aria-label="Explicação: norma do máximo e critério de parada">?</button></label>
       <span class="medidor" id="vi-delta">—</span>
     </div>
   </div>
@@ -218,23 +247,24 @@ table.hist-pol tr.atual{background:#FEF6E7;}
     <svg id="vi-svg" width="920" height="240" viewBox="0 0 920 240" role="img"
          aria-label="Cadeia do Mars Rover com barras de valor e setas de política"></svg>
     <p class="legenda-mini">Barras teal: V<sub>k</sub>(s). Setas laranja: política gulosa em relação a V<sub>k</sub>.
-    Recompensas: <b style="color:var(--verde)">+1</b> em s₁ e <b style="color:var(--verde)">+10</b> em s₇ (por ação tomada nesses estados).</p>
+    Recompensas: <b style="color:var(--verde)">+1</b> em s₁ e <b style="color:var(--verde)">+10</b> em s₇ (por ação tomada nesses estados).
+    <button class="qbtn" data-ajuda="palco-vi" aria-label="Explicação: como ler a cadeia">?</button></p>
   </div>
 
   <div class="duplo" style="margin-top:1rem;">
     <div class="bloco">
-      <h3>Anatomia do backup <span class="tag" id="vi-anat-estado">s₆</span></h3>
+      <h3>Anatomia do backup <span class="tag" id="vi-anat-estado">s₆</span> <button class="qbtn" data-ajuda="anatomia" aria-label="Explicação: anatomia do backup do estado selecionado">?</button></h3>
       <div class="anatomia" id="vi-anatomia"></div>
     </div>
     <div class="grafico-caixa">
-      <h3>Convergência (escala log)</h3>
+      <h3>Convergência (escala log) <button class="qbtn" data-ajuda="convergencia" aria-label="Explicação: gráfico de convergência em escala logarítmica">?</button></h3>
       <canvas id="vi-canvas" width="520" height="300"></canvas>
       <p class="grafico-legenda">‖V<sub>k+1</sub> − V<sub>k</sub>‖<sub>∞</sub> por iteração.
       A reta em escala log é a assinatura da contração: o erro cai por um fator ≈ γ a cada passo.</p>
     </div>
   </div>
 
-  <div class="caixa quiz"><b class="rotulo">Teste sua compreensão</b>
+  <div class="caixa quiz"><b class="rotulo">Teste sua compreensão <button class="qbtn" data-ajuda="quiz-vi" aria-label="Explicação: notação da cota γᵏ">?</button></b>
     Aumente γ de 0,50 para 0,95 e reinicie. O número de iterações até ‖·‖<sub>∞</sub> &lt; 0,01
     cresce — em que proporção? Relacione com a cota γ<sup>k</sup>‖V₀ − V*‖<sub>∞</sub> vista em aula.
   </div>
@@ -254,21 +284,22 @@ table.hist-pol tr.atual{background:#FEF6E7;}
   <div class="formula">
     π<sub>i+1</sub>(s) = arg max<sub>a</sub> Q<sup>π<sub>i</sub></sup>(s,a),&nbsp;&nbsp;
     Q<sup>π<sub>i</sub></sup>(s,a) = R(s,a) + <i>γ</i> Σ<sub>s′</sub> P(s′|s,a) · V<sup>π<sub>i</sub></sup>(s′)
+    <button class="qbtn" data-ajuda="pi-formula" aria-label="Explicação: fórmula da melhoria de política">?</button>
   </div>
 
   <div class="controles">
     <div class="grupo">
-      <button class="acao btn-sec" id="pi-avaliar">① Avaliar π</button>
-      <button class="acao btn-prim" id="pi-melhorar" disabled>② Melhorar π</button>
-      <button class="acao btn-neutro" id="pi-reset">↺ Nova π₀ aleatória</button>
+      <button class="acao btn-sec" id="pi-avaliar">① Avaliar π</button> <button class="qbtn" data-ajuda="avaliar" aria-label="Explicação: o que é avaliar uma política">?</button>
+      <button class="acao btn-prim" id="pi-melhorar" disabled>② Melhorar π</button> <button class="qbtn" data-ajuda="melhorar" aria-label="Explicação: o passo guloso de melhoria">?</button>
+      <button class="acao btn-neutro" id="pi-reset">↺ Nova π₀ aleatória</button> <button class="qbtn" data-ajuda="nova-pi" aria-label="Explicação: política inicial aleatória">?</button>
     </div>
     <div class="grupo">
-      <label for="pi-gamma">γ</label>
+      <label for="pi-gamma">γ <button class="qbtn" data-ajuda="gama" aria-label="Explicação: fator de desconto γ">?</button></label>
       <input type="range" id="pi-gamma" min="0" max="0.99" step="0.01" value="0.9">
       <span class="medidor" id="pi-gamma-val">0.90</span>
     </div>
     <div class="grupo">
-      <label>rodada i</label><span class="medidor" id="pi-i">0</span>
+      <label>rodada i <button class="qbtn" data-ajuda="i-pi" aria-label="Explicação: contador de rodadas da iteração de política">?</button></label><span class="medidor" id="pi-i">0</span>
     </div>
     <div class="grupo"><span class="medidor" id="pi-status" style="min-width:16ch; font-weight:600; color:var(--cinza); font-size:.82rem;"></span></div>
   </div>
@@ -277,30 +308,31 @@ table.hist-pol tr.atual{background:#FEF6E7;}
     <svg id="pi-svg" width="920" height="240" viewBox="0 0 920 240" role="img"
          aria-label="Cadeia do Mars Rover com política atual e valores"></svg>
     <p class="legenda-mini">Setas laranja: π<sub>i</sub>(s). Barras teal: V<sup>π<sub>i</sub></sup>(s) após avaliar.
-    Dinâmica determinística; recompensas +1 em s₁ e +10 em s₇.</p>
+    Dinâmica determinística; recompensas +1 em s₁ e +10 em s₇.
+    <button class="qbtn" data-ajuda="palco-pi" aria-label="Explicação: como ler a cadeia na iteração de política">?</button></p>
   </div>
 
   <div class="duplo" style="margin-top:1rem;">
     <div class="bloco">
-      <h3>Histórico de políticas</h3>
+      <h3>Histórico de políticas <button class="qbtn" data-ajuda="tabela-pi" aria-label="Explicação: colunas do histórico de políticas">?</button></h3>
       <table class="hist-pol" id="pi-tabela">
         <thead><tr><th>i</th><th>π (s₁…s₇)</th><th>V<sup>π</sup>(s₄)</th><th>Σ V<sup>π</sup></th><th>melhorou?</th></tr></thead>
         <tbody></tbody>
       </table>
     </div>
     <div class="grafico-caixa">
-      <h3>Valor da política por rodada</h3>
+      <h3>Valor da política por rodada <button class="qbtn" data-ajuda="grafico-pi" aria-label="Explicação: gráfico da melhoria monotônica">?</button></h3>
       <canvas id="pi-canvas" width="520" height="300"></canvas>
       <p class="grafico-legenda">V<sup>π<sub>i</sub></sup>(s₄) a cada rodada. A curva nunca desce:
       é o teorema da melhoria monotônica em ação.</p>
     </div>
   </div>
 
-  <div class="caixa quiz"><b class="rotulo">Teste sua compreensão</b>
+  <div class="caixa quiz"><b class="rotulo">Teste sua compreensão <button class="qbtn" data-ajuda="quiz-pi" aria-label="Explicação: notação do teto |𝒜| elevado a |𝒮|">?</button></b>
     Gere várias π₀ aleatórias. Quantas rodadas PI leva até parar? Compare com o teto teórico
     |𝒜|<sup>|𝒮|</sup> = 2⁷ = 128 e com o número de iterações que VI precisou no painel 1.
   </div>
-  <div class="caixa alerta"><b class="rotulo">Atenção</b>
+  <div class="caixa alerta"><b class="rotulo">Atenção <button class="qbtn" data-ajuda="fronteira" aria-label="Explicação: a fronteira de decisão em função de γ">?</button></b>
     Com γ pequeno (ex.: 0,20), a política ótima muda: perto de s₁ passa a valer mais o +1 imediato
     do que o +10 distante. A fronteira de decisão entre “ir para a esquerda” e “ir para a direita”
     depende de γ — teste e encontre-a.
@@ -312,10 +344,12 @@ table.hist-pol tr.atual{background:#FEF6E7;}
   <h2>Retornos amostrais (ponte para a Aula 3)</h2>
   <p class="subtitulo">Passeio aleatório do slide de retornos: de cada estado, o rover vai para o
   vizinho com prob. 0,4 para cada lado e fica parado com 0,2 (0,6 nas bordas).
-  Episódios de H = 4 passos a partir de s₄, γ = ½.</p>
+  Episódios de H = 4 passos a partir de s₄, γ = ½.
+  <button class="qbtn" data-ajuda="passeio" aria-label="Explicação: probabilidades do passeio aleatório">?</button></p>
 
   <div class="formula">
     G = r₁ + ½·r₂ + ¼·r₃ + ⅛·r₄ &nbsp;&nbsp;·&nbsp;&nbsp; V(s₄) = 𝔼[G] ≈ média de muitas amostras
+    <button class="qbtn" data-ajuda="mc-formula" aria-label="Explicação: retorno G e valor esperado">?</button>
   </div>
 
   <div class="controles">
@@ -326,32 +360,32 @@ table.hist-pol tr.atual{background:#FEF6E7;}
       <button class="acao btn-neutro" id="mc-reset">↺ Zerar</button>
     </div>
     <div class="grupo"><label>episódios</label><span class="medidor" id="mc-n">0</span></div>
-    <div class="grupo"><label>média Ḡ</label><span class="medidor" id="mc-media">—</span></div>
+    <div class="grupo"><label>média Ḡ <button class="qbtn" data-ajuda="mc-media" aria-label="Explicação: média amostral vs valor exato">?</button></label><span class="medidor" id="mc-media">—</span></div>
     <div class="grupo"><label>V(s₄) exato</label><span class="medidor" id="mc-exato">—</span></div>
   </div>
 
   <div class="bloco" style="margin-bottom:1rem;">
-    <h3>Último episódio sorteado</h3>
+    <h3>Último episódio sorteado <button class="qbtn" data-ajuda="episodio" aria-label="Explicação: como ler a trajetória e a conta do retorno">?</button></h3>
     <p id="mc-traj" class="mono" style="font-size:.95rem; color:var(--azul);">— clique em “1 episódio”</p>
     <p id="mc-conta" style="font-size:.86rem; color:var(--cinza); margin-top:.3rem;"></p>
   </div>
 
   <div class="duplo">
     <div class="grafico-caixa">
-      <h3>Distribuição dos retornos</h3>
+      <h3>Distribuição dos retornos <button class="qbtn" data-ajuda="hist-mc" aria-label="Explicação: histograma discreto e espalhado">?</button></h3>
       <canvas id="mc-hist" width="520" height="300"></canvas>
       <p class="grafico-legenda">Histograma de G. A linha laranja marca a média amostral;
       a linha verde tracejada, o valor exato V(s₄) calculado por programação dinâmica.</p>
     </div>
     <div class="grafico-caixa">
-      <h3>Média acumulada</h3>
+      <h3>Média acumulada <button class="qbtn" data-ajuda="banda" aria-label="Explicação: faixa de confiança de 95%">?</button></h3>
       <canvas id="mc-media-canvas" width="520" height="300"></canvas>
       <p class="grafico-legenda">Média Ḡ<sub>n</sub> após n episódios. A faixa é ±1,96·σ̂/√n
       (aprox. de intervalo de 95%). A precisão melhora com 1/√n — devagar.</p>
     </div>
   </div>
 
-  <div class="caixa quiz"><b class="rotulo">Teste sua compreensão</b>
+  <div class="caixa quiz"><b class="rotulo">Teste sua compreensão <button class="qbtn" data-ajuda="quiz-mc" aria-label="Explicação: notação da faixa de confiança">?</button></b>
     Após 1000 episódios, qual é a largura da faixa de confiança? Quantos episódios seriam
     necessários para reduzi-la à metade? E para um décimo?
   </div>
@@ -360,7 +394,7 @@ table.hist-pol tr.atual{background:#FEF6E7;}
     trajetória conta uma história diferente. DP calcula a média sem nunca sortear; Monte Carlo
     sorteia sem nunca conhecer P. A Aula 3 vive exatamente nesse contraste.
   </div>
-  <div class="caixa def"><b class="rotulo">Definição — o que este painel não usa</b>
+  <div class="caixa def"><b class="rotulo">Definição — o que este painel não usa <button class="qbtn" data-ajuda="def-mc" aria-label="Explicação: por que funciona sem modelo e sem Markov">?</button></b>
     Em nenhum momento o estimador de Monte Carlo consulta a matriz P: apenas <em>interage</em>.
     É por isso que ele funciona sem modelo — e sem sequer exigir a propriedade de Markov.
   </div>
@@ -368,7 +402,14 @@ table.hist-pol tr.atual{background:#FEF6E7;}
 
 </main>
 
-<p class="rodape">Material didático da disciplina de Aprendizagem por Reforço (UFU). Uso educacional.</p>
+<p class="rodape">Material didático da disciplina de Aprendizagem por Reforço (UFU). Uso educacional. · Botões <b>?</b> explicam cada parte.</p>
+
+<!-- popover de ajuda (único, reutilizado) -->
+<div id="pop" hidden role="dialog" aria-labelledby="pop-tit">
+  <h4><span class="pop-tit" id="pop-tit"></span>
+      <button class="pop-x" aria-label="Fechar explicação">×</button></h4>
+  <div class="pop-corpo"></div>
+</div>
 
 <script>
 "use strict";
@@ -726,6 +767,100 @@ $("mc-mil").addEventListener("click", () => { for (let i = 0; i < 999; i++) mcRe
   mcRegistrar(mcEpisodio(), true); mcRender(); });
 $("mc-reset").addEventListener("click", () => { mc.retornos = []; mc.medias = []; mc.banda = [];
   $("mc-traj").textContent = "— clique em “1 episódio”"; $("mc-conta").textContent = ""; mcRender(); });
+
+/* ================= AJUDA — botões "?" e popover ================= */
+const AJUDAS = {
+  "vi-backup": { t: "Fórmula do backup (iteração de valor)", c:
+    `<b>V<sub>k</sub>(s)</b> é o valor estimado do estado s na iteração k. <b>max<sub>a</sub></b> escolhe a melhor ação; <b>R(s,a)</b> é a recompensa imediata; <b>γ</b>, o desconto; <b>P(s′|s,a)</b>, a probabilidade de cair em s′; e <b>V<sub>k</sub>(s′)</b>, o valor atual do sucessor. Aplicada a todos os estados de uma vez, a fórmula é o operador de Bellman 𝓑. Com γ &lt; 1, 𝓑 é uma <b>contração de fator γ</b> — por isso repetir converge para V*.` },
+  gama: { t: "Fator de desconto γ", c:
+    `Pesa recompensas futuras por γ<sup>t</sup>: <b>γ = 0</b> vê só o imediato (míope); <b>γ perto de 1</b> valoriza o longo prazo. Papel duplo: define o objetivo e vira o <b>fator de contração</b> do backup — γ alto também significa convergência mais lenta e pode mudar a política ótima (fronteira do painel 2). Cada painel tem seu próprio slider.` },
+  dinamica: { t: "Dinâmica: determinística vs estocástica", c:
+    `<b>Determinística</b>: a ação leva ao vizinho com certeza (como no slide 11). <b>Estocástica</b>: o motor derrapa — com prob. 0,3 o rover fica onde está. Consequências: os valores caem (o futuro é menos confiável), a política ótima pode mudar e a convergência fica um pouco mais lenta. Compare o mesmo backup nas duas opções.` },
+  "k-vi": { t: "Contador de iterações k", c:
+    `Número de backups aplicados desde V₀ = 0. Cada clique em <b>Backup</b> varre os 7 estados uma vez (V<sub>k</sub> → V<sub>k+1</sub>); <b>Executar</b> repete sozinho até Δ &lt; 10⁻³.` },
+  "delta-vi": { t: "Norma do máximo ‖·‖∞", c:
+    `‖V<sub>k+1</sub> − V<sub>k</sub>‖<sub>∞</sub> é a <b>maior</b> mudança de valor entre as duas últimas iterações (nos 7 estados). É o critério de parada prático: Δ pequeno ⇒ perto de V*. Pela contração, o erro verdadeiro é limitado por γ<sup>k</sup>·‖V₀ − V*‖<sub>∞</sub> — Δ é o termômetro dessa cota.` },
+  "palco-vi": { t: "Lendo a cadeia", c:
+    `Círculos = estados s₁…s₇. <span class="tl">Barras teal</span> = V<sub>k</sub>(s) atual (altura ∝ valor). <span class="lj">Setas laranja</span> = política gulosa sobre V<sub>k</sub>. <span class="vd">+1 / +10</span> = recompensa por agir em s₁ / s₇ — elas alimentam o backup. Clique num círculo para dissecar o cálculo dele no bloco ao lado.` },
+  anatomia: { t: "Anatomia do backup", c:
+    `Para o estado selecionado, o bloco calcula as duas <b>Q(s,a)</b> = R + γ·[Σ P·V(s′)] com os números correntes — uma linha por ação. A linha <b>vencedora</b> (maior Q) vira V<sub>k+1</sub>(s) e a ação correspondente entra na política gulosa. É exatamente o que o botão Backup escreveria nesse estado.` },
+  convergencia: { t: "Gráfico em escala log", c:
+    `Cada ponto é o Δ da iteração. Em escala logarítmica, um decaimento geométrico de fator ≈ γ vira <b>reta</b> — a assinatura da contração. É o motivo de a iteração de valor ser confiável: o teto teórico γ<sup>k</sup>·‖V₀ − V*‖ tem a mesma inclinação. Mude γ e compare as retas.` },
+  "quiz-vi": { t: "Cota γᵏ‖V₀ − V*‖∞ (notação e pista)", c:
+    `A cota diz: o erro na iteração k é no máximo <b>γ<sup>k</sup> × erro inicial</b>. Pista: para o erro cair por um fator F, resolva γ<sup>k</sup> = F, ou seja k = log(F)/log(1/γ) — e compare com o que a simulação de fato faz. Não espere "em dobro": o erro cai <i>geometricamente</i>.` },
+  "pi-formula": { t: "Fórmula da melhoria de política", c:
+    `<b>arg max<sub>a</sub></b> escolhe a ação de maior Q<sup>πi</sup>(s,a); <b>Q<sup>πi</sup></b> usa o valor da política atual π<sub>i</sub>. Em palavras: "em cada estado, aja como se o resto continuasse seguindo π<sub>i</sub>". Empates: este arquivo escolhe a direita. O resultado é π<sub>i+1</sub>, não necessariamente ótima — por isso o ciclo se repete.` },
+  avaliar: { t: "① Avaliar π", c:
+    `Calcula V<sup>π</sup> <b>exatamente</b>, resolvendo o sistema linear (I − γP<sup>π</sup>)V = R<sup>π</sup> — aqui por eliminação gaussiana com 7 equações. Não é estimativa nem amostragem: é o valor verdadeiro da política atual. Em problemas grandes esse passo é feito iterativamente, mas o conceito é o mesmo.` },
+  melhorar: { t: "② Melhorar π", c:
+    `Troca cada π(s) pela ação <b>gulosa</b> em Q<sup>π</sup> — a que parece melhor sob o valor recém-avaliado. O teorema da melhoria de política garante: π<sub>i+1</sub> nunca é pior que π<sub>i</sub> em estado algum. Por isso a tabela nunca regride e o processo termina num ponto fixo, que é a política ótima.` },
+  "i-pi": { t: "Rodada i", c:
+    `Uma rodada = um ciclo <b>Avaliar + Melhorar</b>. A tabela registra o processo a cada rodada, partindo de π₀ aleatória. Quando Melhorar não muda nada, o ponto fixo foi atingido — e a política exibida é ótima.` },
+  "nova-pi": { t: "π₀ aleatória", c:
+    `Sorteia uma política determinística inicial: 2 ações × 7 estados = <b>2⁷ = 128</b> políticas possíveis. O pior caso teórico da PI visitaria todas; na prática ela converge em pouquíssimas rodadas — cada melhoria pula direto para uma política bem melhor. Gere várias π₀ e veja.` },
+  "palco-pi": { t: "Lendo a cadeia (PI)", c:
+    `<span class="lj">Setas laranja</span> = π<sub>i</sub>(s): a ação escolhida em cada estado. <span class="tl">Barras teal</span> = V<sup>πi</sup>(s) — só ganham significado após ① Avaliar (antes, são zero). A dinâmica aqui é sempre determinística.` },
+  "tabela-pi": { t: "Colunas do histórico", c:
+    `<b>i</b>: rodada. <b>π (s₁…s₇)</b>: as setas da política, da esquerda para a direita. <b>V<sup>π</sup>(s₄)</b>: valor no estado central. <b>Σ V<sup>π</sup></b>: soma dos 7 valores — o placar usado para comparar políticas. <b>melhorou?</b>: "sim" quando o placar sobe, "estável" quando empata — nunca piora (teorema da melhoria).` },
+  "grafico-pi": { t: "Curva que nunca desce", c:
+    `V<sup>πi</sup>(s₄) a cada rodada. A monotonicidade não é sorte do sorteio: é o <b>teorema da melhoria de política</b> — cada π<sub>i+1</sub> domina π<sub>i</sub>. Platô no fim = política parou de mudar (ótima). Compare a altura final com o valor que a VI achou no painel 1.` },
+  "quiz-pi": { t: "Teto |𝒜|^|𝒮| (notação e pista)", c:
+    `|𝒜| = 2 ações e |𝒮| = 7 estados ⇒ <b>2⁷ = 128</b> políticas determinísticas. O teto vale porque, no pior caso, a PI visitaria uma política nova a cada melhoria. Pista: por que ela quase sempre usa bem menos? Cada passo <b>Avaliar + Melhorar</b> resolve o problema "de uma vez" para todos os estados — compare com a VI, que avança γ por γ.` },
+  fronteira: { t: "A fronteira de decisão", c:
+    `Com γ pequeno, o <b>+1 imediato</b> vence o <b>+10 distante</b>: perto de s₁, a política ótima muda. Existe um γ crítico em que as setas viram. Para caçá-lo: fixe γ, rode até convergir e observe a política; depois bissecte (ex.: teste 0,50 → 0,25 → 0,38…) até achar onde as setas mudam de lado.` },
+  passeio: { t: "O passeio aleatório", c:
+    `A cada passo, o rover vai para a esquerda com prob. 0,4, para a direita com 0,4 e fica parado com 0,2; nas bordas, fica com 0,6 e entra com 0,4. Cada episódio tem H = 4 passos a partir de s₄, com γ = ½ fixos — a mesma conta do slide de retornos da aula.` },
+  "mc-formula": { t: "Retorno G e valor esperado", c:
+    `G soma as 4 recompensas do episódio, cada uma descontada por γ<sup>t</sup> = ½, ¼, ⅛… <b>V(s₄) = 𝔼[G]</b>: o valor é a média teórica sobre todos os episódios possíveis. DP calcula essa média via P; Monte Carlo a <b>estima</b> sorteando episódios — por isso a média amostral Ḡ converge para V(s₄).` },
+  episodio: { t: "Lendo um episódio", c:
+    `A linha mostra a trajetória sorteada s₄ → … e a conta de G: cada recompensa multiplicada pelo desconto da posição (1, ½, ¼, ⅛). Episódios diferentes dão G diferentes — a dispersão é o assunto do histograma. Clique em "1 episódio" várias vezes para ver as contas mudarem.` },
+  "mc-media": { t: "Ḡ vs V(s₄) exato", c:
+    `<b>Ḡ</b> é a média dos retornos sorteados até agora. <b>V(s₄) exato</b> foi calculado por programação dinâmica no horizonte H = 4 — sem sorteio nenhum. Os dois se aproximam quando n cresce, mas devagar: o erro típico cai como <b>1/√n</b>.` },
+  "hist-mc": { t: "Histograma discreto e espalhado", c:
+    `Cada episódio curto só pode produzir um punhado de valores de G — por isso o histograma é <b>discreto e espalhado</b>, não um sino suave. Linha laranja = Ḡ; tracejada verde = valor exato. A distância entre elas encolhe a 1/√n: amostragem paga o preço de não conhecer P.` },
+  banda: { t: "Faixa de confiança ≈ 95%", c:
+    `±1,96·σ̂/√n é o intervalo aproximado de 95% em torno de Ḡ (σ̂ = desvio-padrão amostral). Largura ∝ 1/√n: para <b>metade</b> da largura, 4× episódios; para <b>um décimo</b>, 100×. Precisão por amostragem é cara — é o preço de estimar sem conhecer P.` },
+  "quiz-mc": { t: "Largura da faixa (pista)", c:
+    `A largura da faixa é 2·1,96·σ̂/√n — o fator σ̂/√n é o que importa. Pista: a largura cai como <b>1/√n</b>; para reduzi-la por um fator f, o n precisa crescer por f². Com f = 2 → ?; com f = 10 → ?. Os "?" são suas respostas — o painel confirma numericamente.` },
+  "def-mc": { t: "Sem modelo, sem Markov", c:
+    `O estimador de Monte Carlo <b>nunca consulta a matriz P</b>: ele só sorteia episódios interagindo com o ambiente. Por isso funciona quando a dinâmica é desconhecida — e nem precisa da propriedade de Markov, só de episódios completos. A desvantagem é a precisão 1/√n. O painel guarda P apenas para desenhar a linha verde de comparação.` }
+};
+
+const pop = document.getElementById("pop");
+let popOpener = null;
+function abrirAjuda(btn) {
+  const a = AJUDAS[btn.dataset.ajuda];
+  if (!a) return;
+  popOpener = btn;
+  document.getElementById("pop-tit").textContent = typeof a.t === "function" ? a.t() : a.t;
+  pop.querySelector(".pop-corpo").innerHTML = typeof a.c === "function" ? a.c() : a.c;
+  pop.hidden = false;
+  const r = btn.getBoundingClientRect(), pw = pop.offsetWidth, ph = pop.offsetHeight;
+  let x = Math.min(Math.max(8, r.left + r.width / 2 - pw / 2), window.innerWidth - pw - 8);
+  let y = r.bottom + 8;
+  if (y + ph > window.innerHeight - 8) y = Math.max(8, r.top - ph - 8);
+  pop.style.left = x + "px";
+  pop.style.top = y + "px";
+  pop.querySelector(".pop-x").focus({ preventScroll: true });
+}
+function fecharPop() {
+  if (pop.hidden) return;
+  pop.hidden = true;
+  if (popOpener) { popOpener.focus({ preventScroll: true }); popOpener = null; }
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest(".qbtn");
+  if (b) {
+    e.preventDefault();          // não ativa <label>/<summary> hospedeiros
+    e.stopPropagation();
+    if (popOpener === b && !pop.hidden) fecharPop(); else abrirAjuda(b);
+    return;
+  }
+  if (!e.target.closest("#pop")) fecharPop();
+});
+pop.querySelector(".pop-x").addEventListener("click", fecharPop);
+window.addEventListener("scroll", fecharPop, { passive: true });
+window.addEventListener("resize", fecharPop);
 
 /* ================= abas ================= */
 document.querySelectorAll("nav.abas button").forEach(b => b.addEventListener("click", () => {
