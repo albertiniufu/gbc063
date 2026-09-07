@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Console do transecto — avaliação de política sem modelo</title>
+<title>Console da travessia — avaliação de política sem modelo</title>
 <style>
 :root{
   --tinta:#16324F;      /* azul-profundo do tema */
   --mc:#18808D;         /* teal   — Monte Carlo */
-  --td:#E8590C;         /* laranja— TD(0) */
+  --td:#E8590C;         /* laranja — TD(0) */
   --ec:#2E5F8A;         /* azul   — equivalência de certeza */
   --ambar:#F2A93B;      /* rover / foco */
   --verde:#2B9348;      /* terminais */
@@ -57,7 +57,7 @@ main{padding:clamp(14px,2.4vw,26px) clamp(16px,4vw,44px) 60px;max-width:1520px;m
 .duas.inv{grid-template-columns:minmax(0,1fr) 372px}
 @media (max-width:960px){.duas,.duas.inv{grid-template-columns:1fr}}
 
-/* ---------- transecto (elemento-assinatura) ---------- */
+/* ---------- travessia (elemento-assinatura) ---------- */
 #transecto{width:100%;height:auto;display:block}
 .legenda{display:flex;flex-wrap:wrap;gap:16px;margin-top:10px;font-size:12.5px;color:var(--cinza)}
 .legenda i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
@@ -97,7 +97,7 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
 #grafico{width:100%;height:100%;display:block}
 .grafopts{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:12.5px;color:var(--cinza)}
 
-/* ---------- fita do episódio ---------- */
+/* ---------- trajetória do episódio ---------- */
 .fita{display:flex;gap:6px;overflow-x:auto;padding:4px 2px 10px;min-height:62px}
 .tupla{
   flex:0 0 auto;border:1px solid var(--linha);border-radius:7px;padding:6px 9px;
@@ -147,7 +147,7 @@ kbd{font-family:var(--mono);font-size:11.5px;border:1px solid var(--linha);borde
     </g>
   </svg>
   <p class="eyebrow">Aprendizagem por Reforço · Aula 3 · complemento interativo</p>
-  <h1>Console do transecto: três formas de avaliar a mesma política</h1>
+  <h1>Console da travessia: três formas de avaliar a mesma política</h1>
   <p>Monte Carlo, TD(0) e equivalência de certeza recebem <strong>exatamente a mesma
   experiência</strong> do rover e discordam de maneiras características. Rode um episódio por vez
   para ver quem atualiza quando, ou milhares para ver quem chega primeiro.</p>
@@ -157,7 +157,7 @@ kbd{font-family:var(--mono);font-size:11.5px;border:1px solid var(--linha);borde
 
   <!-- ===================== TRANSECTO ===================== -->
   <section class="card" aria-labelledby="t-transecto">
-    <h2 id="t-transecto">Transecto · 7 sítios de coleta</h2>
+    <h2 id="t-transecto">Travessia · 7 pontos de coleta</h2>
     <p class="sub">Cada barra é a estimativa de <span style="font-family:var(--mono)">V(s)</span> de um
       método, medida como profundidade. O traço pontilhado marca o valor verdadeiro
       <span style="font-family:var(--mono)">V<sup>π</sup></span>, calculado analiticamente a partir do
@@ -170,7 +170,7 @@ kbd{font-family:var(--mono);font-size:11.5px;border:1px solid var(--linha);borde
       <span><i style="background:var(--ec)"></i>Equivalência de certeza</span>
       <span><i style="background:var(--cinza)"></i>V<sup>π</sup> verdadeiro</span>
       <span><i style="background:var(--ambar)"></i>rover</span>
-      <span><i style="background:var(--verde)"></i>sítio terminal</span>
+      <span><i style="background:var(--verde)"></i>ponto terminal</span>
     </div>
   </section>
 
@@ -179,7 +179,7 @@ kbd{font-family:var(--mono);font-size:11.5px;border:1px solid var(--linha);borde
 
     <section class="card" aria-labelledby="t-ctrl">
       <h2 id="t-ctrl">Painel de controle</h2>
-      <p class="sub">Mudar o ambiente ou os estimadores começa um experimento novo.</p>
+      <p class="sub">Mudar o ambiente ou os estimadores inicia um novo experimento.</p>
 
       <div class="grupo">
         <div class="rot">Política avaliada</div>
@@ -191,8 +191,8 @@ kbd{font-family:var(--mono);font-size:11.5px;border:1px solid var(--linha);borde
       </div>
 
       <div class="grupo">
-        <div class="rot">Sítio inicial</div>
-        <div class="seg" id="segIni" role="group" aria-label="Estado inicial">
+        <div class="rot">Ponto inicial</div>
+        <div class="seg" id="segIni" role="group" aria-label="Ponto inicial">
           <button data-v="rand" aria-pressed="true">sorteado</button>
           <button data-v="2" aria-pressed="false">s₃</button>
           <button data-v="3" aria-pressed="false">s₄</button>
@@ -202,12 +202,12 @@ kbd{font-family:var(--mono);font-size:11.5px;border:1px solid var(--linha);borde
       <div class="grupo">
         <div class="rot">Ambiente</div>
         <div class="deslize">
-          <label for="sGama">γ desconto</label>
+          <label for="sGama">desconto γ</label>
           <input type="range" id="sGama" min="0.50" max="1" step="0.01" value="1">
           <output id="oGama">1,00</output>
         </div>
         <div class="deslize">
-          <label for="sEsc">escorregar</label>
+          <label for="sEsc">escorregamento</label>
           <input type="range" id="sEsc" min="0" max="0.8" step="0.05" value="0.2">
           <output id="oEsc">0,20</output>
         </div>
@@ -222,7 +222,7 @@ kbd{font-family:var(--mono);font-size:11.5px;border:1px solid var(--linha);borde
         </div>
         <div class="seg" id="segVis" role="group" aria-label="Variante de Monte Carlo">
           <button data-v="prim" aria-pressed="true">MC 1ª visita</button>
-          <button data-v="toda" aria-pressed="false">MC toda visita</button>
+          <button data-v="toda" aria-pressed="false">MC a cada visita</button>
         </div>
         <label class="caixa"><input type="checkbox" id="cIncr">
           <span>MC incremental com α constante (em vez da média 1/N)</span></label>
@@ -248,7 +248,7 @@ kbd{font-family:var(--mono);font-size:11.5px;border:1px solid var(--linha);borde
         </div>
         <p class="nota">
           <strong>passo</strong> avança uma única transição — é onde se vê o TD atualizar
-          na hora enquanto o MC ainda espera o fim do episódio.
+          na hora, enquanto o MC ainda espera o fim do episódio.
           <strong>nova execução</strong> guarda as curvas atuais como rastro para comparar repetições
           com os mesmos parâmetros.
         </p>
@@ -256,9 +256,9 @@ kbd{font-family:var(--mono);font-size:11.5px;border:1px solid var(--linha);borde
     </section>
 
     <section class="card" aria-labelledby="t-graf">
-      <h2 id="t-graf">Erro quadrático médio (RMSE) por episódio</h2>
+      <h2 id="t-graf">Raiz do erro quadrático médio (RMSE) por episódio</h2>
       <p class="sub">Distância entre a estimativa e <span style="font-family:var(--mono)">V<sup>π</sup></span>,
-        medida sobre os sete sítios. Curvas esmaecidas são execuções anteriores.</p>
+        medida sobre os sete pontos. Curvas esmaecidas são execuções anteriores.</p>
       <div class="grafwrap"><canvas id="grafico"></canvas></div>
       <div class="grafopts">
         <label class="caixa" style="margin:0"><input type="checkbox" id="cLog" checked>
@@ -272,18 +272,18 @@ kbd{font-family:var(--mono);font-size:11.5px;border:1px solid var(--linha);borde
   <div class="duas inv">
 
     <section class="card" aria-labelledby="t-fita">
-      <h2 id="t-fita">Fita do episódio atual</h2>
-      <p class="sub" id="fitaSub">Cada quadro é uma tupla (s, r, s′) da trajetória.</p>
+      <h2 id="t-fita">Trajetória do episódio atual</h2>
+      <p class="sub" id="fitaSub">Cada quadro é uma transição (s, r, s′).</p>
       <div class="fita" id="fita"><span class="vazio">Nenhum episódio em andamento. Use <kbd>passo</kbd> ou <kbd>+1 episódio</kbd>.</span></div>
       <div id="fitaMsg" style="font-size:13px;color:var(--cinza)"></div>
     </section>
 
     <section class="card" aria-labelledby="t-tab">
       <h2 id="t-tab">Valores estimados</h2>
-      <p class="sub">N(s) conta as visitas acumuladas a cada sítio.</p>
+      <p class="sub">N(s) conta as visitas acumuladas a cada ponto.</p>
       <table>
         <thead><tr>
-          <th>sítio</th><th>V<sup>π</sup></th>
+          <th>ponto</th><th>V<sup>π</sup></th>
           <th class="cMC">MC</th><th class="cTD">TD</th><th class="cEC">EC</th><th>N(s)</th>
         </tr></thead>
         <tbody id="tbody"></tbody>
@@ -298,21 +298,21 @@ kbd{font-family:var(--mono);font-size:11.5px;border:1px solid var(--linha);borde
   <section class="card">
     <h2>Como ler o console</h2>
     <div class="rodape">
-      <p><strong>O ambiente.</strong> Sete sítios em linha. Os extremos terminam o episódio e pagam
+      <p><strong>O ambiente.</strong> Sete pontos de coleta em linha. Os extremos terminam o episódio e pagam
       <span style="font-family:var(--mono)">R(s₁)=+1</span> e
       <span style="font-family:var(--mono)">R(s₇)=+10</span>; os intermediários pagam 0. A política
       escolhida tenta mover o rover para um lado, mas ele <em>escorrega</em> e fica parado com a
       probabilidade indicada. É o <em>Mars Rover</em> da aula, com a dinâmica explicitada.</p>
 
       <p><strong>Três leituras da mesma experiência.</strong> O Monte Carlo espera o episódio acabar
-      e credita o retorno observado a cada sítio visitado. O TD(0) atualiza a cada transição, usando
-      o próprio palpite sobre o sítio seguinte. A equivalência de certeza acumula contagens, monta o
+      e credita o retorno observado a cada ponto visitado. O TD(0) atualiza a cada transição, usando
+      o próprio palpite sobre o ponto seguinte. A equivalência de certeza acumula contagens, monta o
       MDP de máxima verossimilhança e resolve a equação de Bellman nele.</p>
 
       <p><strong>O que procurar.</strong> Com γ = 1 e política aleatória, os retornos valem 1 ou 10:
       o MC balança muito e sua curva de erro fica ruidosa mesmo com muitos episódios — variância alta.
-      O TD desce mais liso, mas com α grande ele oscila em torno do alvo e nunca assenta; com α pequeno
-      demora a sair da inicialização — é o viés inicial. A equivalência de certeza costuma vencer em
+      O TD desce mais liso, mas com α grande ele oscila em torno do alvo e nunca se estabiliza; com α
+      pequeno, demora a sair da inicialização — é o viés inicial. A equivalência de certeza costuma vencer em
       número de episódios e perder em custo de computação: ela resolve um sistema linear a cada
       atualização.</p>
 
@@ -331,8 +331,8 @@ kbd{font-family:var(--mono);font-size:11.5px;border:1px solid var(--linha);borde
 <script>
 "use strict";
 /* =========================================================================
-   AMBIENTE — cadeia de 7 sítios; s1 e s7 terminam o episódio.
-   Convenção da aula: a recompensa é recebida ao agir a partir do sítio,
+   AMBIENTE — cadeia de 7 pontos; s1 e s7 terminam o episódio.
+   Convenção da aula: a recompensa é recebida ao agir a partir do ponto,
    e a ação tomada em um terminal paga R e encerra. Logo V(s1)=R1, V(s7)=R7.
    ========================================================================= */
 const NS = 7;
@@ -344,7 +344,7 @@ const par = {
   alfa: 0.10, visita: 'prim', incr: false, lote: false
 };
 
-/* transições possíveis a partir de um sítio interno (0-indexado, 1..5) */
+/* transições possíveis a partir de um ponto interno (0-indexado, 1..5) */
 function trans(i){
   const out = [];
   if (par.esc > 0) out.push([i, par.esc]);
@@ -365,7 +365,7 @@ function sitioInicial(){
   return par.ini === 'rand' ? 1 + Math.floor(Math.random()*5) : parseInt(par.ini,10);
 }
 
-/* ---- valor verdadeiro: resolve o sistema linear nos 5 sítios internos ---- */
+/* ---- valor verdadeiro: resolve o sistema linear nos 5 pontos internos ---- */
 function valorVerdadeiro(){
   const NT = [1,2,3,4,5], idx = {}; NT.forEach((s,k)=>idx[s]=k);
   const A = NT.map(()=>new Array(5).fill(0)), b = new Array(5).fill(0);
@@ -487,10 +487,10 @@ function resolveModelo(){
   return v;
 }
 
-/* TD em lote (batch updating, Sutton & Barto): os incrementos sao acumulados
-   sobre o lote inteiro e aplicados de uma vez; repete-se ate o ponto fixo.
-   Esse ponto fixo e o valor do MDP de maxima verossimilhanca -- o console
-   mostra as duas curvas se encontrando. Parte da solucao anterior (warm start). */
+/* TD em lote (batch updating, Sutton & Barto): os incrementos são acumulados
+   sobre o lote inteiro e aplicados de uma vez; repete-se até o ponto fixo.
+   Esse ponto fixo é o valor do MDP de máxima verossimilhança — o console
+   mostra as duas curvas se encontrando. Parte da solução anterior (warm start). */
 function tdEmLote(){
   const v = Vtd.slice();
   const acc = new Array(NS).fill(0), cnt = new Array(NS).fill(0);
@@ -586,7 +586,7 @@ function parar(){
 }
 
 /* =========================================================================
-   DESENHO — transecto (SVG)
+   DESENHO — travessia (SVG)
    ========================================================================= */
 const SVGNS = 'http://www.w3.org/2000/svg';
 const MONO = '"Fira Mono", ui-monospace, Menlo, Consolas, monospace';
@@ -625,7 +625,7 @@ function montaTransecto(){
       svg.appendChild(b); trio.push(b);
     }
     elBarras.push(trio);
-    // sítio
+    // ponto
     const term = TERM[i];
     svg.appendChild(mk('circle',{cx:x,cy:TOPO-42,r:17,
       fill: term ? '#EAF6EC' : '#fff',
@@ -766,7 +766,7 @@ function marcasLog(lo, hi){
 }
 
 /* =========================================================================
-   DESENHO — fita e tabela
+   DESENHO — trajetória e tabela
    ========================================================================= */
 function desenhaFita(){
   const box = $('fita'), msg = $('fitaMsg');
@@ -774,7 +774,7 @@ function desenhaFita(){
   if (!epAtual){
     box.innerHTML = '<span class="vazio">Nenhum episódio em andamento. Use <kbd>passo</kbd> ou <kbd>+1 episódio</kbd>.</span>';
     msg.innerHTML = nEp
-      ? '<span class="selo mc">MC</span>último episódio encerrado: o Monte Carlo creditou o retorno a todos os sítios visitados.'
+      ? '<span class="selo mc">MC</span>último episódio encerrado: o Monte Carlo creditou o retorno a todos os pontos visitados.'
       : '';
     return;
   }
