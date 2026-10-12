@@ -1,0 +1,4 @@
+# Artefatos de treino de RL (gerados pelo notebook)
+logs/
+rl_trained/
+replay.mp4

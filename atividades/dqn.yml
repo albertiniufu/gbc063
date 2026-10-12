@@ -1,0 +1,18 @@
+SpaceInvadersNoFrameskip-v4:
+  env_wrapper:
+    - stable_baselines3.common.atari_wrappers.AtariWrapper
+  frame_stack: 4
+  policy: 'CnnPolicy'
+  n_timesteps: !!float 1e6
+  buffer_size: 100000
+  learning_rate: !!float 1e-4
+  batch_size: 32
+  learning_starts: 100000
+  target_update_interval: 1000
+  train_freq: 4
+  gradient_steps: 1
+  exploration_fraction: 0.1
+  exploration_final_eps: 0.01
+  # Se for True, você precisa desativar handle_timeout_termination
+  # nos replay_buffer_kwargs
+  optimize_memory_usage: False
