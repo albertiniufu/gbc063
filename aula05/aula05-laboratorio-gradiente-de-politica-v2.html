@@ -96,6 +96,18 @@
   .math{font-family:var(--mono); font-size:13px; color:var(--azul); background:#F0F4F8;
     padding:1px 5px; border-radius:3px}
 
+  /* ---------- painéis de explicação (derivação, algoritmo) ---------- */
+  .act.expl-btn{margin:0 0 16px}
+  .panel.expl p{font-size:13.5px; margin:6px 0}
+  .panel.expl ol{padding-left:22px; margin:8px 0}
+  .panel.expl li{font-size:13.5px; margin:7px 0}
+  .eq{display:block; text-align:center; font-family:var(--mono); font-size:13.5px;
+    color:var(--azul); background:#F0F4F8; padding:7px 12px; border-radius:4px;
+    margin:8px 0; overflow-x:auto}
+  .eq sub{font-size:10px}
+  .algo{font-family:var(--mono); font-size:12.5px; background:#F0F4F8; border-radius:4px;
+    padding:12px 14px; margin:8px 0; overflow-x:auto; white-space:pre; color:var(--tinta)}
+
   /* ---------- botões de ajuda “?” ---------- */
   button.q{
     display:inline-flex; align-items:center; justify-content:center; flex:none;
@@ -160,6 +172,53 @@
       de características <span class="math">φ(s) = (1, x, ẋ, θ, θ̇, x², ẋ², θ², θ̇², xθ, xθ̇, ẋθ, ẋθ̇)</span>
       normalizado. Onde o <i>one-hot</i> dava o escore <span class="math">e_a − π</span>, agora é o vetor
       de características que faz o trabalho: <span class="math">∇θ log π(a) = ±φ(s)·(1 − π)</span>. <button type="button" class="q" data-help="lede1" aria-label="Explicar: a função escore" aria-expanded="false">?</button></p>
+
+    <button class="act ghost expl-btn" id="expl1" aria-expanded="false">Explicação: a derivação</button>
+    <div class="panel expl hidden" id="expl1-panel">
+      <h3>Da média de recompensas à função escore</h3>
+      <ol>
+        <li><b>O objetivo.</b> Maximizar o retorno esperado da política
+            <span class="math">J(θ) = 𝔼<sub>τ~π</sub>[R(τ)]</span>, com
+            <span class="math">R(τ) = Σ<sub>t</sub> r<sub>t</sub></span>. O obstáculo: a trajetória
+            τ é sorteada com uma probabilidade que depende de θ, então não dá para trocar ∇θ e 𝔼
+            de graça.</li>
+        <li><b>O truque da log-derivada.</b>
+            <span class="eq">∇θ p(τ;θ) = p(τ;θ) · ∇θ log p(τ;θ)</span>
+            que reescreve o gradiente como uma esperança — exatamente o que a amostragem sabe
+            estimar:
+            <span class="eq">∇θ J(θ) = 𝔼<sub>τ~π</sub>[ ∇θ log p(τ;θ) · R(τ) ]</span></li>
+        <li><b>Só a política importa.</b> A probabilidade da trajetória fatora como
+            <span class="math">p(τ;θ) = μ(s₀) · Π<sub>t</sub> π(a<sub>t</sub>|s<sub>t</sub>;θ) · p(s<sub>t+1</sub>|s<sub>t</sub>,a<sub>t</sub>)</span>.
+            A dinâmica p(s′|s,a) e o estado inicial não dependem de θ — no log e na derivada,
+            eles somem:
+            <span class="eq">∇θ log p(τ;θ) = Σ<sub>t</sub> ∇θ log π(a<sub>t</sub>|s<sub>t</sub>;θ)</span></li>
+        <li><b>A função escore.</b> O fator
+            <span class="math">∇θ log π(a|s;θ)</span> — quanto a log-probabilidade da ação muda
+            quando cada parâmetro muda — é a função escore. Juntando tudo, o teorema do
+            gradiente de política:
+            <span class="eq">∇θ J(θ) = 𝔼<sub>τ</sub>[ Σ<sub>t</sub> ∇θ log π(a<sub>t</sub>|s<sub>t</sub>;θ) · R(τ) ]</span>
+            e a estimativa de Monte Carlo: rode m episódios, some os escores ponderados pelo
+            retorno e tire a média.</li>
+      </ol>
+      <h3>E quando a política é linear (softmax sobre φ(s))</h3>
+      <ol>
+        <li><b>Parametrização.</b> Cada ação tem um vetor de pesos
+            <span class="math">θ<sub>a</sub></span> e o logit é o produto interno com as
+            características:
+            <span class="eq">z<sub>a</sub>(s) = θ<sub>a</sub>·φ(s) &nbsp;⟹&nbsp; π(a|s;θ) = e<sup>z<sub>a</sub></sup> / Σ<sub>a′</sub> e<sup>z<sub>a′</sub></sup></span></li>
+        <li><b>A função escore do softmax.</b> Derivando o log da softmax em relação ao vetor
+            de pesos da ação k:
+            <span class="eq">∇<sub>θk</sub> log π(a|s) = φ(s) · ( 1{a=k} − π(k|s) )</span>
+            a ação que aconteceu ganha <span class="math">(1 − π(a))·φ(s)</span>; cada outra ação
+            perde <span class="math">−π(a′)·φ(s)</span>.</li>
+        <li><b>O que esta aba mostra.</b> Com duas ações, o gradiente do valor esperado no
+            vetor de pesos da ação k é
+            <span class="eq">∇<sub>θk</sub> 𝔼[r] = Σ<sub>a</sub> r<sub>a</sub>·π(a|s)·(1{a=k} − π(k|s))·φ(s) = π(k|s)·(r<sub>k</sub> − 𝔼[r])·φ(s)</span>
+            o vetor de características inteiro, escalado por
+            <span class="math">c = π<sub>a</sub>(r<sub>a</sub> − 𝔼[r])</span> — as tiras verdes
+            <span class="math">c·φ(s)</span> do gráfico.</li>
+      </ol>
+    </div>
 
     <div class="cols">
       <div class="panel">
@@ -253,6 +312,20 @@
         </div>
       </div>
     </div>
+    <div class="panel expl">
+      <h3>Por que a linha de base não introduz viés</h3>
+      <p>O estimador com linha de base subtrai um valor <span class="math">b</span> que não
+         depende da ação (aqui, a média dos retornos do lote). O termo subtraído tem esperança:</p>
+      <span class="eq">𝔼[ Σ<sub>t</sub> b·∇θ log π(a<sub>t</sub>|s<sub>t</sub>) ] = Σ<sub>t</sub> b · 𝔼<sub>a~π(·|s<sub>t</sub>)</sub>[ ∇θ log π(a|s<sub>t</sub>) ]</span>
+      <p>e a esperança da função escore sobre as ações é sempre zero:</p>
+      <span class="eq">𝔼<sub>a~π</sub>[ ∇θ log π(a|s) ] = Σ<sub>a</sub> π(a|s)·∇θ log π(a|s) = Σ<sub>a</sub> ∇θ π(a|s) = ∇θ Σ<sub>a</sub> π(a|s) = ∇θ 1 = 0</span>
+      <p>Ou seja, o termo da linha de base contribui com zero e a esperança do estimador não muda:</p>
+      <span class="eq">𝔼[ Σ<sub>t</sub> (G<sub>t</sub> − b)·∇θ log π(a<sub>t</sub>|s<sub>t</sub>) ] = 𝔼[ Σ<sub>t</sub> G<sub>t</sub>·∇θ log π(a<sub>t</sub>|s<sub>t</sub>) ]</span>
+      <p>Sem viés — e com variância menor, porque subtrair b da variável aleatória G<sub>t</sub>
+         encolhe as flutuações. É por isso que a nuvem teal tem a mesma média e é mais estreita
+         que a laranja, para qualquer c. O b não precisa ser constante: pode ser uma função do
+         estado b(s); o que ele não pode é depender da ação.</p>
+    </div>
   </section>
 
   <!-- ============ TAB 3 ============ -->
@@ -298,6 +371,20 @@
           poste fica em pé pelo teto de 500 passos. O episódio-demo mostra a política atual em ação.
         </div>
       </div>
+    </div>
+    <div class="panel expl">
+      <h3>O algoritmo REINFORCE</h3>
+      <div class="algo">para cada lote de treino:                             # o que “Treinar / pausar” roda
+  colete B episódios τ₁…τ_B com a política π(·|s;θ)      # dados frescos, política atual
+  b ← média dos retornos do lote                           # linha de base (opcional)
+  para cada episódio τ e cada passo t de τ:
+    G_t ← Σ<sub>k≥t</sub> r_k                                         # retorno: recompensas até o fim
+    θ ← θ + (α/B) · (G_t − b) · ∇θ log π(a_t|s_t;θ)       # sobe o gradiente de Monte Carlo</div>
+      <p>No código da aba, <span class="math">∇θ log π = (1{a=k} − π(k))·φ(s)</span> e a vantagem
+         é dividida pela duração do episódio — sem isso, episódios longos manteriam passos grandes
+         e a política derivaria para “sempre empurrar”. Monte Carlo puro: G_t só é conhecido quando
+         o episódio termina — sem crítico e sem bootstrapping (isso fica para a aba 04). Cada lote
+         treinado é um passo do eixo horizontal do gráfico.</p>
     </div>
   </section>
 
@@ -760,6 +847,14 @@ document.addEventListener("click", ()=>{ hideHelp(); });
 document.addEventListener("keydown", e=>{ if(e.key==="Escape") hideHelp(); });
 window.addEventListener("resize", ()=>{ if(helpBtn) placeTip(); });
 window.addEventListener("scroll", ()=>{ if(helpBtn) placeTip(); }, true);
+
+/* ---------- botão “Explicação” da aba 1 ---------- */
+$("expl1").onclick=()=>{
+  const p=$("expl1-panel"), show=p.classList.contains("hidden");
+  p.classList.toggle("hidden",!show);
+  $("expl1").setAttribute("aria-expanded",String(show));
+  $("expl1").textContent= show? "Fechar explicação" : "Explicação: a derivação";
+};
 
 /* ---------- controles logarítmicos ---------- */
 function bindLog(id, labId, min, max, val, sig){
