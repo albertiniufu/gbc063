@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Laboratório de gradiente de política — CartPole (v2)</title>
+<style>
+  :root{
+    --azul:#16324F; --azul-claro:#2E5F8A; --teal:#18808D; --laranja:#E8590C;
+    --ambar:#F2A93B; --vermelho:#C1121F; --verde:#2B9348; --cinza:#5C677D;
+    --tinta:#0B1B2B; --papel:#F7F9FB; --linha:#DCE3EA;
+    --sans:"Fira Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+    --mono:"Fira Mono","SFMono-Regular",ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:var(--sans); color:var(--tinta); background:var(--papel);
+    -webkit-font-smoothing:antialiased; line-height:1.5;
+  }
+  a{color:var(--azul-claro)}
+
+  /* ---------- cabeçalho ---------- */
+  header{
+    background:var(--azul); color:#fff; padding:26px 28px 22px;
+    border-bottom:4px solid var(--laranja);
+  }
+  .eyebrow{
+    font-size:11px; letter-spacing:.18em; text-transform:uppercase;
+    color:var(--ambar); font-weight:600; margin:0 0 6px;
+  }
+  header h1{font-size:26px; line-height:1.15; margin:0 0 6px; font-weight:600; letter-spacing:-.01em}
+  header p{margin:0; color:#BFD0E0; font-size:14px; max-width:70ch}
+
+  /* ---------- layout ---------- */
+  .wrap{display:grid; grid-template-columns:250px minmax(0,1fr); gap:0; min-height:calc(100vh - 132px)}
+  nav{background:#fff; border-right:1px solid var(--linha); padding:16px 0}
+  nav button{
+    display:block; width:100%; text-align:left; background:none; border:0;
+    border-left:3px solid transparent; padding:12px 18px; cursor:pointer;
+    font-family:var(--sans); font-size:14px; color:var(--tinta); line-height:1.3;
+  }
+  nav button .num{
+    font-family:var(--mono); font-size:11px; color:var(--cinza);
+    display:block; margin-bottom:2px; letter-spacing:.08em;
+  }
+  nav button:hover{background:#F0F4F8}
+  nav button[aria-selected="true"]{
+    border-left-color:var(--laranja); background:#F0F4F8; font-weight:600; color:var(--azul);
+  }
+  nav button:focus-visible{outline:2px solid var(--laranja); outline-offset:-2px}
+  main{padding:22px 28px 60px; max-width:1080px}
+
+  h2{font-size:20px; margin:0 0 4px; color:var(--azul); font-weight:600}
+  .lede{color:var(--cinza); font-size:14px; margin:0 0 18px; max-width:78ch}
+
+  .panel{background:#fff; border:1px solid var(--linha); border-radius:6px; padding:16px; margin-bottom:16px}
+  .panel > h3{
+    font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--cinza);
+    margin:0 0 12px; font-weight:600;
+  }
+  .cols{display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:16px; align-items:start}
+  canvas{display:block; width:100%; height:auto; border-radius:4px}
+
+  .ctl{margin-bottom:12px}
+  .ctl label{display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px}
+  .ctl label b{font-family:var(--mono); font-weight:500; color:var(--azul)}
+  input[type=range]{width:100%; accent-color:var(--laranja)}
+  .row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  button.act{
+    font-family:var(--sans); font-size:13px; padding:8px 14px; border-radius:4px;
+    border:1px solid var(--azul); background:var(--azul); color:#fff; cursor:pointer;
+  }
+  button.act.ghost{background:#fff; color:var(--azul)}
+  button.act:hover{filter:brightness(1.12)}
+  button.act:focus-visible{outline:2px solid var(--laranja); outline-offset:2px}
+  .switch{display:flex; align-items:center; gap:8px; font-size:13px; margin:10px 0}
+  .switch input{accent-color:var(--teal); width:16px; height:16px}
+
+  table.stats{width:100%; border-collapse:collapse; font-size:13px; margin-top:6px}
+  table.stats th{text-align:left; font-weight:600; color:var(--cinza); font-size:11px;
+    text-transform:uppercase; letter-spacing:.08em; padding:4px 0}
+  table.stats td{padding:4px 0; font-family:var(--mono); border-top:1px solid var(--linha)}
+  table.stats td.k{font-family:var(--sans); color:var(--tinta)}
+
+  .note{
+    border-left:3px solid var(--ambar); background:#FFF8EE; padding:10px 14px;
+    font-size:13.5px; border-radius:0 4px 4px 0; margin:14px 0 0;
+  }
+  .note b{color:#B45309}
+  .warn{border-left-color:var(--vermelho); background:#FDF2F2}
+  .warn b{color:var(--vermelho)}
+  .legend{display:flex; gap:14px; flex-wrap:wrap; font-size:12px; color:var(--cinza); margin-top:8px}
+  .legend span{display:flex; align-items:center; gap:5px}
+  .key{width:12px; height:3px; border-radius:2px; display:inline-block}
+  .math{font-family:var(--mono); font-size:13px; color:var(--azul); background:#F0F4F8;
+    padding:1px 5px; border-radius:3px}
+
+  /* ---------- botões de ajuda “?” ---------- */
+  button.q{
+    display:inline-flex; align-items:center; justify-content:center; flex:none;
+    width:16px; height:16px; border-radius:50%;
+    border:1px solid var(--azul-claro); background:#fff; color:var(--azul-claro);
+    font-family:var(--sans); font-size:11px; font-weight:700; line-height:1;
+    padding:0; margin:0 0 0 6px; cursor:pointer; vertical-align:middle;
+  }
+  button.q:hover, button.q[aria-expanded="true"]{background:var(--azul-claro); color:#fff}
+  button.q:focus-visible{outline:2px solid var(--laranja); outline-offset:1px}
+  button.q.on-dark{border-color:rgba(255,255,255,.65); background:transparent; color:#fff}
+  button.q.on-dark:hover, button.q.on-dark[aria-expanded="true"]{background:rgba(255,255,255,.18)}
+  #help-tip{
+    position:fixed; z-index:60; display:none; max-width:min(340px,calc(100vw - 20px));
+    background:#fff; border:1px solid var(--linha); border-radius:6px;
+    box-shadow:0 10px 30px rgba(11,27,43,.22); padding:10px 13px;
+    font-size:12.5px; line-height:1.5; color:var(--tinta); --ax:50%;
+  }
+  #help-tip::before{
+    content:""; position:absolute; left:var(--ax); width:10px; height:10px;
+    background:#fff; border:1px solid var(--linha); transform:translateX(-50%) rotate(45deg);
+  }
+  #help-tip.below::before{top:-6px; border-right:0; border-bottom:0}
+  #help-tip.above::before{bottom:-6px; border-left:0; border-top:0}
+  #help-tip b{color:var(--azul)}
+  .hidden{display:none}
+  footer{padding:18px 28px; color:var(--cinza); font-size:12px; border-top:1px solid var(--linha)}
+  @media (max-width:900px){
+    .wrap{grid-template-columns:1fr}
+    nav{display:flex; overflow-x:auto; border-right:0; border-bottom:1px solid var(--linha); padding:0}
+    nav button{border-left:0; border-bottom:3px solid transparent; white-space:nowrap; width:auto}
+    nav button[aria-selected="true"]{border-left-color:transparent; border-bottom-color:var(--laranja)}
+    .cols{grid-template-columns:1fr}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <p class="eyebrow">Aprendizagem por Reforço &middot; UFU &middot; Aula 5 &middot; v2</p>
+  <h1>Laboratório de gradiente de política — CartPole <button type="button" class="q on-dark" data-help="gp" aria-label="Explicar: gradiente de política" aria-expanded="false">?</button></h1>
+  <p>Os mesmos quatro experimentos da derivação da aula, agora todos dentro do CartPole real:
+     dinâmica oficial do gym, características de Sutton &amp; Barto, e um crítico que de fato
+     aprende. Tudo roda no navegador — mexa nos controles e observe o estimador reagir.</p>
+</header>
+
+<div class="wrap">
+  <nav role="tablist" aria-label="Experimentos">
+    <button role="tab" aria-selected="true" data-tab="t1"><span class="num">01</span>A função escore</button>
+    <button role="tab" aria-selected="false" data-tab="t2"><span class="num">02</span>Variância e linha de base</button>
+    <button role="tab" aria-selected="false" data-tab="t3"><span class="num">03</span>REINFORCE no CartPole</button>
+    <button role="tab" aria-selected="false" data-tab="t4"><span class="num">04</span>Estimadores de <i>n</i> passos</button>
+  </nav>
+
+  <main>
+
+  <!-- ============ TAB 1 ============ -->
+  <section id="t1" role="tabpanel">
+    <h2>A função escore empurra a distribuição</h2>
+    <p class="lede">O CartPole de verdade: estado (x, ẋ, θ, θ̇), política softmax linear sobre o vetor
+      de características <span class="math">φ(s) = (1, x, ẋ, θ, θ̇, x², ẋ², θ², θ̇², xθ, xθ̇, ẋθ, ẋθ̇)</span>
+      normalizado. Onde o <i>one-hot</i> dava o escore <span class="math">e_a − π</span>, agora é o vetor
+      de características que faz o trabalho: <span class="math">∇θ log π(a) = ±φ(s)·(1 − π)</span>. <button type="button" class="q" data-help="lede1" aria-label="Explicar: a função escore" aria-expanded="false">?</button></p>
+
+    <div class="cols">
+      <div class="panel">
+        <h3>Estado, características e escore <button type="button" class="q" data-help="chart1" aria-label="Explicar: o gráfico" aria-expanded="false">?</button></h3>
+        <canvas id="c1" width="640" height="360"></canvas>
+        <div class="legend">
+          <span><i class="key" style="background:var(--azul-claro)"></i>φ(s) — características (azul positivo, vermelho negativo)</span>
+          <span><i class="key" style="background:var(--laranja)"></i>escore da ação escolhida</span>
+          <span><i class="key" style="background:var(--teal)"></i>gradiente esperado ∇θV = c·φ(s)</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Controles</h3>
+        <div class="ctl"><label><span>Inclinação do poste θ <button type="button" class="q" data-help="tilt1" aria-label="Explicar: inclinação do poste" aria-expanded="false">?</button></span> <b id="l-tilt1">+5°</b></label>
+          <input type="range" id="tilt1" min="-12" max="12" step="0.5" value="5"></div>
+        <div class="ctl"><label><span>Velocidade do carrinho ẋ <button type="button" class="q" data-help="xd1" aria-label="Explicar: velocidade do carrinho" aria-expanded="false">?</button></span> <b id="l-xd1">0,0 m/s</b></label>
+          <input type="range" id="xd1" min="-1.5" max="1.5" step="0.05" value="0"></div>
+        <div class="ctl"><label><span>Recompensa de empurrar p/ esquerda <button type="button" class="q" data-help="r1" aria-label="Explicar: recompensa" aria-expanded="false">?</button></span> <b id="l-r1e">0,0</b></label>
+          <input type="range" id="r1e" min="-3" max="3" step="0.1" value="0"></div>
+        <div class="ctl"><label><span>Recompensa de empurrar p/ direita <button type="button" class="q" data-help="r1" aria-label="Explicar: recompensa" aria-expanded="false">?</button></span> <b id="l-r1d">2,0</b></label>
+          <input type="range" id="r1d" min="-3" max="3" step="0.1" value="2"></div>
+        <div class="ctl"><label><span>Passo α <button type="button" class="q" data-help="alpha1" aria-label="Explicar: passo α" aria-expanded="false">?</button></span> <b id="l-alpha1">0,20</b></label>
+          <input type="range" id="alpha1" min="0" max="100" step="1"></div>
+        <div class="row">
+          <button class="act" id="step1">Amostrar e dar um passo</button>
+          <button class="act ghost" id="run1">Rodar 200×</button>
+          <button class="act ghost" id="reset1">Reiniciar</button>
+        </div>
+        <table class="stats">
+          <tr><th>Grandeza</th><th style="text-align:right">Valor</th></tr>
+          <tr><td class="k">Última ação amostrada <button type="button" class="q" data-help="s1a" aria-label="Explicar: última ação amostrada" aria-expanded="false">?</button></td><td id="s1-a" style="text-align:right">—</td></tr>
+          <tr><td class="k">Passos dados</td><td id="s1-n" style="text-align:right">0</td></tr>
+          <tr><td class="k">Valor esperado 𝔼[r] <button type="button" class="q" data-help="s1v" aria-label="Explicar: valor esperado" aria-expanded="false">?</button></td><td id="s1-v" style="text-align:right">—</td></tr>
+        </table>
+        <div class="note">
+          <b>Repare:</b><button type="button" class="q" data-help="note1" aria-label="Explicar a observação" aria-expanded="false">?</button> o gradiente esperado da ação é <span class="math">π_a (r_a − 𝔼[r])·φ(s)</span> —
+          o vetor de características inteiro, escalado. Uma ação só empurra o logit na direção de φ(s)
+          se render acima da média; a linha de base já mora na matemática do escore, agora em 13 dimensões.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TAB 2 ============ -->
+  <section id="t2" role="tabpanel" class="hidden">
+    <h2>Onde mora a variância</h2>
+    <p class="lede">Episódios reais do CartPole partindo do poste inclinado em θ₀, com política fixa
+      50/50 e recompensas 1 + <i>c</i> com ruído gaussiano (σ = 0,5) por passo. Cada ponto é uma
+      estimativa de gradiente obtida com <i>m</i> episódios: especificamente, o componente que
+      multiplica a característica θ no logit da ação “direita”. A marca vertical é o gradiente
+      verdadeiro. Agora desloque todas as recompensas por uma constante <i>c</i>: o gradiente
+      verdadeiro não se move — a nuvem, sim. <button type="button" class="q" data-help="lede2" aria-label="Explicar: o estimador de Monte Carlo" aria-expanded="false">?</button></p>
+
+    <div class="cols">
+      <div class="panel">
+        <h3>Distribuição das estimativas de ĝ (componente θ) <button type="button" class="q" data-help="chart2" aria-label="Explicar: o gráfico" aria-expanded="false">?</button></h3>
+        <canvas id="c2" width="640" height="330"></canvas>
+        <div class="legend">
+          <span><i class="key" style="background:var(--laranja)"></i>sem linha de base</span>
+          <span><i class="key" style="background:var(--teal)"></i>com linha de base b = média dos retornos do lote</span>
+          <span><i class="key" style="background:var(--azul)"></i>gradiente verdadeiro</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Controles</h3>
+        <div class="ctl"><label><span>Inclinação inicial θ₀ <button type="button" class="q" data-help="tilt2" aria-label="Explicar: inclinação inicial" aria-expanded="false">?</button></span> <b id="l-tilt2">+5°</b></label>
+          <input type="range" id="tilt2" min="-12" max="12" step="0.5" value="5"></div>
+        <div class="ctl"><label><span>Deslocamento c por passo <button type="button" class="q" data-help="c2" aria-label="Explicar: deslocamento c" aria-expanded="false">?</button></span> <b id="l-c2">0</b></label>
+          <input type="range" id="c2s" min="0" max="50" step="1" value="0"></div>
+        <div class="ctl"><label><span>Episódios por estimativa m <button type="button" class="q" data-help="m2" aria-label="Explicar: episódios por estimativa" aria-expanded="false">?</button></span> <b id="l-m2">20</b></label>
+          <input type="range" id="m2" min="1" max="100" step="1" value="20"></div>
+        <div class="row">
+          <button class="act" id="run2">Gerar 2000 estimativas</button>
+          <button class="act ghost" id="reset2">Limpar</button>
+        </div>
+        <table class="stats">
+          <tr><th>Estimador</th><th style="text-align:right">média</th><th style="text-align:right">desvio</th></tr>
+          <tr><td class="k">sem base <button type="button" class="q" data-help="s2a" aria-label="Explicar: estimador sem linha de base" aria-expanded="false">?</button></td><td id="s2-m1" style="text-align:right">—</td><td id="s2-d1" style="text-align:right">—</td></tr>
+          <tr><td class="k">com base <button type="button" class="q" data-help="s2b" aria-label="Explicar: estimador com linha de base" aria-expanded="false">?</button></td><td id="s2-m2" style="text-align:right">—</td><td id="s2-d2" style="text-align:right">—</td></tr>
+          <tr><td class="k">verdadeiro <button type="button" class="q" data-help="s2t" aria-label="Explicar: gradiente verdadeiro" aria-expanded="false">?</button></td><td id="s2-t" style="text-align:right">—</td><td style="text-align:right">0</td></tr>
+        </table>
+        <div class="note warn">
+          <b>A lição:</b><button type="button" class="q" data-help="note2" aria-label="Explicar a lição" aria-expanded="false">?</button> as duas médias coincidem com o gradiente verdadeiro para qualquer <i>c</i> —
+          a linha de base não enviesa, e corta cerca de um terço da variância em qualquer <i>c</i>.
+          Repare, porém, na diferença para o bandido da aula: lá o horizonte é um passo só, e o
+          deslocamento c é uma constante que a linha de base remove por inteiro. Aqui o retorno é
+          (1+c)·(T−t) e a duração T do episódio é aleatória — o c vira ruído multiplicativo que
+          nenhuma linha de base remove por completo.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TAB 3 ============ -->
+  <section id="t3" role="tabpanel" class="hidden">
+    <h2>REINFORCE aprende a equilibrar o poste</h2>
+    <p class="lede">O algoritmo da aula, ao vivo: a cada lote de episódios, o retorno de cada passo é
+      usado para empurrar a política na direção das ações que funcionam. Em cima, um episódio-demo
+      sendo jogado com a política atual; embaixo, a duração média dos episódios por lote. <button type="button" class="q" data-help="lede3" aria-label="Explicar: o algoritmo REINFORCE" aria-expanded="false">?</button></p>
+
+    <div class="cols">
+      <div class="panel">
+        <h3>Episódio-demo e curva de aprendizado <button type="button" class="q" data-help="chart3" aria-label="Explicar: o gráfico e seus eixos" aria-expanded="false">?</button></h3>
+        <canvas id="c3" width="640" height="360"></canvas>
+        <div class="legend">
+          <span><i class="key" style="background:var(--laranja)"></i>passos/episódio (média móvel de 5 lotes)</span>
+          <span><i class="key" style="background:var(--verde)"></i>200 = CartPole resolvido <button type="button" class="q" data-help="leg200" aria-label="Explicar: 200 passos" aria-expanded="false">?</button></span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Controles</h3>
+        <div class="ctl"><label><span>Passo α <button type="button" class="q" data-help="alpha3" aria-label="Explicar: passo α" aria-expanded="false">?</button></span> <b id="l-alpha3">0,020</b></label>
+          <input type="range" id="alpha3" min="0" max="100" step="1"></div>
+        <div class="ctl"><label><span>Episódios por lote <button type="button" class="q" data-help="b3" aria-label="Explicar: episódios por lote" aria-expanded="false">?</button></span> <b id="l-b3">10</b></label>
+          <input type="range" id="b3" min="1" max="40" step="1" value="10"></div>
+        <div class="switch">
+          <input type="checkbox" id="base3" checked>
+          <label for="base3">Usar linha de base (média do lote) <button type="button" class="q" data-help="base3" aria-label="Explicar: linha de base" aria-expanded="false">?</button></label>
+        </div>
+        <div class="row">
+          <button class="act" id="run3">Treinar / pausar</button>
+          <button class="act ghost" id="reset3">Reiniciar</button>
+        </div>
+        <table class="stats">
+          <tr><th>Grandeza</th><th style="text-align:right">Valor</th></tr>
+          <tr><td class="k">Lotes treinados <button type="button" class="q" data-help="s3it" aria-label="Explicar: lotes treinados" aria-expanded="false">?</button></td><td id="s3-it" style="text-align:right">0</td></tr>
+          <tr><td class="k">Passos/episódio (última leva) <button type="button" class="q" data-help="s3avg" aria-label="Explicar: passos por episódio" aria-expanded="false">?</button></td><td id="s3-avg" style="text-align:right">—</td></tr>
+          <tr><td class="k">Melhor média <button type="button" class="q" data-help="s3best" aria-label="Explicar: melhor média" aria-expanded="false">?</button></td><td id="s3-best" style="text-align:right">—</td></tr>
+          <tr><td class="k">Passo do episódio-demo <button type="button" class="q" data-help="s3demo" aria-label="Explicar: passo do episódio-demo" aria-expanded="false">?</button></td><td id="s3-demo" style="text-align:right">0</td></tr>
+        </table>
+        <div class="note">
+          <b>O que observar:</b><button type="button" class="q" data-help="note3" aria-label="Explicar o que observar" aria-expanded="false">?</button> a duração média dos episódios sobe até a linha de 200 — a partir daí o
+          poste fica em pé pelo teto de 500 passos. O episódio-demo mostra a política atual em ação.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TAB 4 ============ -->
+  <section id="t4" role="tabpanel" class="hidden">
+    <h2>Quanto viés vale a pena comprar</h2>
+    <p class="lede">A política congelada no meio do treino joga de oito estados de referência fixos na
+      pista (x₀ = ±0,5 e ±1 m, θ₀ = ±2° e ±4°), com recompensas 1 + ruído σ. Um crítico <i>V̂</i> linear
+      é aprendido por mínimos quadrados sobre os estados visitados — pobre (4 características) ou rico
+      (13). Para cada <i>n</i>, o retorno de <i>n</i> passos
+      <span class="math">Ĝ⁽ⁿ⁾ = Σ γᵏ r + γⁿ V̂(sₙ)</span> é comparado com o valor verdadeiro de cada
+      estado de referência (Monte Carlo com muitas trajetórias). Viés² vem do erro do crítico;
+      variância vem das recompensas somadas. <button type="button" class="q" data-help="lede4" aria-label="Explicar: retorno de n passos" aria-expanded="false">?</button></p>
+
+    <div class="cols">
+      <div class="panel">
+        <h3>Decomposição do erro quadrático por horizonte n <button type="button" class="q" data-help="chart4" aria-label="Explicar: o gráfico" aria-expanded="false">?</button></h3>
+        <canvas id="c4" width="640" height="340"></canvas>
+        <div class="legend">
+          <span><i class="key" style="background:var(--ambar)"></i>viés²</span>
+          <span><i class="key" style="background:var(--vermelho)"></i>variância</span>
+          <span><i class="key" style="background:var(--azul)"></i>erro quadrático médio</span>
+          <span><i class="key" style="background:var(--verde)"></i>n que minimiza o EQM</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Controles</h3>
+        <div class="ctl"><label><span>Ruído das recompensas σ <button type="button" class="q" data-help="sig4" aria-label="Explicar: ruído das recompensas" aria-expanded="false">?</button></span> <b id="l-sig4">0,40</b></label>
+          <input type="range" id="sig4" min="0" max="1" step="0.05" value="0.4"></div>
+        <div class="ctl"><label><span>Desconto γ <button type="button" class="q" data-help="gam4" aria-label="Explicar: desconto γ" aria-expanded="false">?</button></span> <b id="l-gam4">0,95</b></label>
+          <input type="range" id="gam4" min="0.8" max="1" step="0.01" value="0.95"></div>
+        <div class="switch">
+          <input type="radio" name="crit4" id="crit4-poor" checked>
+          <label for="crit4-poor">Crítico pobre — 4 características <button type="button" class="q" data-help="crit4" aria-label="Explicar: o crítico" aria-expanded="false">?</button></label>
+        </div>
+        <div class="switch">
+          <input type="radio" name="crit4" id="crit4-rich">
+          <label for="crit4-rich">Crítico rico — 13 características <button type="button" class="q" data-help="crit4" aria-label="Explicar: o crítico" aria-expanded="false">?</button></label>
+        </div>
+        <div class="row">
+          <button class="act ghost" id="reroll4">Recoletar trajetórias</button>
+        </div>
+        <table class="stats">
+          <tr><th>Grandeza</th><th style="text-align:right">Valor</th></tr>
+          <tr><td class="k">n ótimo <button type="button" class="q" data-help="s4n" aria-label="Explicar: n ótimo" aria-expanded="false">?</button></td><td id="s4-n" style="text-align:right">—</td></tr>
+          <tr><td class="k">EQM em n=1 <button type="button" class="q" data-help="s41" aria-label="Explicar: EQM em n=1" aria-expanded="false">?</button></td><td id="s4-1" style="text-align:right">—</td></tr>
+          <tr><td class="k">EQM em n=24 <button type="button" class="q" data-help="s4i" aria-label="Explicar: EQM em n=24" aria-expanded="false">?</button></td><td id="s4-i" style="text-align:right">—</td></tr>
+        </table>
+        <div class="note">
+          <b>Leia o gráfico assim:</b><button type="button" class="q" data-help="note4" aria-label="Explicar como ler o gráfico" aria-expanded="false">?</button> com o crítico pobre e recompensas pouco ruidosas, o viés domina
+          e o EQM cai até n = 24 — confie nas recompensas reais. Troque para o crítico rico (ou aumente
+          σ) e o mínimo desliza para a esquerda — confie no crítico. As duas curvas, viés² caindo e
+          variância subindo, são o custo de cada escolha. GAE(λ) é a maneira de não ter que escolher
+          um único n.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  </main>
+</div>
+
+<footer>
+  Complemento interativo da Aula 5 — Gradientes de política I &nbsp;·&nbsp; v2 (CartPole) &nbsp;·&nbsp;
+  Prof. Marcelo Keese Albertini, Universidade Federal de Uberlândia
+</footer>
+
+<script>
+"use strict";
+const C = {azul:"#16324F", azulc:"#2E5F8A", teal:"#18808D", laranja:"#E8590C",
+           ambar:"#F2A93B", vermelho:"#C1121F", verde:"#2B9348", cinza:"#5C677D",
+           tinta:"#0B1B2B", linha:"#DCE3EA"};
+function $(id){ return document.getElementById(id); }
+const fmt = (x,d=2)=> (x===null || x===undefined || !isFinite(x)? "—" :
+  (Math.abs(x)>=10000? x.toExponential(1) : x.toFixed(d)).replace(".",","));
+function fmtSig(x,d){
+  d=d||2;
+  if(x===0) return "0";
+  return x.toPrecision(d).replace(".",",").replace(/,?0+$/,"").replace(/,$/,"");
+}
+const fmtDeg = rad => (rad>=0?"+":"") + Math.round(rad*180/Math.PI) + "°";
+
+/* ---------- canvas nítido em telas HiDPI, preservando a proporção original ---------- */
+function prep(cv){
+  if(!cv.dataset.ratio) cv.dataset.ratio = (cv.height/cv.width).toString();
+  const ratio = parseFloat(cv.dataset.ratio);
+  const dpr = window.devicePixelRatio || 1;
+  const w = cv.clientWidth || 640, h = Math.round(w*ratio);
+  cv.style.height = h + "px";
+  cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr);
+  const g = cv.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0);
+  g.clearRect(0,0,w,h);
+  return {g, w, h};
+}
+function axes(g,x0,y0,x1,y1){
+  g.strokeStyle=C.linha; g.lineWidth=1;
+  g.beginPath(); g.moveTo(x0,y0); g.lineTo(x0,y1); g.lineTo(x1,y1); g.stroke();
+}
+function label(g,txt,x,y,color,align,size,weight){
+  g.fillStyle=color; g.font=(weight||"400")+" "+(size||11)+"px 'Fira Sans', system-ui, sans-serif";
+  g.textAlign=align||"left"; g.textBaseline="middle"; g.fillText(txt,x,y);
+}
+function stats(a){ const mu=a.reduce((x,y)=>x+y,0)/a.length;
+  const v=a.reduce((x,y)=>x+(y-mu)*(y-mu),0)/a.length; return [mu, Math.sqrt(v)]; }
+
+/* ---------- desenho do CartPole (usado nas abas 1 e 3) ---------- */
+function drawCP(g,cx,cy,s,sc){
+  sc=sc||1;
+  g.strokeStyle=C.linha; g.lineWidth=2*sc;
+  g.beginPath(); g.moveTo(cx-95*sc,cy+30*sc); g.lineTo(cx+95*sc,cy+30*sc); g.stroke();
+  g.strokeStyle=C.cinza; g.lineWidth=1;
+  [[-95,26],[-50,20],[-10,14],[10,14],[50,20],[95,26]].forEach(p=>{
+    g.beginPath(); g.moveTo(cx+p[0]*sc,cy+30*sc); g.lineTo(cx+p[0]*sc,cy+p[1]*sc); g.stroke();
+  });
+  const dx=Math.max(-70*sc,Math.min(70*sc, s[0]/CP.XLIM*70*sc));
+  const px=cx+dx, py=cy-8*sc;
+  g.fillStyle=C.azul;
+  g.fillRect(px-26*sc, py-14*sc, 52*sc, 14*sc);
+  g.fillStyle=C.cinza;
+  g.beginPath(); g.arc(px-16*sc, cy+22*sc, 6*sc, 0, Math.PI*2); g.fill();
+  g.beginPath(); g.arc(px+16*sc, cy+22*sc, 6*sc, 0, Math.PI*2); g.fill();
+  const L=86*sc;
+  g.strokeStyle=C.laranja; g.lineWidth=4.5*sc; g.lineCap="round";
+  g.beginPath(); g.moveTo(px,py);
+  g.lineTo(px+L*Math.sin(s[2]), py-L*Math.cos(s[2]));
+  g.stroke(); g.lineCap="butt";
+  g.strokeStyle=C.linha; g.setLineDash([3,4]); g.lineWidth=1;
+  g.beginPath(); g.moveTo(px,py-4); g.lineTo(px,py-L-6); g.stroke(); g.setLineDash([]);
+  if(Math.abs(s[2])>0.04){
+    g.strokeStyle=C.teal; g.lineWidth=1.5*sc;
+    g.beginPath(); g.arc(px,py,20*sc, -Math.PI/2, -Math.PI/2+s[2], s[2]<0); g.stroke();
+  }
+  if(Math.abs(s[1])>0.05){
+    const vx=px+Math.max(-26*sc,Math.min(26*sc, s[1]/1.5*26*sc));
+    g.strokeStyle=C.verde; g.lineWidth=2*sc;
+    g.beginPath(); g.moveTo(px,cy+18*sc); g.lineTo(vx,cy+18*sc); g.stroke();
+    g.beginPath(); g.moveTo(vx,cy+18*sc);
+    g.lineTo(vx-Math.sign(s[1])*5*sc,cy+15*sc);
+    g.lineTo(vx-Math.sign(s[1])*5*sc,cy+21*sc); g.closePath(); g.fill();
+  }
+}
+
+/* ==== NÚCLEO MATEMÁTICO (sem DOM; testável fora do navegador) ==== */
+
+/* ---------- CartPole: dinâmica oficial do gym ---------- */
+const CP = {
+  MC:1.0, MP:0.1, HALF:0.5, FORCE:10, G:9.8, DT:0.02,
+  XLIM:2.4, TLIM:12*Math.PI/180, MAXT:500
+};
+function cpStep(s,a){
+  const F = a ? CP.FORCE : -CP.FORCE;
+  const m = CP.MC+CP.MP;
+  const [x,xd,th,thd] = s;
+  const c=Math.cos(th), sn=Math.sin(th);
+  const thdd = (CP.G*sn - c*(F + CP.MP*CP.HALF*thd*thd*sn)/m) /
+               (CP.HALF*(4/3 - CP.MP*c*c/m));
+  const xdd = (F + CP.MP*CP.HALF*(thd*thd*sn - thdd*c))/m;
+  return [x+xd*CP.DT, xd+xdd*CP.DT, th+thd*CP.DT, thd+thdd*CP.DT];
+}
+function cpDone(s){ return Math.abs(s[0])>CP.XLIM || Math.abs(s[2])>CP.TLIM; }
+function cpReset(){ return [(Math.random()*2-1)*0.05, 0, (Math.random()*2-1)*0.05, 0]; }
+
+/* ---------- características de Sutton & Barto, normalizadas ---------- */
+const FSC = {x:2.4, xd:1.5, th:CP.TLIM, thd:2.5};
+function phi(s){
+  const [x,xd,th,thd]=s;
+  const a=x/FSC.x, b=xd/FSC.xd, c=th/FSC.th, d=thd/FSC.thd;
+  return [1, a, b, c, d, a*a, b*b, c*c, d*d, a*c, a*d, b*c, b*d];
+}
+function logit(th,s){ const f=phi(s); let z=0;
+  for(let i=0;i<f.length;i++) z+=th[i]*f[i]; return z; }
+function piOf(th,a,s){                       // th = [w0,w1], a: 0=esquerda 1=direita
+  const z0=logit(th[0],s), z1=logit(th[1],s);
+  const mx=Math.max(z0,z1);                  // subtrai o máximo p/ nunca estourar o exp
+  const e0=Math.exp(z0-mx), e1=Math.exp(z1-mx);
+  return a ? e1/(e0+e1) : e0/(e0+e1);
+}
+function gauss(){ let u=0,v=0; while(!u) u=Math.random(); while(!v) v=Math.random();
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+function ZERO13(){ return new Array(13).fill(0); }
+
+/* ---------- aba 3: um episódio / um lote de treino ---------- */
+function runEp(th,s0){
+  let s=(typeof s0==="function"? s0() : s0) || cpReset();
+  const tr=[];
+  for(let t=0;t<CP.MAXT;t++){
+    const p1=piOf(th,1,s);
+    const a=(Math.random()<p1)?1:0;
+    const ns=cpStep(s,a);
+    tr.push({s:s,a:a});
+    s=ns;
+    if(cpDone(ns)) break;
+  }
+  return tr;
+}
+function trainBatch(th,B,alpha,useB,s0){
+  const trs=[]; let sum=0;
+  for(let b=0;b<B;b++){ const tr=runEp(th,s0); trs.push(tr); sum+=tr.length; }
+  const mu=sum/B;
+  trs.forEach(tr=>{
+    let G=0;
+    for(let t=tr.length-1;t>=0;t--){
+      G+=1;
+      /* vantagem normalizada pelo comprimento do episódio: sem isso, episódios longos
+         mantêm passos grandes e a política deriva para “sempre empurrar” (viés do logit) */
+      const adv=(G-(useB?mu:0))/Math.max(1,tr.length);
+      const s=tr[t].s, a=tr[t].a;
+      const p=a?piOf(th,1,s):1-piOf(th,1,s);
+      const f=phi(s), k=alpha/B*adv;
+      /* ∇log π(a) = (1{a=k} − π(k))·φ(s): a ação tomada ganha (1−p)φ, a outra perde −(1−p)φ */
+      for(let i=0;i<13;i++){
+        th[a][i]   += k*(1-p)*f[i];
+        th[1-a][i] += k*(-(1-p))*f[i];
+      }
+    }
+  });
+  return mu;
+}
+
+/* ---------- aba 2: episódio 50/50 e estimativa do componente θ do logit "direita" ---------- */
+function collectEp2(theta0,c){
+  /* ruído σ₂ = 0,5 por passo: sem ele, a linha de base por passo cancelaria o retorno
+     exatamente (estimador identicamente zero) — o ruído é o que a linha de base combate */
+  let s=[0,0,theta0,0];
+  const st=[], as=[], rs=[];
+  for(let t=0;t<CP.MAXT;t++){
+    const a=(Math.random()<0.5)?1:0;
+    const ns=cpStep(s,a);
+    st.push(s); as.push(a); rs.push(1+c+0.5*gauss());
+    s=ns;
+    if(cpDone(ns)) break;
+  }
+  const Gs=new Array(st.length); let G=0;
+  for(let t=st.length-1;t>=0;t--){ G+=rs[t]; Gs[t]=G; }
+  return {st:st, as:as, Gs:Gs, G0:Gs[0], T:st.length};
+}
+function estimate2(m,withBase,theta0,c){
+  const eps=[]; let sum=0;
+  for(let k=0;k<m;k++){ const e=collectEp2(theta0,c); eps.push(e); sum+=e.G0; }
+  /* linha de base escalar: média dos retornos do lote. Não depende da ação → não enviesa.
+     (A linha de base “por passo restante” removeria c da variância, mas como a duração T
+     depende da ação, ela comeria o próprio gradiente — enviesada.) */
+  const b=withBase? sum/m : 0;
+  let acc=0;
+  eps.forEach(e=>{
+    for(let t=0;t<e.st.length;t++){
+      const sc = e.as[t]===1? 0.5 : -0.5;   // ∇log π do logit "direita" com π = 0,5/0,5
+      acc += (e.Gs[t]-b)*sc*phi(e.st[t])[3];
+    }
+  });
+  return acc/m;
+}
+
+/* ---------- aba 4: crítico linear por mínimos quadrados + decomposição por n ---------- */
+/* política congelada NO MEIO do treino (instantâneo de ~70 lotes de REINFORCE na pista
+   inteira): boa o bastante para sobreviver aos 24 passos da análise, mas ainda morre às
+   vezes — é a variação de V(s) pela pista que torna o viés do crítico visível */
+const TH4 = [
+  [-0.054, 0.018, 0.469,-1.260,-0.800, 0.009, 0.055,-0.017, 0.009,-0.030,-0.017,-0.015,-0.019],
+  [ 0.054,-0.018,-0.469, 1.260, 0.800,-0.009,-0.055, 0.017,-0.009, 0.030, 0.017, 0.015, 0.019]
+];
+function solve(A,b){                          // eliminação gaussiana com pivoteamento
+  const D=b.length;
+  const M=A.slice(), v=b.slice();
+  for(let c=0;c<D;c++){
+    let piv=c;
+    for(let r=c+1;r<D;r++) if(Math.abs(M[r*D+c])>Math.abs(M[piv*D+c])) piv=r;
+    if(Math.abs(M[piv*D+c])<1e-12) continue;
+    if(piv!==c){
+      for(let j=0;j<D;j++){ const t=M[c*D+j]; M[c*D+j]=M[piv*D+j]; M[piv*D+j]=t; }
+      const t=v[c]; v[c]=v[piv]; v[piv]=t;
+    }
+    const d=M[c*D+c];
+    for(let r=c+1;r<D;r++){
+      const f=M[r*D+c]/d;
+      if(f===0) continue;
+      for(let j=c;j<D;j++) M[r*D+j]-=f*M[c*D+j];
+      v[r]-=f*v[c];
+    }
+  }
+  const x=new Array(D).fill(0);
+  for(let r=D-1;r>=0;r--){
+    let s=v[r];
+    for(let j=r+1;j<D;j++) s-=M[r*D+j]*x[j];
+    x[r]=s/M[r*D+r];
+  }
+  return x;
+}
+/* estados de referência (grade fixa na pista) onde o viés é medido contra Monte Carlo de precisão */
+const REF4 = [
+  [-1.0,-4*Math.PI/180], [-1.0, 4*Math.PI/180],
+  [-0.5,-2*Math.PI/180], [-0.5, 2*Math.PI/180],
+  [ 0.5,-2*Math.PI/180], [ 0.5, 2*Math.PI/180],
+  [ 1.0,-4*Math.PI/180], [ 1.0, 4*Math.PI/180]
+];
+function gather4(TH,rich,sig,gam){
+  /* M trajetórias da política congelada a partir de CADA estado de referência.
+     Medir o viés por estado (e não pela média geral) é o que impede os resíduos
+     do crítico de se cancelarem — o viés real é por estado. */
+  const M=150;
+  const byRef=[], all=[];
+  for(const ref of REF4){
+    const trajs=[];
+    for(let m=0;m<M;m++){
+      let s=[ref[0],0,ref[1],0];
+      const st=[], rs=[];
+      for(let t=0;t<CP.MAXT;t++){
+        const p1=piOf(TH,1,s), a=(Math.random()<p1)?1:0;
+        const ns=cpStep(s,a);
+        st.push(s); rs.push(1+sig*gauss());
+        s=ns;
+        if(cpDone(ns)) break;
+      }
+      if(st.length<25) continue;             // episódio curto demais p/ n até 24
+      const Gs=new Array(st.length); let G=0;
+      for(let t=st.length-1;t>=0;t--){ G=rs[t]+gam*G; Gs[t]=G; }
+      trajs.push({st:st, rs:rs, Gs:Gs});
+    }
+    if(trajs.length<20) return null;
+    byRef.push(trajs);
+    for(const tr of trajs) all.push(tr);
+  }
+  /* crítico linear por mínimos quadrados: pobre = 4 características, rico = 13 */
+  const critPhi = s => {
+    const f=phi(s);
+    return rich? f : [f[0], f[1], f[2], f[3], f[4]];
+  };
+  const D = rich? 13 : 5, lam=1e-3;
+  const A=new Float64Array(D*D), y=new Float64Array(D);
+  all.forEach(tr=>{
+    for(let t=0;t<Math.min(200,tr.st.length);t++){
+      const f=critPhi(tr.st[t]);
+      for(let i=0;i<D;i++){
+        y[i]+=f[i]*tr.Gs[t];
+        for(let j=0;j<D;j++) A[i*D+j]+=f[i]*f[j];
+      }
+    }
+  });
+  for(let i=0;i<D;i++) A[i*D+i]+=lam;
+  const w=solve(A,y);
+  /* valor verdadeiro em cada estado de referência: Monte Carlo com M trajetórias */
+  const MAXN=24;
+  const bias2=new Array(MAXN).fill(0), vari=new Array(MAXN).fill(0);
+  byRef.forEach(trajs=>{
+    let Vref=0;
+    trajs.forEach(tr=>{ Vref+=tr.Gs[0]; });
+    Vref/=trajs.length;
+    for(let n=1;n<=MAXN;n++){
+      let sum=0, sumsq=0;
+      trajs.forEach(tr=>{
+        let partial=0;
+        for(let k=0;k<n;k++) partial+=Math.pow(gam,k)*tr.rs[k];
+        const f2=critPhi(tr.st[n]); let Vh=0;
+        for(let i=0;i<D;i++) Vh+=w[i]*f2[i];
+        const d=partial+Math.pow(gam,n)*Vh;
+        sum+=d; sumsq+=d*d;
+      });
+      const mu=sum/trajs.length;
+      const e2=(mu-Vref)*(mu-Vref);                     // viés² deste estado de referência
+      const v=Math.max(0,(sumsq/trajs.length)-mu*mu);   // variância neste estado
+      bias2[n-1]+=e2/byRef.length;
+      vari[n-1]+=v/byRef.length;
+    }
+  });
+  const mse=bias2.map((b,i)=>b+vari[i]);
+  let best=0;
+  for(let i=1;i<MAXN;i++) if(mse[i]<mse[best]) best=i;
+  return {bias2:bias2, vari:vari, mse:mse, best:best};
+}
+
+/* ==== FIM DO NÚCLEO ==== */
+
+/* ================= abas ================= */
+const tabs=[].slice.call(document.querySelectorAll('nav button'));
+tabs.forEach(b=>b.addEventListener('click',()=>{
+  tabs.forEach(x=>x.setAttribute('aria-selected', String(x===b)));
+  ["t1","t2","t3","t4"].forEach(id=>
+    $(id).classList.toggle("hidden", id!==b.dataset.tab));
+  redrawAll();
+}));
+
+/* ================= botões de ajuda “?” ================= */
+const HELP={
+  gp:"<b>Gradiente de política.</b> Em vez de estimar valores e derivar deles a política, aqui a política π(a|s;θ) é parametrizada e θ é ajustado para subir o gradiente do retorno esperado ∇θ𝔼[r]. As quatro abas repetem a derivação da aula, agora com o CartPole real: escore → variância e linha de base → REINFORCE → estimadores de <i>n</i> passos.",
+  lede1:"<b>A função escore</b> ∇θ log π(a|s) mede quanto a log-probabilidade da ação muda quando cada parâmetro muda. É o único pedaço do teorema do gradiente de política que depende de π — a recompensa entra depois, como fator de escala. Na política softmax linear daqui, ∇θ log π(a) = (1{a=k} − π(k))·φ(s).",
+  tilt1:"Parte do <b>estado s</b> que você inspeciona — não é um parâmetro a otimizar. A inclinação entra normalizada (÷12°) nas características φ(s) que multiplicam os logits. Com θ = 0°, as características cruzadas xθ, xθ̇ e ẋθ se anulam e o vetor φ(s) simplifica.",
+  xd1:"Parte do <b>estado s</b> que você inspeciona. A velocidade entra normalizada (÷1,5 m/s) em φ(s). Com ẋ = 0, as características ẋ², xθ̇ e ẋθ̇ se anulam.",
+  r1:"A <b>recompensa</b> que o ambiente devolve ao empurrar para esse lado. A política não busca a ação “boa”: busca a ação de maior valor esperado 𝔼[r]. Inverta as duas recompensas e ela aprende a empurrar para o outro lado. Valores negativos funcionam como penalidade.",
+  alpha1:"O <b>passo de gradiente</b> (taxa de aprendizado): escala a atualização θ ← θ + α·(r − 𝔼[r])·∇θ log π. Grande: reage rápido, mas oscila; pequeno: converge devagar. O controle é logarítmico (0,001 a 1).",
+  chart1:"Três leituras do mesmo estado, por coluna de ação. <b>Barras azuis/vermelhas:</b> o vetor de características φ(s) — 13 números normalizados. <b>Laranja:</b> o escore — (1−π) na ação escolhida, −π na outra. <b>Verde:</b> c·φ(s), o gradiente esperado ∇θV — o vetor φ inteiro, escalado por c = π_a·(r_a − 𝔼[r]). Amostre uma ação para vê-los aparecer.",
+  s1a:"A ação sorteada da distribuição π(a|s) no último passo. <b>Amostrar é o coração do gradiente de política:</b> a atualização usa a ação que realmente aconteceu, ponderada pelo escore — quanto mais rara a ação, mais forte o empurrão que ela recebe.",
+  s1v:"O retorno médio sob a política atual: 𝔼[r] = π(esq)·r(esq) + π(dir)·r(dir). É a <b>linha de base que já mora na fórmula do escore</b>: a atualização só empurra na direção de φ(s) quando a ação rende acima dessa média.",
+  note1:"O gradiente esperado c·φ(s) reforça ou enfraquece o <b>vetor de características inteiro</b>, não só a entrada da ação escolhida: as 13 características presentes no estado se movem juntas, proporcionalmente a c. É assim que a política aprende a usar, por exemplo, θ para decidir quando empurrar.",
+  lede2:"<b>Estimador de Monte Carlo</b> do gradiente: a média de m episódios. Cada episódio contribui com Σ_t (G_t − b)·∇θ log π(a_t|s_t); a média converge para o gradiente verdadeiro (não enviesada) e a variância cai como 1/m. A <b>linha de base b</b> é qualquer valor que não dependa da ação.",
+  tilt2:"O episódio começa com o poste inclinado em <b>θ₀</b> e o resto parado. Muda a duração dos episódios e, com ela, a posição do gradiente verdadeiro — a marca azul se move quando você mexe aqui.",
+  c2:"Constante somada a <b>toda</b> recompensa do episódio. O gradiente verdadeiro não se move — a linha de base remove c por inteiro na teoria. Mas a nuvem sem linha de base espalha cada vez mais: <b>quanto maior c, pior</b> o estimador sem base. A diferença entre as duas nuvens é exatamente o trabalho da linha de base.",
+  m2:"Número de episódios usados em cada estimativa de gradiente. <b>Quanto maior m, mais precisa</b> a estimativa (variância ∝ 1/m) — e mais cara. Diminua para 1 e veja a nuvem explodir.",
+  chart2:"Histograma de 2000 estimativas de ĝ — o componente do gradiente que multiplica a característica <b>θ</b> no logit da ação “direita”. O <b>eixo horizontal</b> é o valor da estimativa; a altura de cada barra é a frequência. Nuvem estreita = estimador bom. A marca azul é o gradiente verdadeiro: as médias das duas nuvens devem coincidir com ela para qualquer c.",
+  s2a:"O estimador cru: Σ_t G_t·∇θ log π(a_t|s_t). Não enviesado, mas a variância cresce com o deslocamento c.",
+  s2b:"Subtrai a linha de base <b>b = média dos retornos do lote</b>: Σ_t (G_t − b)·∇θ log π. A média não muda (b não depende da ação) e a variância cai — aqui, cerca de um terço, para qualquer c.",
+  s2t:"O gradiente exato do valor esperado neste estado, calculado com trajetórias demais para ter erro. É a referência: os dois estimadores oscilam em torno dela.",
+  note2:"No bandido da aula o horizonte é de 1 passo: o deslocamento c é uma constante que a linha de base remove por inteiro. Aqui o retorno é (1+c)·(T−t) e a duração T é aleatória e depende da ação — c vira ruído multiplicativo que nenhuma linha de base remove por completo, e as nuvens alargam mesmo com base.",
+  lede3:"<b>REINFORCE</b>, o algoritmo da aula: (1) colete um lote de B episódios com a política atual; (2) para cada passo t, calcule o retorno G_t — a soma das recompensas até o fim do episódio; (3) atualize θ ← θ + α·(G_t − b)·∇θ log π(a_t|s_t); (4) repita. É Monte Carlo puro: o retorno completo, sem crítico e sem bootstrapping.",
+  alpha3:"O <b>passo de gradiente</b> por lote (eixo logarítmico, 0,001–0,3). Grande demais: a política esquece o que aprendeu e oscila; pequeno demais: quase não anda. O valor padrão 0,02 aprende em poucas dezenas de lotes.",
+  b3:"Número de episódios coletados antes de cada atualização. <b>Quanto maior B, menos ruidoso</b> o gradiente estimado (melhor), porém cada lote demora mais. Com B = 1 o gradiente é ruído puro e o treino mal decola.",
+  base3:"Subtrai de cada retorno G_t a <b>média dos retornos do lote</b> (linha de base escalar). Não muda o valor esperado da atualização e corta a variância — aqui é a diferença entre aprender em dezenas de lotes ou em centenas. <b>Ligada é melhor.</b>",
+  chart3:"Em cima, um <b>episódio-demo</b> jogado em tempo real com a política atual. Embaixo, a <b>curva de aprendizado</b>. O eixo horizontal é o número do lote de treino: cada passo à direita = B episódios coletados + uma atualização de θ. O eixo vertical é a duração média dos episódios, suavizada com média móvel de 5 lotes: <b>quanto mais alto, melhor</b> — o poste fica mais tempo em pé.",
+  leg200:"Convenção do Gym: o CartPole é considerado <b>resolvido</b> quando a média dos últimos 100 episódios passa de 195. Aqui a linha de 200 passos é a referência: quando a curva encosta nela, a política equilibra até o teto de 500 passos.",
+  s3it:"Quantas atualizações de θ já aconteceram — cada uma consumiu um lote de B episódios. É o eixo horizontal do gráfico.",
+  s3avg:"A duração média dos episódios do último lote coletado. É a medida de desempenho da política atual: <b>maior = melhor</b>.",
+  s3best:"O recorde de duração média entre todos os lotes. Nunca cai — guarda o melhor que a política já conseguiu.",
+  s3demo:"Em qual passo está o episódio exibido no topo do gráfico. Quando o poste cai (ou o teto de 500 passos é atingido), o episódio reinicia do zero.",
+  note3:"A duração média dos episódios sobe até a linha de 200 — a partir daí o poste fica em pé pelo teto de 500 passos. O episódio-demo mostra a política atual em ação.",
+  lede4:"O <b>retorno de n passos</b> mistura recompensas reais com o palpite do crítico: Ĝ⁽ⁿ⁾ = Σ γᵏ r + γⁿ V̂(sₙ). n = 1 é TD(0) — confia no crítico; n = 24 é quase Monte Carlo — confia nas recompensas. Entre os dois fica o compromisso viés² × variância; GAE(λ) é a mistura exponencial de todos os n de uma vez.",
+  sig4:"Ruído gaussiano somado a cada recompensa. <b>Quanto maior σ, mais ruidosas</b> as recompensas (pior): as somas reais ficam menos confiáveis e o mínimo do EQM desliza para a esquerda — o crítico fica mais atraente.",
+  gam4:"O <b>desconto</b> γ: a recompensa k passos à frente vale γᵏ. Perto de 1, o retorno olha longe e o Monte Carlo se destaca; longe de 1, só os primeiros passos importam e o crítico domina. O CartPole oficial usa γ = 1 — abaixe para ver o efeito.",
+  crit4:"O crítico V̂ é uma <b>combinação linear de características</b> dos estados, ajustada por mínimos quadrados. Pobre (4): só o estado linear — erra mais (viés² alto), mas precisa de poucos dados. Rico (13): o mesmo vetor φ(s) da política — erra menos, e o mínimo do EQM desliza para a esquerda.",
+  chart4:"Para cada horizonte <b>n</b> (eixo horizontal), o erro quadrático médio do estimador Ĝ⁽ⁿ⁾ se decompõe em <b>viés²</b> (âmbar — erro sistemático do crítico, cai com n) e <b>variância</b> (vermelho — sorte das recompensas somadas, sobe com n). O EQM (azul) é a soma das duas; o ponto verde marca o n que a minimiza. <b>Menor erro = melhor.</b>",
+  s4n:"O horizonte que minimiza o EQM: a melhor mistura entre confiar no crítico e confiar nas recompensas. À esquerda dele o crítico erra demais; à direita, a variância domina.",
+  s41:"O erro de confiar só no crítico: Ĝ⁽¹⁾ = r + γ·V̂(s′). Com o crítico pobre, esse erro é dominado pelo viés².",
+  s4i:"O erro de confiar só nas recompensas: Ĝ⁽²⁴⁾ ≈ Monte Carlo. Sem viés, mas com toda a variância dos 24 passos somados.",
+  note4:"Com o crítico pobre e recompensas pouco ruidosas, o viés domina e o EQM cai até n = 24 — confie nas recompensas reais. Troque para o crítico rico (ou aumente σ) e o mínimo desliza para a esquerda — confie no crítico. Viés² caindo e variância subindo são o custo de cada escolha; GAE(λ) evita ter que escolher um único n."
+};
+const helpTip=document.createElement("div");
+helpTip.id="help-tip";
+helpTip.setAttribute("role","tooltip");
+document.body.appendChild(helpTip);
+let helpBtn=null;
+function placeTip(){
+  const r=helpBtn.getBoundingClientRect();
+  helpTip.style.display="block";
+  const tw=helpTip.offsetWidth, th=helpTip.offsetHeight;
+  const gap=8, m=8;
+  const x=Math.min(Math.max(r.left+r.width/2-tw/2, m), innerWidth-tw-m);
+  let above=false, y=r.bottom+gap;
+  if(y+th>innerHeight-m){ y=r.top-gap-th; above=true; if(y<m){ y=m; above=false; } }
+  helpTip.classList.toggle("above",above);
+  helpTip.classList.toggle("below",!above);
+  helpTip.style.left=x+"px";
+  helpTip.style.top=y+"px";
+  helpTip.style.setProperty("--ax", Math.min(Math.max(r.left+r.width/2-x,12), tw-12)+"px");
+}
+function showHelp(b){
+  if(helpBtn===b){ hideHelp(); return; }
+  hideHelp();
+  helpBtn=b;
+  b.setAttribute("aria-expanded","true");
+  helpTip.innerHTML=HELP[b.dataset.help]||"";
+  placeTip();
+}
+function hideHelp(){
+  if(helpBtn){ helpBtn.setAttribute("aria-expanded","false"); helpBtn=null; }
+  helpTip.style.display="none";
+}
+document.querySelectorAll("button.q").forEach(b=>{
+  b.addEventListener("click", e=>{ e.stopPropagation(); showHelp(b); });
+});
+document.addEventListener("click", ()=>{ hideHelp(); });
+document.addEventListener("keydown", e=>{ if(e.key==="Escape") hideHelp(); });
+window.addEventListener("resize", ()=>{ if(helpBtn) placeTip(); });
+window.addEventListener("scroll", ()=>{ if(helpBtn) placeTip(); }, true);
+
+/* ---------- controles logarítmicos ---------- */
+function bindLog(id, labId, min, max, val, sig){
+  const el=$(id), lab=$(labId);
+  el.value = String(Math.round(Math.log(val/min)/Math.log(max/min)*100));
+  const upd=()=>{
+    const v=+el.value/100;
+    const x=min*Math.pow(max/min,v);
+    el.dataset.val=String(x);
+    lab.textContent=fmtSig(x,sig);
+    return x;
+  };
+  el.addEventListener("input",upd);
+  upd();
+  return el;
+}
+
+/* ================= 01 — a função escore ================= */
+let th1=[ZERO13(),ZERO13()], n1=0, lastA=null;
+const PHI_NAMES=["1","x","ẋ","θ","θ̇","x²","ẋ²","θ²","θ̇²","xθ","xθ̇","ẋθ","ẋθ̇"];
+function draw1(){
+  const {g,w,h}=prep($("c1"));
+  const s=[0, +$("xd1").value, +$("tilt1").value*Math.PI/180, 0];
+  const r=[+$("r1e").value, +$("r1d").value];
+  const f=phi(s);
+  const p0=piOf(th1,0,s), p1=1-p0, p=[p0,p1];
+  const Er=p0*r[0]+p1*r[1];
+  $("s1-v").textContent=fmt(Er);
+  $("s1-n").textContent=String(n1);
+
+  /* ---- região A: o estado e o vetor de características ---- */
+  drawCP(g,105,120,s,1.05);
+  label(g,"estado: θ = "+fmtDeg(s[2])+" · ẋ = "+fmt(s[1],1)+" m/s",105,172,C.cinza,"center",11);
+
+  const fx=250, fy=30, fw=370, fh=86, fmid=fy+fh/2;
+  const fmax=Math.max(1e-9, Math.max.apply(null,f.map(Math.abs)));
+  const fbw=fw/13;
+  for(let i=0;i<13;i++){
+    const v=f[i], hh=fh*0.5*Math.min(1,Math.abs(v)/fmax);
+    g.fillStyle = v>=0? C.azulc : C.vermelho;
+    g.fillRect(fx+i*fbw, fmid-Math.max(hh,0), Math.max(fbw-1,1), Math.abs(hh)+ (v===0?1:0));
+    label(g,PHI_NAMES[i], fx+i*fbw+fbw/2, fy+fh+(i%2?28:18), C.cinza,"center",9);
+  }
+  g.strokeStyle=C.linha; g.setLineDash([3,3]);
+  g.beginPath(); g.moveTo(fx,fmid); g.lineTo(fx+fw,fmid); g.stroke(); g.setLineDash([]);
+  label(g,"vetor de características φ(s) — normalizado", fx, fy-14, C.cinza,"left",11,"600");
+
+  /* ---- região B: π, escore e gradiente esperado por ação ---- */
+  const zeroY=292, xl=185, xr=430;
+  g.strokeStyle=C.linha; g.setLineDash([4,4]);
+  g.beginPath(); g.moveTo(118,zeroY); g.lineTo(618,zeroY); g.stroke(); g.setLineDash([]);
+  label(g,"+ sobe",122,zeroY-52,C.cinza,"left",10);
+  label(g,"− desce",122,zeroY+52,C.cinza,"left",10);
+
+  [[xl,"esquerda",0],[xr,"direita",1]].forEach(col=>{
+    const cx=col[0], a=col[1];
+    label(g,col[2]+"   π = "+fmt(p[a]), cx, 212, C.tinta, "center", 13, "600");
+    /* π */
+    g.fillStyle=C.azulc;
+    g.fillRect(cx-60, zeroY-p[a]*80, 38, p[a]*80);
+    label(g,fmt(p[a]), cx-41, zeroY-p[a]*80-8, C.azulc,"center",11,"600");
+    /* escore: coeficiente (1−π) na ação escolhida, −π na outra */
+    if(lastA!==null){
+      const sc=(a===lastA)? (1-p[a]) : -p[a];
+      const hh=Math.max(-1,Math.min(1,sc))*80;
+      g.fillStyle=C.laranja;
+      g.fillRect(cx-14, zeroY-Math.max(hh,0), 38, Math.abs(hh));
+      label(g,fmt(sc), cx+5, zeroY-hh-8, C.laranja,"center",11,"600");
+    }
+    /* gradiente esperado ∇θV = π_a(r_a−𝔼r)·φ(s): o vetor φ inteiro, escalado */
+    const gcoef=p[a]*(r[a]-Er);
+    label(g,"c = "+fmt(gcoef), cx+46, 226, C.teal,"left",10,"600");
+  });
+  /* desenha as tiras do gradiente esperado em segundo plano-comum */
+  const gmax=Math.max(1e-9,
+    Math.max.apply(null,[0,1].map(a=>Math.abs(p[a]*(r[a]-Er))*Math.max.apply(null,f.map(Math.abs)))));
+  [[xl,0],[xr,1]].forEach(col=>{
+    const cx=col[0], a=col[1], gcoef=p[a]*(r[a]-Er);
+    for(let i=0;i<13;i++){
+      const v=gcoef*f[i], hh=40*Math.min(1,Math.abs(v)/gmax);
+      g.fillStyle=C.teal;
+      g.fillRect(cx+46+i*8, zeroY-Math.max(hh,0), Math.max(8-1,1), Math.abs(hh));
+    }
+  });
+  [[xl,"π(a)"],[xr,"π(a)"]].forEach(c=>label(g,c[1],c[0]-41,zeroY+50,C.cinza,"center",10));
+  if(lastA!==null){
+    [[xl,"escore"],[xr,"escore"]].forEach(c=>label(g,c[1],c[0]+5,zeroY+50,C.cinza,"center",10));
+    [[xl,"c·φ(s)"],[xr,"c·φ(s)"]].forEach(c=>label(g,c[1],c[0]+98,zeroY+50,C.cinza,"center",10));
+  } else {
+    label(g,"Amostre uma ação para ver o escore.", (xl+xr)/2, zeroY+50, C.cinza,"center",12);
+  }
+}
+function step1(){
+  const s=[0, +$("xd1").value, +$("tilt1").value*Math.PI/180, 0];
+  const r=[+$("r1e").value, +$("r1d").value];
+  const a=+$("alpha1").dataset.val;
+  const p0=piOf(th1,0,s), p=[p0,1-p0];
+  const i=(Math.random()<p0)?0:1;
+  lastA=i; n1++;
+  const f=phi(s);
+  for(let k=0;k<13;k++){
+    th1[i][k]   += a*r[i]*(1-p[i])*f[k];
+    th1[1-i][k] += a*r[i]*(-(1-p[i]))*f[k];
+  }
+  $("s1-a").textContent = i? "direita" : "esquerda";
+}
+$("step1").onclick=()=>{ step1(); draw1(); };
+$("run1").onclick=()=>{ for(let k=0;k<200;k++) step1(); draw1(); };
+$("reset1").onclick=()=>{ th1=[ZERO13(),ZERO13()]; n1=0; lastA=null;
+  $("s1-a").textContent="—"; draw1(); };
+$("tilt1").addEventListener("input",()=>{ $("l-tilt1").textContent=fmtDeg(+$("tilt1").value*Math.PI/180); draw1(); });
+$("xd1").addEventListener("input",()=>{ $("l-xd1").textContent=fmt(+$("xd1").value,1)+" m/s"; draw1(); });
+$("r1e").addEventListener("input",()=>{ $("l-r1e").textContent=fmt(+$("r1e").value,1); draw1(); });
+$("r1d").addEventListener("input",()=>{ $("l-r1d").textContent=fmt(+$("r1d").value,1); draw1(); });
+bindLog("alpha1","l-alpha1",1e-3,1,0.2,2).addEventListener("input",draw1);
+
+/* ================= 02 — variância e linha de base ================= */
+let cloud1=[], cloud2=[];
+function run2(){
+  const m=+$("m2").value, th0=+$("tilt2").value*Math.PI/180, c=+$("c2s").value;
+  cloud1=[]; cloud2=[];
+  for(let k=0;k<2000;k++){ cloud1.push(estimate2(m,false,th0,c)); cloud2.push(estimate2(m,true,th0,c)); }
+  draw2();
+}
+function draw2(){
+  const {g,w,h}=prep($("c2"));
+  const tg=cloud2.length? stats(cloud2)[0] : null;   // média do estimador com base (não enviesado)
+  $("s2-t").textContent=fmt(tg);
+  const padL=44,padR=16,top=24,bot=h-46;
+  if(!cloud1.length){
+    axes(g,padL,top,w-padR,bot);
+    label(g,"Clique em “Gerar 2000 estimativas”.", (padL+w-padR)/2,(top+bot)/2, C.cinza,"center",13);
+    $("s2-m1").textContent="—"; $("s2-d1").textContent="—";
+    $("s2-m2").textContent="—"; $("s2-d2").textContent="—";
+    return;
+  }
+  const a1=stats(cloud1), a2=stats(cloud2);
+  $("s2-m1").textContent=fmt(a1[0]); $("s2-d1").textContent=fmt(a1[1]);
+  $("s2-m2").textContent=fmt(a2[0]); $("s2-d2").textContent=fmt(a2[1]);
+
+  let lo=Math.min(Math.min.apply(null,cloud1), Math.min.apply(null,cloud2), tg);
+  let hi=Math.max(Math.max.apply(null,cloud1), Math.max.apply(null,cloud2), tg);
+  const pad=(hi-lo)*0.08+1e-6; lo-=pad; hi+=pad;
+
+  const NB=64, h1=new Array(NB).fill(0), h2=new Array(NB).fill(0);
+  const bin=v=>Math.min(NB-1,Math.max(0,Math.floor((v-lo)/(hi-lo)*NB)));
+  cloud1.forEach(v=>h1[bin(v)]++); cloud2.forEach(v=>h2[bin(v)]++);
+  const mx=Math.max(Math.max.apply(null,h1), Math.max.apply(null,h2));
+  const bw=(w-padL-padR)/NB;
+  axes(g,padL,top,w-padR,bot);
+  for(let i=0;i<NB;i++){
+    const x=padL+i*bw;
+    g.fillStyle="rgba(232,89,12,0.55)";
+    g.fillRect(x, bot-(bot-top)*h1[i]/mx, Math.max(bw-0.5,1), (bot-top)*h1[i]/mx);
+    g.fillStyle="rgba(24,128,141,0.78)";
+    g.fillRect(x, bot-(bot-top)*h2[i]/mx, Math.max(bw-0.5,1), (bot-top)*h2[i]/mx);
+  }
+  const X=v=>padL+(v-lo)/(hi-lo)*(w-padL-padR);
+  g.strokeStyle=C.azul; g.lineWidth=2;
+  g.beginPath(); g.moveTo(X(tg),top-6); g.lineTo(X(tg),bot); g.stroke();
+  label(g,"verdadeiro = "+fmt(tg), X(tg)+6, top+6, C.azul,"left",11,"600");
+  label(g,fmt(lo), padL, bot+16, C.cinza,"left",11);
+  label(g,fmt(hi), w-padR, bot+16, C.cinza,"right",11);
+  label(g,"valor da estimativa ĝ (componente θ do logit “direita”)", (padL+w-padR)/2, bot+32, C.cinza,"center",11);
+}
+$("run2").onclick=run2;
+$("reset2").onclick=()=>{cloud1=[];cloud2=[];draw2();};
+$("tilt2").addEventListener("input",()=>{
+  $("l-tilt2").textContent=fmtDeg(+$("tilt2").value*Math.PI/180);
+  cloud1=[];cloud2=[]; draw2();
+});
+$("c2s").addEventListener("input",()=>{
+  $("l-c2").textContent=$("c2s").value;
+  cloud1=[];cloud2=[]; draw2();
+});
+$("m2").addEventListener("input",()=>{
+  $("l-m2").textContent=$("m2").value;
+  cloud1=[];cloud2=[]; draw2();
+});
+
+/* ================= 03 — REINFORCE no CartPole ================= */
+let th3=[ZERO13(),ZERO13()], demo3=cpReset(), demoStep3=0,
+    hist3=[], it3=0, best3=0, running3=false, timer3=null;
+function tick3(){
+  const B=+$("b3").value, alpha=+$("alpha3").dataset.val, useB=$("base3").checked;
+  const avg=trainBatch(th3,B,alpha,useB);
+  it3++;
+  hist3.push(avg);
+  if(hist3.length>600) hist3.shift();
+  best3=Math.max(best3,avg);
+  const p1=piOf(th3,1,demo3);
+  demo3=cpStep(demo3, (Math.random()<p1)?1:0);
+  demoStep3++;
+  if(cpDone(demo3)||demoStep3>=CP.MAXT){ demo3=cpReset(); demoStep3=0; }
+  $("s3-it").textContent=String(it3);
+  $("s3-avg").textContent=fmt(avg,1);
+  $("s3-best").textContent=fmt(best3,1);
+  $("s3-demo").textContent=String(demoStep3);
+  draw3();
+}
+function draw3(){
+  const {g,w,h}=prep($("c3"));
+  drawCP(g,w/2,104,demo3,1.2);
+  label(g,"episódio-demo · passo "+demoStep3+" · melhor média "+fmt(best3,1), 24, 26, C.cinza,"left",12,"600");
+
+  const padL=46,padR=16,top=196,bot=h-26;
+  axes(g,padL,top,w-padR,bot);
+  if(hist3.length<2){
+    label(g,"Clique em “Treinar / pausar”.",(padL+w-padR)/2,(top+bot)/2,C.cinza,"center",13);
+    return;
+  }
+  let ymax=250;
+  hist3.forEach(d=>{ ymax=Math.max(ymax,d); });
+  const X=i=>padL+i/(hist3.length-1)*(w-padL-padR);
+  const Y=v=>bot-(Math.min(v,ymax)/ymax)*(bot-top);
+  g.strokeStyle=C.verde; g.setLineDash([4,3]); g.lineWidth=1.5;
+  g.beginPath(); g.moveTo(padL,Y(200)); g.lineTo(w-padR,Y(200)); g.stroke(); g.setLineDash([]);
+  label(g,"200 = CartPole resolvido", w-padR-4, Y(200)-10, C.verde,"right",10);
+  /* média móvel de 5 lotes */
+  const W=5, sm=hist3.map((d,i)=>{
+    let s=0,n=0;
+    for(let k=Math.max(0,i-W+1);k<=i;k++){ s+=hist3[k]; n++; }
+    return s/n;
+  });
+  g.strokeStyle=C.laranja; g.lineWidth=2; g.beginPath();
+  sm.forEach((d,i)=> i? g.lineTo(X(i),Y(d)) : g.moveTo(X(i),Y(d)));
+  g.stroke();
+  /* eixo y: passos por episódio — a altura da curva é o desempenho da política */
+  label(g,"passos por episódio (média móvel de 5 lotes)",padL,top-10,C.cinza,"left",11,"600");
+  label(g,"↑ quanto maior, melhor",padL,top+6,C.verde,"left",10,"600");
+  const topLab=Math.round(ymax);
+  [0,100,200].forEach(v=>{
+    if(v>=topLab) return;
+    g.strokeStyle=C.linha; g.lineWidth=1;
+    g.beginPath(); g.moveTo(padL-4,Y(v)); g.lineTo(padL,Y(v)); g.stroke();
+    label(g,String(v),padL-8,Y(v),C.cinza,"right",10);
+  });
+  label(g,String(topLab),padL-8,top,C.cinza,"right",11);
+  label(g,"número do lote de treino →",(padL+w-padR)/2,bot+16,C.cinza,"center",11);
+}
+$("run3").onclick=()=>{
+  running3=!running3;
+  if(running3){ timer3=setInterval(tick3,60); } else { clearInterval(timer3); }
+};
+$("reset3").onclick=()=>{
+  clearInterval(timer3); running3=false;
+  th3=[ZERO13(),ZERO13()]; demo3=cpReset(); demoStep3=0; hist3=[]; it3=0; best3=0;
+  $("s3-it").textContent="0"; $("s3-avg").textContent="—";
+  $("s3-best").textContent="—"; $("s3-demo").textContent="0";
+  draw3();
+};
+bindLog("alpha3","l-alpha3",1e-3,0.3,0.02,2);
+$("b3").addEventListener("input",()=>{ $("l-b3").textContent=$("b3").value; });
+
+/* ================= 04 — estimadores de n passos ================= */
+let tab4data=null;
+function run4(){
+  const rich=$("crit4-rich").checked, sig=+$("sig4").value, gam=+$("gam4").value;
+  tab4data=gather4(TH4,rich,sig,gam);
+  draw4();
+}
+function draw4(){
+  const {g,w,h}=prep($("c4"));
+  if(!tab4data) run4();
+  if(!tab4data){
+    label(g,"A política congelada não gerou trajetórias longas — recarregue a página.", (16+w)/2,(16+h)/2, C.cinza,"center",13);
+    return;
+  }
+  const {bias2,vari,mse,best}=tab4data;
+  $("s4-n").textContent = String(best+1);
+  $("s4-1").textContent = fmt(mse[0]);
+  $("s4-i").textContent = fmt(mse[mse.length-1]);
+
+  const L4=mse.length, padL=52,padR=16,top=26,bot=h-42;
+  let ymax=0; mse.forEach(v=>ymax=Math.max(ymax,v)); ymax=ymax*1.08+1e-9;
+  const X=n=>padL+(n-1)/(L4-1)*(w-padL-padR);
+  const Y=v=>bot-(Math.min(v,ymax)/ymax)*(bot-top);
+  axes(g,padL,top,w-padR,bot);
+  const curve=(arr,col,lw)=>{
+    g.strokeStyle=col; g.lineWidth=lw||2; g.beginPath();
+    arr.forEach((v,i)=> i? g.lineTo(X(i+1),Y(v)) : g.moveTo(X(i+1),Y(v)));
+    g.stroke();
+  };
+  curve(vari,C.vermelho); curve(bias2,C.ambar); curve(mse,C.azul,2.6);
+  g.fillStyle=C.verde; g.beginPath(); g.arc(X(best+1),Y(mse[best]),5,0,Math.PI*2); g.fill();
+  const edgeR = best>L4-4;                       // perto da borda direita, rótulo à esquerda do ponto
+  label(g,"n = "+(best+1), X(best+1)+(edgeR? -10:8), Y(mse[best])-12, C.verde, edgeR?"right":"left",12,"600");
+  label(g,"erro",padL-8,top,C.cinza,"right",11);
+  label(g,"0",padL-8,bot,C.cinza,"right",11);
+  label(g,"n = 1  (TD)",padL,bot+18,C.cinza,"left",11);
+  label(g,"n = "+L4+"  (Monte Carlo)",w-padR,bot+18,C.cinza,"right",11);
+}
+$("reroll4").onclick=run4;
+$("sig4").addEventListener("input",()=>{ $("l-sig4").textContent=fmt(+$("sig4").value,2); run4(); });
+$("gam4").addEventListener("input",()=>{ $("l-gam4").textContent=fmt(+$("gam4").value,2); run4(); });
+["crit4-poor","crit4-rich"].forEach(id=>$(id).addEventListener("change",run4));
+
+/* ================= arranque ================= */
+function redrawAll(){ draw1(); draw2(); draw3(); draw4(); }
+let rzTimer=null;
+window.addEventListener("resize", ()=>{ clearTimeout(rzTimer); rzTimer=setTimeout(redrawAll,120); });
+redrawAll();
+</script>
+</body>
+</html>
