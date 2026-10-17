@@ -95,6 +95,32 @@
   .key{width:12px; height:3px; border-radius:2px; display:inline-block}
   .math{font-family:var(--mono); font-size:13px; color:var(--azul); background:#F0F4F8;
     padding:1px 5px; border-radius:3px}
+
+  /* ---------- botões de ajuda “?” ---------- */
+  button.q{
+    display:inline-flex; align-items:center; justify-content:center; flex:none;
+    width:16px; height:16px; border-radius:50%;
+    border:1px solid var(--azul-claro); background:#fff; color:var(--azul-claro);
+    font-family:var(--sans); font-size:11px; font-weight:700; line-height:1;
+    padding:0; margin:0 0 0 6px; cursor:pointer; vertical-align:middle;
+  }
+  button.q:hover, button.q[aria-expanded="true"]{background:var(--azul-claro); color:#fff}
+  button.q:focus-visible{outline:2px solid var(--laranja); outline-offset:1px}
+  button.q.on-dark{border-color:rgba(255,255,255,.65); background:transparent; color:#fff}
+  button.q.on-dark:hover, button.q.on-dark[aria-expanded="true"]{background:rgba(255,255,255,.18)}
+  #help-tip{
+    position:fixed; z-index:60; display:none; max-width:min(340px,calc(100vw - 20px));
+    background:#fff; border:1px solid var(--linha); border-radius:6px;
+    box-shadow:0 10px 30px rgba(11,27,43,.22); padding:10px 13px;
+    font-size:12.5px; line-height:1.5; color:var(--tinta); --ax:50%;
+  }
+  #help-tip::before{
+    content:""; position:absolute; left:var(--ax); width:10px; height:10px;
+    background:#fff; border:1px solid var(--linha); transform:translateX(-50%) rotate(45deg);
+  }
+  #help-tip.below::before{top:-6px; border-right:0; border-bottom:0}
+  #help-tip.above::before{bottom:-6px; border-left:0; border-top:0}
+  #help-tip b{color:var(--azul)}
   .hidden{display:none}
   footer{padding:18px 28px; color:var(--cinza); font-size:12px; border-top:1px solid var(--linha)}
   @media (max-width:900px){
@@ -111,7 +137,7 @@
 
 <header>
   <p class="eyebrow">Aprendizagem por Reforço &middot; UFU &middot; Aula 5</p>
-  <h1>Laboratório de gradiente de política</h1>
+  <h1>Laboratório de gradiente de política <button type="button" class="q on-dark" data-help="gp" aria-label="Explicar: gradiente de política" aria-expanded="false">?</button></h1>
   <p>Quatro experimentos que seguem a derivação da aula: da função escore ao compromisso viés–variância.
      Tudo roda no navegador — mexa nos controles e observe o estimador reagir.</p>
 </header>
@@ -131,11 +157,11 @@
     <h2>A função escore empurra a distribuição</h2>
     <p class="lede">Um estado, três ações, política softmax com atributos <i>one-hot</i>. O escore da ação
       escolhida é <span class="math">∇θ log π(a) = e_a − π</span>: sobe a probabilidade da ação tomada e
-      desce a de todas as outras, na proporção de quão prováveis já eram.</p>
+      desce a de todas as outras, na proporção de quão prováveis já eram. <button type="button" class="q" data-help="lede1" aria-label="Explicar: a função escore" aria-expanded="false">?</button></p>
 
     <div class="cols">
       <div class="panel">
-        <h3>Política e escore</h3>
+        <h3>Política e escore <button type="button" class="q" data-help="chart1" aria-label="Explicar: o gráfico" aria-expanded="false">?</button></h3>
         <canvas id="c1" width="640" height="330"></canvas>
         <div class="legend">
           <span><i class="key" style="background:var(--azul-claro)"></i>π(a) atual</span>
@@ -146,13 +172,13 @@
 
       <div class="panel">
         <h3>Controles</h3>
-        <div class="ctl"><label>Recompensa de a₁ <b id="l-r1">1,0</b></label>
+        <div class="ctl"><label><span>Recompensa de a₁ <button type="button" class="q" data-help="r1" aria-label="Explicar: recompensa" aria-expanded="false">?</button></span> <b id="l-r1">1,0</b></label>
           <input type="range" id="r1" min="-3" max="3" step="0.1" value="1"></div>
-        <div class="ctl"><label>Recompensa de a₂ <b id="l-r2">2,0</b></label>
+        <div class="ctl"><label><span>Recompensa de a₂ <button type="button" class="q" data-help="r1" aria-label="Explicar: recompensa" aria-expanded="false">?</button></span> <b id="l-r2">2,0</b></label>
           <input type="range" id="r2" min="-3" max="3" step="0.1" value="2"></div>
-        <div class="ctl"><label>Recompensa de a₃ <b id="l-r3">0,0</b></label>
+        <div class="ctl"><label><span>Recompensa de a₃ <button type="button" class="q" data-help="r1" aria-label="Explicar: recompensa" aria-expanded="false">?</button></span> <b id="l-r3">0,0</b></label>
           <input type="range" id="r3" min="-3" max="3" step="0.1" value="0"></div>
-        <div class="ctl"><label>Passo α <b id="l-a1">0,20</b></label>
+        <div class="ctl"><label><span>Passo α <button type="button" class="q" data-help="alpha1" aria-label="Explicar: passo α" aria-expanded="false">?</button></span> <b id="l-a1">0,20</b></label>
           <input type="range" id="alpha1" min="0.01" max="1" step="0.01" value="0.2"></div>
         <div class="row">
           <button class="act" id="step1">Amostrar e dar um passo</button>
@@ -161,12 +187,12 @@
         </div>
         <table class="stats">
           <tr><th>Grandeza</th><th style="text-align:right">Valor</th></tr>
-          <tr><td class="k">Última ação amostrada</td><td id="s1-a" style="text-align:right">—</td></tr>
+          <tr><td class="k">Última ação amostrada <button type="button" class="q" data-help="s1a" aria-label="Explicar: última ação amostrada" aria-expanded="false">?</button></td><td id="s1-a" style="text-align:right">—</td></tr>
           <tr><td class="k">Passos dados</td><td id="s1-n" style="text-align:right">0</td></tr>
-          <tr><td class="k">Valor esperado 𝔼[r]</td><td id="s1-v" style="text-align:right">—</td></tr>
+          <tr><td class="k">Valor esperado 𝔼[r] <button type="button" class="q" data-help="s1v" aria-label="Explicar: valor esperado" aria-expanded="false">?</button></td><td id="s1-v" style="text-align:right">—</td></tr>
         </table>
         <div class="note">
-          <b>Repare:</b> o gradiente esperado vale exatamente <span class="math">π_a (r_a − 𝔼[r])</span>.
+          <b>Repare:</b><button type="button" class="q" data-help="note1" aria-label="Explicar a observação" aria-expanded="false">?</button> o gradiente esperado vale exatamente <span class="math">π_a (r_a − 𝔼[r])</span>.
           Uma ação só ganha probabilidade se render acima da média — a linha de base já está aqui,
           escondida dentro da própria matemática do escore.
         </div>
@@ -179,11 +205,11 @@
     <h2>Onde mora a variância</h2>
     <p class="lede">Bandido de duas ações. Cada ponto laranja é uma estimativa de gradiente obtida com
       <i>m</i> amostras. A marca vertical é o gradiente verdadeiro. Agora desloque todas as recompensas por
-      uma constante <i>c</i>: o gradiente verdadeiro não se move — a nuvem, sim.</p>
+      uma constante <i>c</i>: o gradiente verdadeiro não se move — a nuvem, sim. <button type="button" class="q" data-help="lede2" aria-label="Explicar: o estimador de Monte Carlo" aria-expanded="false">?</button></p>
 
     <div class="cols">
       <div class="panel">
-        <h3>Distribuição das estimativas de ĝ</h3>
+        <h3>Distribuição das estimativas de ĝ <button type="button" class="q" data-help="chart2" aria-label="Explicar: o gráfico" aria-expanded="false">?</button></h3>
         <canvas id="c2" width="640" height="330"></canvas>
         <div class="legend">
           <span><i class="key" style="background:var(--laranja)"></i>sem linha de base</span>
@@ -194,13 +220,13 @@
 
       <div class="panel">
         <h3>Controles</h3>
-        <div class="ctl"><label>Recompensa de a₁ <b id="l-b1">1,0</b></label>
+        <div class="ctl"><label><span>Recompensa de a₁ <button type="button" class="q" data-help="r2b" aria-label="Explicar: recompensa" aria-expanded="false">?</button></span> <b id="l-b1">1,0</b></label>
           <input type="range" id="b1" min="-2" max="4" step="0.1" value="1"></div>
-        <div class="ctl"><label>Recompensa de a₂ <b id="l-b2">2,0</b></label>
+        <div class="ctl"><label><span>Recompensa de a₂ <button type="button" class="q" data-help="r2b" aria-label="Explicar: recompensa" aria-expanded="false">?</button></span> <b id="l-b2">2,0</b></label>
           <input type="range" id="b2" min="-2" max="4" step="0.1" value="2"></div>
-        <div class="ctl"><label>Deslocamento c em todas <b id="l-c">0</b></label>
+        <div class="ctl"><label><span>Deslocamento c em todas <button type="button" class="q" data-help="cshift" aria-label="Explicar: deslocamento c" aria-expanded="false">?</button></span> <b id="l-c">0</b></label>
           <input type="range" id="cshift" min="0" max="1000" step="10" value="0"></div>
-        <div class="ctl"><label>Amostras por estimativa m <b id="l-m">20</b></label>
+        <div class="ctl"><label><span>Amostras por estimativa m <button type="button" class="q" data-help="mm" aria-label="Explicar: amostras por estimativa" aria-expanded="false">?</button></span> <b id="l-m">20</b></label>
           <input type="range" id="mm" min="1" max="200" step="1" value="20"></div>
         <div class="row">
           <button class="act" id="run2">Gerar 2000 estimativas</button>
@@ -208,12 +234,12 @@
         </div>
         <table class="stats">
           <tr><th>Estimador</th><th style="text-align:right">média</th><th style="text-align:right">desvio</th></tr>
-          <tr><td class="k">sem base</td><td id="s2-m1" style="text-align:right">—</td><td id="s2-d1" style="text-align:right">—</td></tr>
-          <tr><td class="k">com base</td><td id="s2-m2" style="text-align:right">—</td><td id="s2-d2" style="text-align:right">—</td></tr>
-          <tr><td class="k">verdadeiro</td><td id="s2-t" style="text-align:right">—</td><td style="text-align:right">0</td></tr>
+          <tr><td class="k">sem base <button type="button" class="q" data-help="s2a" aria-label="Explicar: estimador sem linha de base" aria-expanded="false">?</button></td><td id="s2-m1" style="text-align:right">—</td><td id="s2-d1" style="text-align:right">—</td></tr>
+          <tr><td class="k">com base <button type="button" class="q" data-help="s2b" aria-label="Explicar: estimador com linha de base" aria-expanded="false">?</button></td><td id="s2-m2" style="text-align:right">—</td><td id="s2-d2" style="text-align:right">—</td></tr>
+          <tr><td class="k">verdadeiro <button type="button" class="q" data-help="s2t" aria-label="Explicar: gradiente verdadeiro" aria-expanded="false">?</button></td><td id="s2-t" style="text-align:right">—</td><td style="text-align:right">0</td></tr>
         </table>
         <div class="note warn">
-          <b>A lição:</b> as duas médias coincidem com o valor verdadeiro para qualquer <i>c</i> — as duas são
+          <b>A lição:</b><button type="button" class="q" data-help="note2" aria-label="Explicar a lição" aria-expanded="false">?</button> as duas médias coincidem com o valor verdadeiro para qualquer <i>c</i> — as duas são
           não enviesadas. Mas o desvio do estimador sem linha de base cresce proporcionalmente a <i>c</i>,
           enquanto o outro não se mexe. Recompensa deslocada é ruído puro.
         </div>
@@ -226,30 +252,30 @@
     <h2>REINFORCE aprende a ser aleatório</h2>
     <p class="lede">O corredor da aula: cinco casas, objetivo no centro, e as casas 2 e 4 produzindo a mesma
       observação. Custo de −1 por passo. À esquerda, o gradiente de política; à direita, Q-learning
-      ε-guloso sobre a mesma observação ambígua.</p>
+      ε-guloso sobre a mesma observação ambígua. <button type="button" class="q" data-help="lede3" aria-label="Explicar: o corredor" aria-expanded="false">?</button></p>
 
     <div class="cols">
       <div class="panel">
-        <h3>Corredor e políticas aprendidas</h3>
+        <h3>Corredor e políticas aprendidas <button type="button" class="q" data-help="chart3" aria-label="Explicar: o gráfico" aria-expanded="false">?</button></h3>
         <canvas id="c3" width="640" height="360"></canvas>
         <div class="legend">
           <span><i class="key" style="background:var(--laranja)"></i>REINFORCE (estocástico)</span>
           <span><i class="key" style="background:var(--azul-claro)"></i>Q-learning ε-guloso</span>
-          <span><i class="key" style="background:var(--verde)"></i>ótimo alcançável</span>
+          <span><i class="key" style="background:var(--verde)"></i>ótimo alcançável <button type="button" class="q" data-help="legotimo" aria-label="Explicar: ótimo alcançável" aria-expanded="false">?</button></span>
         </div>
       </div>
 
       <div class="panel">
         <h3>Controles</h3>
-        <div class="ctl"><label>Passo α <b id="l-a3">0,05</b></label>
+        <div class="ctl"><label><span>Passo α <button type="button" class="q" data-help="alpha3" aria-label="Explicar: passo α" aria-expanded="false">?</button></span> <b id="l-a3">0,05</b></label>
           <input type="range" id="alpha3" min="0.005" max="0.3" step="0.005" value="0.05"></div>
-        <div class="ctl"><label>ε do Q-learning <b id="l-e3">0,10</b></label>
+        <div class="ctl"><label><span>ε do Q-learning <button type="button" class="q" data-help="eps3" aria-label="Explicar: ε do Q-learning" aria-expanded="false">?</button></span> <b id="l-e3">0,10</b></label>
           <input type="range" id="eps3" min="0.01" max="0.5" step="0.01" value="0.1"></div>
-        <div class="ctl"><label>Episódios por lote <b id="l-bt">10</b></label>
+        <div class="ctl"><label><span>Episódios por lote <button type="button" class="q" data-help="batch3" aria-label="Explicar: episódios por lote" aria-expanded="false">?</button></span> <b id="l-bt">10</b></label>
           <input type="range" id="batch3" min="1" max="40" step="1" value="10"></div>
         <div class="switch">
           <input type="checkbox" id="base3" checked>
-          <label for="base3">Usar linha de base (média do lote)</label>
+          <label for="base3">Usar linha de base (média do lote) <button type="button" class="q" data-help="base3" aria-label="Explicar: linha de base" aria-expanded="false">?</button></label>
         </div>
         <div class="row">
           <button class="act" id="run3">Treinar / pausar</button>
@@ -257,13 +283,13 @@
         </div>
         <table class="stats">
           <tr><th>Grandeza</th><th style="text-align:right">Valor</th></tr>
-          <tr><td class="k">Lotes treinados</td><td id="s3-it" style="text-align:right">0</td></tr>
-          <tr><td class="k">π(Leste | casa cinza)</td><td id="s3-p" style="text-align:right">0,50</td></tr>
-          <tr><td class="k">Passos/episódio (PG)</td><td id="s3-lpg" style="text-align:right">—</td></tr>
-          <tr><td class="k">Passos/episódio (QL)</td><td id="s3-lql" style="text-align:right">—</td></tr>
+          <tr><td class="k">Lotes treinados <button type="button" class="q" data-help="s3it" aria-label="Explicar: lotes treinados" aria-expanded="false">?</button></td><td id="s3-it" style="text-align:right">0</td></tr>
+          <tr><td class="k">π(Leste | casa cinza) <button type="button" class="q" data-help="s3p" aria-label="Explicar: π na casa cinza" aria-expanded="false">?</button></td><td id="s3-p" style="text-align:right">0,50</td></tr>
+          <tr><td class="k">Passos/episódio (PG) <button type="button" class="q" data-help="s3lpg" aria-label="Explicar: passos por episódio do PG" aria-expanded="false">?</button></td><td id="s3-lpg" style="text-align:right">—</td></tr>
+          <tr><td class="k">Passos/episódio (QL) <button type="button" class="q" data-help="s3lql" aria-label="Explicar: passos por episódio do QL" aria-expanded="false">?</button></td><td id="s3-lql" style="text-align:right">—</td></tr>
         </table>
         <div class="note">
-          <b>O que observar:</b> a curva laranja estabiliza a probabilidade perto de 0,50 e o número de
+          <b>O que observar:</b><button type="button" class="q" data-help="note3" aria-label="Explicar o que observar" aria-expanded="false">?</button> a curva laranja estabiliza a probabilidade perto de 0,50 e o número de
           passos cai. O Q-learning fixa uma ação nas casas cinzas e passa a depender do ε para escapar —
           sua curva de passos fica bem acima.
         </div>
@@ -277,11 +303,11 @@
     <p class="lede">Cadeia de 24 passos, recompensas ruidosas de média zero, crítico <i>V̂</i> com erro
       controlável. Para cada <i>n</i>, o estimador
       <span class="math">Â⁽ⁿ⁾ = Σ r + V̂(s₊ₙ) − V̂(s)</span> é avaliado empiricamente: viés² vem do erro do
-      crítico, variância vem das recompensas somadas.</p>
+      crítico, variância vem das recompensas somadas. <button type="button" class="q" data-help="lede4" aria-label="Explicar: retorno de n passos" aria-expanded="false">?</button></p>
 
     <div class="cols">
       <div class="panel">
-        <h3>Decomposição do erro quadrático por horizonte n</h3>
+        <h3>Decomposição do erro quadrático por horizonte n <button type="button" class="q" data-help="chart4" aria-label="Explicar: o gráfico" aria-expanded="false">?</button></h3>
         <canvas id="c4" width="640" height="340"></canvas>
         <div class="legend">
           <span><i class="key" style="background:var(--ambar)"></i>viés²</span>
@@ -293,23 +319,23 @@
 
       <div class="panel">
         <h3>Controles</h3>
-        <div class="ctl"><label>Ruído das recompensas σ <b id="l-sg">1,0</b></label>
+        <div class="ctl"><label><span>Ruído das recompensas σ <button type="button" class="q" data-help="sig4" aria-label="Explicar: ruído das recompensas" aria-expanded="false">?</button></span> <b id="l-sg">1,0</b></label>
           <input type="range" id="sig4" min="0.1" max="3" step="0.1" value="1"></div>
-        <div class="ctl"><label>Erro típico do crítico <b id="l-er">1,5</b></label>
+        <div class="ctl"><label><span>Erro típico do crítico <button type="button" class="q" data-help="err4" aria-label="Explicar: erro do crítico" aria-expanded="false">?</button></span> <b id="l-er">1,5</b></label>
           <input type="range" id="err4" min="0" max="4" step="0.1" value="1.5"></div>
-        <div class="ctl"><label>Desconto γ <b id="l-gm">1,00</b></label>
+        <div class="ctl"><label><span>Desconto γ <button type="button" class="q" data-help="gam4" aria-label="Explicar: desconto γ" aria-expanded="false">?</button></span> <b id="l-gm">1,00</b></label>
           <input type="range" id="gam4" min="0.8" max="1" step="0.01" value="1"></div>
         <div class="row">
           <button class="act ghost" id="reroll4">Sortear novo crítico</button>
         </div>
         <table class="stats">
           <tr><th>Grandeza</th><th style="text-align:right">Valor</th></tr>
-          <tr><td class="k">n ótimo</td><td id="s4-n" style="text-align:right">—</td></tr>
-          <tr><td class="k">EQM em n=1</td><td id="s4-1" style="text-align:right">—</td></tr>
-          <tr><td class="k">EQM em n=∞</td><td id="s4-i" style="text-align:right">—</td></tr>
+          <tr><td class="k">n ótimo <button type="button" class="q" data-help="s4n" aria-label="Explicar: n ótimo" aria-expanded="false">?</button></td><td id="s4-n" style="text-align:right">—</td></tr>
+          <tr><td class="k">EQM em n=1 <button type="button" class="q" data-help="s41" aria-label="Explicar: EQM em n=1" aria-expanded="false">?</button></td><td id="s4-1" style="text-align:right">—</td></tr>
+          <tr><td class="k">EQM em n=∞ <button type="button" class="q" data-help="s4i" aria-label="Explicar: EQM em n=∞" aria-expanded="false">?</button></td><td id="s4-i" style="text-align:right">—</td></tr>
         </table>
         <div class="note">
-          <b>Leia o gráfico assim:</b> com crítico ruim, o mínimo desliza para a direita (confie nas
+          <b>Leia o gráfico assim:</b><button type="button" class="q" data-help="note4" aria-label="Explicar como ler o gráfico" aria-expanded="false">?</button> com crítico ruim, o mínimo desliza para a direita (confie nas
           recompensas reais); com recompensas muito ruidosas, ele desliza para a esquerda (confie no
           crítico). GAE(λ) é a maneira de não ter que escolher um único n.
         </div>
@@ -360,6 +386,86 @@ function softmax(th){ const mx=Math.max.apply(null,th), e=th.map(t=>Math.exp(t-m
 function sample(p){ let u=Math.random(), c=0; for(let i=0;i<p.length;i++){c+=p[i]; if(u<c) return i;} return p.length-1; }
 function stats(a){ const mu=a.reduce((x,y)=>x+y,0)/a.length;
   const v=a.reduce((x,y)=>x+(y-mu)*(y-mu),0)/a.length; return [mu, Math.sqrt(v)]; }
+
+/* ================= botões de ajuda “?” ================= */
+const HELP={
+  gp:"<b>Gradiente de política.</b> Em vez de estimar valores e derivar deles a política, aqui a política π(a|s;θ) é parametrizada e θ é ajustado para subir o gradiente do retorno esperado ∇θ𝔼[r]. As quatro abas repetem a derivação da aula em cenários mínimos: escore (bandido de três ações) → variância e linha de base (bandido de duas ações) → REINFORCE (corredor) → estimadores de <i>n</i> passos.",
+  lede1:"<b>A função escore</b> ∇θ log π(a|s) mede quanto a log-probabilidade da ação muda quando cada parâmetro muda. É o único pedaço do teorema do gradiente de política que depende de π — a recompensa entra depois, como fator de escala. Com atributos <i>one-hot</i>, o gradiente em relação ao logit k é <span class='math'>e_k − π(k)</span>: o vetor unitário da ação menos a distribuição inteira.",
+  r1:"A <b>recompensa</b> que o ambiente devolve quando a ação é escolhida. A política sobe o gradiente do valor esperado 𝔼[r] = Σ π_i·r_i: a ação de maior recompensa ganha probabilidade, as outras perdem. Inverta os valores e a política aprende o contrário.",
+  alpha1:"O <b>passo de gradiente</b> (taxa de aprendizado): escala a atualização θ ← θ + α·r·(e_a − π). Grande: reage rápido, mas oscila; pequeno: converge devagar. Aqui o eixo é linear (0,01 a 1).",
+  chart1:"Três barras por ação. <b>Azul:</b> π(a), a probabilidade atual. <b>Laranja:</b> o escore — sobe o logit da ação escolhida e desce o das outras (aparece após amostrar). <b>Verde:</b> o gradiente esperado ∇θV. Acima da linha tracejada, a probabilidade da ação sobe; abaixo, desce.",
+  s1a:"A ação sorteada da distribuição π no último passo. <b>Amostrar é o coração do gradiente de política:</b> a atualização usa a ação que realmente aconteceu, ponderada pelo escore — quanto mais rara a ação, mais forte o empurrão que ela recebe.",
+  s1v:"O retorno médio sob a política atual: 𝔼[r] = Σ π_i·r_i. É a <b>linha de base escondida na matemática do escore</b>: uma ação só ganha probabilidade quando rende acima dessa média.",
+  note1:"Sem subtrair nada, ∇θV = Σ π_i·r_i·(e_i − π). Como Σ π_i·(e_i − π) = 0, somar qualquer constante às recompensas não muda o gradiente — a subtração de 𝔼[r] já está embutida na própria conta. É por isso que a linha de base “aparece de graça” no escore.",
+  lede2:"<b>Estimador de Monte Carlo</b> do gradiente num bandido de duas ações: a média de m amostras de (r_a − b)·(e_a − π). A média converge para o gradiente verdadeiro (não enviesada) e o desvio cai como 1/√m. A <b>linha de base b</b> é qualquer valor que não dependa da ação.",
+  r2b:"A recompensa média da ação nesse bandido. O gradiente verdadeiro vale <b>0,25·(r₁ − r₂)</b> para o logit da ação 1: é a diferença entre as recompensas que empurra a política. Se elas forem iguais, o gradiente é zero — não há o que aprender.",
+  cshift:"Constante somada a <b>todas</b> as recompensas. O gradiente verdadeiro não se move, mas o desvio do estimador sem linha de base cresce proporcionalmente a c. <b>Quanto maior c, pior</b> o estimador sem base; o com base não se mexe — recompensa deslocada é ruído puro.",
+  mm:"Quantos sorteios entram em cada estimativa de gradiente. <b>Quanto maior m, mais precisa</b> a estimativa (desvio ∝ 1/√m) — e mais cara. Diminua para 1 e veja a nuvem explodir.",
+  chart2:"Histograma de 2000 estimativas de ĝ no bandido de duas ações. O <b>eixo horizontal</b> é o valor da estimativa; a altura de cada barra é a frequência. Nuvem estreita = estimador bom. A marca azul é o gradiente verdadeiro 0,25·(r₁−r₂): as médias das duas nuvens devem coincidir com ela para qualquer c.",
+  s2a:"O estimador cru: média de (r_a + c)·(e_a − π). Não enviesado, mas o desvio cresce proporcionalmente a c.",
+  s2b:"Subtrai a linha de base <b>b = 𝔼[r] + c</b> (a média das recompensas deslocadas). A média não muda e o desvio fica em zero — num bandido determinístico, a linha de base remove c por inteiro.",
+  s2t:"O gradiente exato: 0,25·(r₁ − r₂) para o logit da ação 1. É a referência: os dois estimadores oscilam em torno dela.",
+  note2:"Com um único passo e recompensas determinísticas, o deslocamento c é uma constante que a linha de base remove por inteiro — o estimador com base fica com desvio zero. Na versão CartPole deste lab, a duração aleatória dos episódios transforma c em ruído multiplicativo que nenhuma linha de base remove por completo.",
+  lede3:"O corredor da aula: as casas 2 e 4 produzem a <b>mesma observação</b> (cinza), então nenhuma política determinística acerta as duas. O REINFORCE aprende π ≈ 0,5/0,5 nas casas cinzas — aleatoriedade de propósito, a única resposta consistente. O Q-learning ε-guloso fixa uma ação e paga o preço em passos.",
+  alpha3:"O <b>passo de gradiente</b> por lote do REINFORCE (0,005–0,3). Grande demais: oscila; pequeno demais: quase não anda. O valor padrão 0,05 estabiliza a política em poucas dezenas de lotes.",
+  eps3:"A probabilidade de o Q-learning escolher uma ação aleatória em vez da gulosa. Com a observação ambígua, o ε-guloso alterna entre as duas ações e paga o preço em passos extras: <b>quanto maior ε, mais barulho</b> — mas sem ele o Q-learning fica travado na primeira ação que fixou.",
+  batch3:"Número de episódios coletados antes de cada atualização, para os dois algoritmos. <b>Quanto maior B, menos ruidoso</b> o gradiente estimado (melhor), porém cada lote demora mais.",
+  base3:"Subtrai de cada retorno G_t a <b>média dos retornos do lote</b> no REINFORCE. Não muda o valor esperado da atualização e corta a variância. <b>Ligada é melhor.</b>",
+  chart3:"Em cima, o corredor: as casas 1 e 5 são terminais (×), a casa 3 é o objetivo ($) e as casas 2 e 4 são cinzas — a mesma observação em dois lugares. A espessura das setas laranja é a probabilidade π de cada ação na casa cinza. Embaixo, a curva de aprendizado: o eixo horizontal é o lote de treino; o vertical é passos por episódio — <b>quanto menor, melhor</b>. A linha verde tracejada marca 3,5 passos, o ótimo alcançável com π = 0,5/0,5.",
+  legotimo:"Com π = 0,5/0,5 nas casas cinzas, o agente ziguezagueia e chega ao objetivo em média em <b>3,5 passos</b>. O REINFORCE se aproxima disso; o Q-learning ε-guloso fica bem acima — fixa uma ação nas casas cinzas e depende do ε para escapar.",
+  s3it:"Quantas atualizações aconteceram em cada algoritmo — cada uma consumiu um lote de B episódios. É o eixo horizontal do gráfico.",
+  s3p:"A probabilidade de ir para Leste na casa cinza, sob a política do REINFORCE. O ótimo é <b>0,50</b>: qualquer valor fixo diferente disso custa passos extras.",
+  s3lpg:"Passos por episódio do REINFORCE na última leva. <b>Menor = melhor</b>; o piso é 3,5.",
+  s3lql:"Passos por episódio do Q-learning ε-guloso na última leva. <b>Menor = melhor</b>; fica acima do REINFORCE por causa da observação ambígua.",
+  note3:"A curva laranja estabiliza π(Leste) perto de 0,50 e os passos caem para perto de 3,5. O Q-learning fixa uma ação nas casas cinzas e passa a depender do ε para escapar — sua curva de passos fica bem acima.",
+  lede4:"O <b>retorno de n passos</b> mistura recompensas reais com o palpite do crítico: Â⁽ⁿ⁾ = Σ r + V̂(s₊ₙ) − V̂(s) — as recompensas dos n primeiros passos, mais a diferença de valores do crítico. n = 1 é TD(0) — confia no crítico; n grande é quase Monte Carlo — confia nas recompensas. GAE(λ) é a mistura exponencial de todos os n de uma vez.",
+  sig4:"Ruído gaussiano das recompensas. <b>Quanto maior σ, mais ruidosas</b> as somas reais (pior): o mínimo do EQM desliza para a esquerda — confie no crítico.",
+  err4:"O <b>erro típico do crítico</b> V̂: as curvas de erro sorteadas têm esse desvio. <b>Quanto maior o erro, pior o crítico</b>: o viés² domina e o mínimo do EQM desliza para a direita — confie nas recompensas reais.",
+  gam4:"O <b>desconto</b> γ: a recompensa k passos à frente vale γᵏ. Perto de 1, o retorno olha longe e o Monte Carlo se destaca; longe de 1, só os primeiros passos importam e o crítico domina.",
+  chart4:"Para cada horizonte <b>n</b> (eixo horizontal), o erro quadrático médio do estimador Â⁽ⁿ⁾ se decompõe em <b>viés²</b> (âmbar — erro sistemático do crítico, cai com n) e <b>variância</b> (vermelho — sorte das recompensas somadas, sobe com n). O EQM (azul) é a soma das duas; o ponto verde marca o n que a minimiza. <b>Menor erro = melhor.</b>",
+  s4n:"O horizonte que minimiza o EQM: a melhor mistura entre confiar no crítico e confiar nas recompensas. À esquerda dele o crítico erra demais; à direita, a variância domina.",
+  s41:"O erro de confiar só no crítico: Â⁽¹⁾ = r + V̂(s₊₁) − V̂(s). Dominado pelo viés² quando o crítico erra.",
+  s4i:"O erro de confiar só nas recompensas: Â⁽²⁴⁾ ≈ Monte Carlo (o “n = ∞” da cadeia de 24 passos). Sem viés, mas com toda a variância das recompensas somadas.",
+  note4:"Com crítico ruim, o viés domina e o mínimo desliza para a direita — confie nas recompensas reais. Com recompensas muito ruidosas, ele desliza para a esquerda — confie no crítico. Viés² caindo e variância subindo são o custo de cada escolha; GAE(λ) evita ter que escolher um único n."
+};
+const helpTip=document.createElement("div");
+helpTip.id="help-tip";
+helpTip.setAttribute("role","tooltip");
+document.body.appendChild(helpTip);
+let helpBtn=null;
+function placeTip(){
+  const r=helpBtn.getBoundingClientRect();
+  helpTip.style.display="block";
+  const tw=helpTip.offsetWidth, th=helpTip.offsetHeight;
+  const gap=8, m=8;
+  const x=Math.min(Math.max(r.left+r.width/2-tw/2, m), innerWidth-tw-m);
+  let above=false, y=r.bottom+gap;
+  if(y+th>innerHeight-m){ y=r.top-gap-th; above=true; if(y<m){ y=m; above=false; } }
+  helpTip.classList.toggle("above",above);
+  helpTip.classList.toggle("below",!above);
+  helpTip.style.left=x+"px";
+  helpTip.style.top=y+"px";
+  helpTip.style.setProperty("--ax", Math.min(Math.max(r.left+r.width/2-x,12), tw-12)+"px");
+}
+function showHelp(b){
+  if(helpBtn===b){ hideHelp(); return; }
+  hideHelp();
+  helpBtn=b;
+  b.setAttribute("aria-expanded","true");
+  helpTip.innerHTML=HELP[b.dataset.help]||"";
+  placeTip();
+}
+function hideHelp(){
+  if(helpBtn){ helpBtn.setAttribute("aria-expanded","false"); helpBtn=null; }
+  helpTip.style.display="none";
+}
+document.querySelectorAll("button.q").forEach(b=>{
+  b.addEventListener("click", e=>{ e.stopPropagation(); showHelp(b); });
+});
+document.addEventListener("click", ()=>{ hideHelp(); });
+document.addEventListener("keydown", e=>{ if(e.key==="Escape") hideHelp(); });
+window.addEventListener("resize", ()=>{ if(helpBtn) placeTip(); });
+window.addEventListener("scroll", ()=>{ if(helpBtn) placeTip(); }, true);
 
 /* ================= abas ================= */
 const tabs=[].slice.call(document.querySelectorAll('nav button'));
