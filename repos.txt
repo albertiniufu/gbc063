@@ -1,0 +1,18 @@
+
+1- https://github.com/williancasagrandi/gbc063-kvcache-rl
+2- https://github.com/gabryeltomaz/agente-operador-de-mercado-financeiro.git
+3-https://github.com/UnderworldBlues/super-mario-RL
+4-https://github.com/Matheeusmh/gbc063-snake-game
+5- https://github.com/AmandaG1s/Projeto-IA-PACMAN
+6- https://github.com/estevaolamorim/IA-GBC063
+7- https://github.com/math-mcruz/IA-Truco-Mineiro
+8- https://github.com/DaveBornPizza/embaixadinhas-rl
+9 - https://github.com/giovanaalmeida19/gbc063---intelig-ncia-artificial
+10 - https://github.com/sergio-matos-tech/pitwall-rl
+11 - https://github.com/AkaiRoi/trabalho_IA
+12 - https://github.com/joaoVitorAlvesdeSouza/IA.git
+13 - https://github.com/JoseEMiranda/Robo-Armazem
+14 - https://github.com/MalconUFU/IA-disciplina-ufu
+15 - https://github.com/CaueFAbreu/ia-futebol-rl
+16-
+https://github.com/DudaPaulino/Desafios-ia-
