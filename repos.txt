@@ -1,18 +1,121 @@
 
+
 1- https://github.com/williancasagrandi/gbc063-kvcache-rl
+
 2- https://github.com/gabryeltomaz/agente-operador-de-mercado-financeiro.git
+
 3-https://github.com/UnderworldBlues/super-mario-RL
+
 4-https://github.com/Matheeusmh/gbc063-snake-game
+
 5- https://github.com/AmandaG1s/Projeto-IA-PACMAN
+
 6- https://github.com/estevaolamorim/IA-GBC063
+
 7- https://github.com/math-mcruz/IA-Truco-Mineiro
+
 8- https://github.com/DaveBornPizza/embaixadinhas-rl
+
 9 - https://github.com/giovanaalmeida19/gbc063---intelig-ncia-artificial
+
 10 - https://github.com/sergio-matos-tech/pitwall-rl
+
 11 - https://github.com/AkaiRoi/trabalho_IA
+
 12 - https://github.com/joaoVitorAlvesdeSouza/IA.git
+
 13 - https://github.com/JoseEMiranda/Robo-Armazem
+
 14 - https://github.com/MalconUFU/IA-disciplina-ufu
+
 15 - https://github.com/CaueFAbreu/ia-futebol-rl
-16-
-https://github.com/DudaPaulino/Desafios-ia-
+
+16-https://github.com/DudaPaulino/Desafios-ia-
+
+17 - https://github.com/viniciussilva010/IA-gbc063-
+
+18 - https://github.com/MateusViegasCode/gbc063-robo-aspirador
+
+19 - https://github.com/Matheus-Emiliano/Bomberman.git
+
+20- https://github.com/FlorenceFrankllin/Inteligencia_Artificial-
+
+21- https://github.com/Felby01/GBC063---IA-UFU
+
+22- https://github.com/HenryckRA/rl-braco-4r
+
+23-https://github.com/gabrielhca/agent-dedoverde
+
+24-https://github.com/vitormrocha/Trabalho_IA_GBC063
+
+25- https://github.com/mariaborgesn/gbc063-lunarlander
+
+26 - https://github.com/juliana01s/ia
+
+27 - https://github.com/Marceltxk/gbc063-sistema-kairos-ai
+
+28- https://github.com/samuel-famorim/Lead-Scoring-RL-Agent
+@all ,Vocês podem mandar o link do repo de cada um de voces aqui?
+
+1- https://github.com/williancasagrandi/gbc063-kvcache-rl
+
+2- https://github.com/gabryeltomaz/agente-operador-de-mercado-financeiro.git
+
+3-https://github.com/UnderworldBlues/super-mario-RL
+
+4-https://github.com/Matheeusmh/gbc063-snake-game
+
+5- https://github.com/AmandaG1s/Projeto-IA-PACMAN
+
+6- https://github.com/estevaolamorim/IA-GBC063
+
+7- https://github.com/math-mcruz/IA-Truco-Mineiro
+
+8- https://github.com/DaveBornPizza/embaixadinhas-rl
+
+9 - https://github.com/giovanaalmeida19/gbc063---intelig-ncia-artificial
+
+10 - https://github.com/sergio-matos-tech/pitwall-rl
+
+11 - https://github.com/AkaiRoi/trabalho_IA
+
+12 - https://github.com/joaoVitorAlvesdeSouza/IA.git
+
+13 - https://github.com/JoseEMiranda/Robo-Armazem
+
+14 - https://github.com/MalconUFU/IA-disciplina-ufu
+
+15 - https://github.com/CaueFAbreu/ia-futebol-rl
+
+16-https://github.com/DudaPaulino/Desafios-ia-
+
+17 - https://github.com/viniciussilva010/IA-gbc063-
+
+18 - https://github.com/MateusViegasCode/gbc063-robo-aspirador
+
+19 - https://github.com/Matheus-Emiliano/Bomberman.git
+
+20- https://github.com/FlorenceFrankllin/Inteligencia_Artificial-
+
+21- https://github.com/Felby01/GBC063---IA-UFU
+
+22- https://github.com/HenryckRA/rl-braco-4r
+
+23-https://github.com/gabrielhca/agent-dedoverde
+
+24-https://github.com/vitormrocha/Trabalho_IA_GBC063
+
+25- https://github.com/mariaborgesn/gbc063-lunarlander
+
+26 - https://github.com/juliana01s/ia
+
+27 - https://github.com/Marceltxk/gbc063-sistema-kairos-ai
+
+28- https://github.com/samuel-famorim/Lead-Scoring-RL-Agent
+
+
+29- https://github.com/marcothulioroncolato/Desafio-GBC063-/blob/main/Desafio%201%20-%20Bomberman%20(MDP).pdf
+
+30- https://github.com/Yg0rMateus2704/IA-GBC063
+
+31- https://github.com/devgmarques/IA_Projeto-MountainCar.git
