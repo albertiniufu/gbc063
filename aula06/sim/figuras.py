@@ -44,7 +44,8 @@ d = json.load(open('out.json'))['hist']
 names = [('R', 'rlLaranja', r'$R(\tau)$'), ('G', 'rlAmbar', r'$G_t$'), ('GV', 'rlAzulClaro!55', r'$G_t - V(s_t)$'),
          ('GAE', 'rlAzulClaro', r'GAE, $\lambda=0{,}95$'), ('TD', 'rlAzul', r'TD, $\delta_t$')]
 L = ['% Gerado por figs.py a partir da simulação descrita no anexo (média móvel de 5 iterações).',
-     r'\begin{tikzpicture}', r'\begin{axis}[width=0.66\textwidth, height=0.5\textheight, ymode=log,',
+     r'\providecommand{\figVarW}{0.66\textwidth}\providecommand{\figVarH}{0.5\textheight}',
+     r'\begin{tikzpicture}', r'\begin{axis}[width=\figVarW, height=\figVarH, ymode=log,',
      r'  xmin=0, xmax=146, ymin=60, ymax=60000, xlabel={iteração de treino}, ylabel={variância do estimador},',
      r'  tick label style={font=\scriptsize}, label style={font=\scriptsize}, axis lines=left,',
      r'  ymajorgrids, grid style={rlCinza!20}, legend pos=outer north east, legend style={font=\scriptsize, draw=none, fill=none},',

@@ -17,6 +17,10 @@
 \usepackage{babel}
 \babelprovide[import, main]{brazilian}
 
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usetikzlibrary{arrows.meta}
+
 \setaula{Aula 6 — Gradientes de política II}
 \setprof{Prof. Marcelo Keese Albertini}
 
@@ -28,7 +32,9 @@
 \newcommand{\dpol}{d^{\pol}}
 \newcommand{\dpolnovo}{d^{\pol'}}
 \newcommand{\KLd}[2]{D_{\mathrm{KL}}\!\left(#1\,\|\,#2\right)}
-\newcommand{\KLbar}{\bar{D}_{\mathrm{KL}}}
+\newcommand{\KLbar}{\overline{D}_{\mathrm{KL}}}
+\newcommand{\azul}[1]{{\color{rlAzulClaro}#1}}
+\newcommand{\figVarW}{0.78\textwidth}\newcommand{\figVarH}{6.2cm}
 \DeclareMathOperator{\clipop}{clip}
 \newcommand{\Lsub}[1]{L_{#1}}
 
@@ -65,21 +71,52 @@ mecanismo explícito que a mantém dentro de sua região de validade.
 %% ------------------------------------------------------------
 \section{O estimador do REINFORCE e sua variância}
 
-Recordando a Aula 5, com $m$ trajetórias amostradas de $\pol_\theta$:
+Usaremos uma notação única para toda a aula. Maximizamos o retorno descontado
+esperado e atualizamos os parâmetros por subida de gradiente estocástica:
 \[
-  \nabla_\theta V(\theta) \;\approx\; \frac{1}{m}\sum_{i=1}^{m}
-    \rec(\tau^{(i)}) \sum_{t=0}^{T-1}
-    \nabla_\theta \log \pol_\theta\!\left(a_t^{(i)} \mid s_t^{(i)}\right).
+  J(\theta) \defeq \E_{\tau\sim\pol_\theta}\!\Big[\sum_{t=0}^{\infty}\gamma^t r_t\Big],
+  \qquad
+  G_t \defeq \sum_{t'=t}^{\infty}\gamma^{t'-t}\, r_{t'},
+  \qquad
+  \theta_{k+1} = \theta_k + \alpha\,\ghat_k,
+\]
+com $\gamma = 1$ recuperando o caso não descontado em horizonte finito.
+Recordando a Aula 5, já com a causalidade temporal ($G_t$ no lugar de
+$\rec(\tau)$), para $m$ trajetórias $\tau^{(i)}\sim\pol_\theta$:
+\[
+  \ghat = \frac{1}{m}\sum_{i=1}^{m}\sum_{t=0}^{T-1}\gamma^t\,
+    \nabla_\theta \log \pol_\theta\!\left(a_t^{(i)} \mid s_t^{(i)}\right) G_t^{(i)}.
 \]
 
 \begin{alertabox}
-Não-viesado \emph{não} significa utilizável. Um estimador com esperança correta
-e variância enorme produz, em cada lote, um passo cuja direção pode ter pouca
-relação com o gradiente verdadeiro. O que importa na prática é o erro
-quadrático médio a um dado orçamento de amostras.
+Não-viesado \emph{não} significa utilizável. Com um orçamento finito de $m$
+amostras, quem governa a qualidade do passo é o erro quadrático médio,
+\[
+  \mathrm{EQM}(\ghat) = \big\|\,\text{viés}\,\big\|^2 + \frac{\Var}{m},
+\]
+e um estimador com esperança correta mas variância enorme produz, em cada lote,
+passos quase ortogonais --- ou até opostos --- a $\nabla_\theta J(\theta)$.
 \end{alertabox}
 
-\subsection{Três fontes de variância, três remédios}
+\subsection{O que significa a variância de um estimador}
+
+A Figura~\ref{fig:variancia} torna isso concreto. Cada ponto é a estimativa
+$\ghat$ obtida de um lote; a seta é o gradiente verdadeiro. Os dois
+estimadores são não-viesados --- as nuvens estão centradas em $\nabla J$ ---,
+mas com variância alta cerca de $16\%$ dos passos caem no semiplano em que o
+passo \emph{piora} o objetivo. Com variância baixa, praticamente nenhum.
+
+\begin{figure}[h]
+  \centering
+  \resizebox{\textwidth}{!}{\input{fig-variancia.tex}}
+  \caption{Variância alta \emph{versus} baixa, com o mesmo gradiente esperado.
+  Figura ilustrativa: 70 amostras gaussianas por painel, desvios-padrão 290 e
+  45 em torno de um gradiente de norma $\approx 291$; a fração na direção errada
+  é $\Phi(-\|\nabla J\|/\sigma)\approx 16\%$ no painel da esquerda.}
+  \label{fig:variancia}
+\end{figure}
+
+\subsection{Quatro fontes de variância, quatro remédios}
 
 \begin{enumerate}
   \item \textbf{Amostragem da trajetória.} $\tau$ é aleatória: o mesmo $\theta$
@@ -94,23 +131,25 @@ quadrático médio a um dado orçamento de amostras.
         \emph{depois} da recompensa, que não podem tê-la causado.
         \emph{Remédio: estrutura temporal} --- trocar $\rec(\tau)$ por $G_t$
         (feito na Aula 5).
+  \item \textbf{Horizonte longo.} Mesmo $G_t$ soma muitas recompensas futuras
+        aleatórias, e o ruído acumula com o horizonte. \emph{Remédio: crítico /
+        TD}, que introduz viés.
 \end{enumerate}
 
 Os itens 2 e 3 são \emph{gratuitos}: reduzem a variância sem introduzir viés.
-Um quarto remédio --- trocar $G_t$ por um crítico --- é diferente em natureza:
-troca viés por variância deliberadamente, e é o assunto da Seção~\ref{sec:critico}.
+O quarto é diferente em natureza: troca viés por variância deliberadamente, e é
+o assunto da Seção~\ref{sec:critico}.
 
 %% ------------------------------------------------------------
 \section{A linha de base}
 
 \begin{defbox}{Gradiente de política com linha de base}
 \[
-  \nabla_\theta \E_\tau[\rec] = \E_\tau\!\left[
-    \sum_{t=0}^{T-1} \nabla_\theta \log \pol(a_t \mid s_t; \theta)
-    \left(\underbrace{\sum_{t'=t}^{T-1} r_{t'}}_{G_t} - b(s_t)\right)
-  \right]
+  \nabla_\theta J(\theta) = \E_{\tau\sim\pol_\theta}\!\left[
+    \sum_{t=0}^{\infty} \gamma^t\,\nabla_\theta \log \pol_\theta(a_t \mid s_t)
+    \big(G_t - b(s_t)\big)\right],
 \]
-onde $b$ é qualquer função \textbf{do estado apenas}. Para toda escolha de $b$
+onde $b:\gS\to\R$ é qualquer função \textbf{do estado apenas}. Para toda escolha de $b$
 nessas condições, o estimador permanece não-viesado.
 \end{defbox}
 
@@ -125,30 +164,32 @@ mérito da ação.
 \subsection{Demonstração: a linha de base não introduz viés}
 
 \begin{provabox}
-Basta mostrar que o termo acrescentado tem esperança nula. Fixe $t$:
+Basta mostrar que o termo acrescentado tem esperança nula. Fixe $t$; em azul, a
+parte que muda em cada passo:
 \begin{align*}
-  \E_\tau&\left[\nabla_\theta \log \pol(a_t \mid s_t;\theta)\, b(s_t)\right] \\
-  &= \E_{s_{0:t},\, a_{0:(t-1)}}\Big[\E_{s_{(t+1):T},\, a_{t:(T-1)}}
-      \left[\nabla_\theta \log \pol(a_t \mid s_t;\theta)\, b(s_t)\right]\Big]
+  \E_\tau&\left[\nabla_\theta \log \pol_\theta(a_t \mid s_t)\, b(s_t)\right] \\
+  &= \azul{\E_{s_{0:t},\, a_{0:t-1}}\Big[\E_{a_t,\, s_{t+1:\infty},\, a_{t+1:\infty}}}
+      \left[\nabla_\theta \log \pol_\theta(a_t \mid s_t)\, b(s_t)\right]\azul{\Big]}
       && \text{(lei da esperança total)}\\
-  &= \E_{s_{0:t},\, a_{0:(t-1)}}\Big[b(s_t)\,
-      \E_{a_t\sim\pol(\cdot\mid s_t)}\!\left[\nabla_\theta \log \pol(a_t \mid s_t;\theta)\right]\Big]
+  &= \E_{s_{0:t},\, a_{0:t-1}}\Big[\azul{b(s_t)\,
+      \E_{a_t\sim\pol_\theta(\cdot\mid s_t)}}\!\left[\nabla_\theta \log \pol_\theta(a_t \mid s_t)\right]\Big]
       && \text{($b(s_t)$ é constante na esperança interna}\\[-0.35em]
   &&& \text{\phantom{(}e as variáveis após $t$ não aparecem)}\\
-  &= \E_{s_{0:t},\, a_{0:(t-1)}}\left[b(s_t)\sum_{a} \pol_\theta(a \mid s_t)
-      \frac{\nabla_\theta \pol(a \mid s_t;\theta)}{\pol_\theta(a \mid s_t)}\right]
+  &= \E_{s_{0:t},\, a_{0:t-1}}\left[b(s_t)\azul{\sum_{a} \pol_\theta(a \mid s_t)
+      \frac{\nabla_\theta \pol_\theta(a \mid s_t)}{\pol_\theta(a \mid s_t)}}\right]
       && \text{(razão de verossimilhança)}\\
-  &= \E_{s_{0:t},\, a_{0:(t-1)}}\left[b(s_t)\, \nabla_\theta \sum_{a} \pol(a \mid s_t;\theta)\right]
+  &= \E_{s_{0:t},\, a_{0:t-1}}\left[b(s_t)\, \azul{\nabla_\theta \sum_{a} \pol_\theta(a \mid s_t)}\right]
       && \text{(soma finita: troca com o gradiente)}\\
-  &= \E_{s_{0:t},\, a_{0:(t-1)}}\left[b(s_t)\, \nabla_\theta 1\right] = 0.
+  &= \E_{s_{0:t},\, a_{0:t-1}}\left[b(s_t)\, \azul{\nabla_\theta 1}\right] = \azul{0}.
       && \text{(normalização de $\pol$)} \qquad\blacksquare
 \end{align*}
 \end{provabox}
 
 \begin{alertabox}
 \textbf{O passo crítico é o terceiro.} Ele exige tirar $b$ de dentro de
-$\sum_a$. Se $b$ dependesse da ação --- $b(s,a)$ --- isso seria impossível, o
-argumento desmoronaria, e o estimador ficaria viesado. Esta é a pergunta de
+$\sum_a$. Se $b$ dependesse da ação --- $b(s,a)$, por exemplo $b = \Qpi(s,a)$, que
+zeraria o estimador! --- isso seria impossível, o argumento desmoronaria, e o
+estimador ficaria viesado. Esta é a pergunta de
 prova mais comum sobre o tópico, e a resposta errada mais comum.
 \end{alertabox}
 
@@ -156,24 +197,25 @@ prova mais comum sobre o tópico, e a resposta errada mais comum.
 
 A variância do estimador se decompõe aproximadamente em uma soma sobre passos
 de tempo. Concentrando-se em um termo e escrevendo
-$\Var[X] = \E[X^2] - (\E[X])^2$, observe que o segundo momento
-$(\E[X])^2$ \textbf{não depende de $b$} --- é exatamente o que acabamos de
-demonstrar. Minimizar a variância equivale, portanto, a minimizar somente
+$\Var[X] = \E\big[\|X\|^2\big] - \big\|\E[X]\big\|^2$, observe que
+$\E[X]$ \textbf{não depende de $b$} --- é exatamente o que acabamos de
+demonstrar. Minimizar a variância no estado $s$ equivale, portanto, a minimizar
+somente o segundo momento:
 \[
-  \argmin_b \;\E_{s\sim \dpol}\;\E_{a\sim\pol(\cdot\mid s),\, G\mid s,a}
-    \left[\left(\nabla_\theta \log \pol(a \mid s;\theta)\right)^2
-    \left(G_t(s) - b(s)\right)^2\right].
+  \argmin_{b(s)} \;\E_{a\sim\pol_\theta(\cdot\mid s),\, G_t}
+    \left[\big\|\nabla_\theta \log \pol_\theta(a \mid s)\big\|^2
+    \big(G_t - b(s)\big)^2 \;\Big|\; s_t = s\right].
 \]
 
 \begin{teobox}{Linha de base de variância mínima}
 Trata-se de um problema de \textbf{mínimos quadrados ponderados}, em que o peso
-de cada amostra é o quadrado do escore. Derivando em relação a $b(s)$ e
+de cada amostra é $w(a,s) = \|\nabla_\theta \log \pol_\theta(a\mid s)\|^2$. Derivando em relação a $b(s)$ e
 igualando a zero:
 \[
   b^\star(s) \;=\;
-  \frac{\E_{a\sim\pol,\,G}\!\left[\left(\nabla_\theta \log \pol(a\mid s;\theta)\right)^2 G_t(s)\right]}
-       {\E_{a\sim\pol,\,G}\!\left[\left(\nabla_\theta \log \pol(a\mid s;\theta)\right)^2\right]}
-  \;\approx\; \E_{a\sim\pol,\,G}\!\left[G_t(s)\right] \;=\; \Vpi(s).
+  \frac{\E\!\left[\|\nabla_\theta \log \pol_\theta(a\mid s)\|^2\, G_t \mid s_t = s\right]}
+       {\E\!\left[\|\nabla_\theta \log \pol_\theta(a\mid s)\|^2 \mid s_t = s\right]}
+  \;\approx\; \E_{\pol_\theta}\!\left[G_t \mid s_t = s\right] \;=\; \Vpi(s).
 \]
 \end{teobox}
 
@@ -193,7 +235,7 @@ recompensas determinísticas $r = (98,\, 101,\, 104)$.
 \smallskip
 Para a \emph{softmax}, o escore tem forma fechada:
 $\nabla_\theta \log \pol(a) = e_a - \pol$, onde $e_a$ é o vetor canônico. Logo
-$\norm{\nabla_\theta \log\pol(a)}^2 = 1 - \tfrac13 = \tfrac23$ para toda ação
+$\norm{\nabla_\theta \log\pol(a)}^2 = \big(1-\tfrac13\big)^2 + 2\big(0-\tfrac13\big)^2 = \tfrac23$ para toda ação
 $a$ --- os pesos do problema de mínimos quadrados são iguais, e portanto
 $b^\star$ é a \emph{média simples} dos retornos, $b^\star = 101$.
 
@@ -221,8 +263,11 @@ de base atingir a mesma precisão.
 \end{exbox}
 
 \begin{ideiabox}
-O exemplo é extremo de propósito, mas o mecanismo é geral: o ganho cresce com a
-razão entre o \emph{nível} dos retornos e a sua \emph{dispersão}. Ambientes com
+O exemplo é extremo de propósito, mas o mecanismo é geral. Sem linha de base,
+cada amostra carrega o nível comum das recompensas ($\approx 101$); com a linha de
+base em 101, sobra só a diferença entre as ações ($\pm 3$). Como a variância
+cresce com o quadrado dessa escala, o ganho é da ordem de
+$(\text{nível médio}/\text{dispersão})^2$. Ambientes com
 recompensa de sobrevivência (``$+1$ por passo vivo''), muito comuns, estão
 exatamente nesse regime.
 \end{ideiabox}
@@ -231,17 +276,17 @@ exatamente nesse regime.
 \section{Do retorno ao crítico: métodos ator--crítico}
 \label{sec:critico}
 
-O retorno $G_t^i$ é uma estimativa não-viesada de $\Vpi(s_t)$ obtida de uma
-\emph{única} execução --- soma de muitas variáveis aleatórias, com variância
+Mesmo em $G_t - \Vpi(s_t)$, o alvo $G_t$ é uma estimativa não-viesada de
+$\Vpi(s_t)$ obtida de uma \emph{única} execução --- soma de muitas variáveis aleatórias, com variância
 proporcional ao horizonte. A alternativa é reduzir essa variância
 \textbf{introduzindo viés}, via \emph{bootstrapping} e aproximação de função.
 É exatamente o dilema TD versus Monte Carlo da Aula 3, agora aplicado ao alvo
 do gradiente de política.
 
 \begin{defbox}{Métodos ator--crítico}
-Mantêm representações explícitas \emph{da política} (o \textbf{ator},
-$\pol_\theta$) e \emph{da função valor} (o \textbf{crítico}, $V_w$), e
-atualizam as duas em paralelo. A estimativa de $V$ ou $Q$ que entra no
+Mantêm representações paramétricas explícitas \emph{da política} (o
+\textbf{ator}, $\pol_\theta$) e \emph{da função valor} (o \textbf{crítico},
+$V_w$ ou $Q_w$, com parâmetros $w$), e atualizam as duas em paralelo. A estimativa de $V$ ou $Q$ que entra no
 gradiente de política é produzida pelo crítico, e não pelo retorno observado.
 \end{defbox}
 
@@ -251,8 +296,8 @@ Partindo da forma com linha de base e substituindo o retorno amostral por um
 crítico $Q(s_t,a_t;w)$, e depois tomando a linha de base como uma estimativa de
 $V$, a expressão colapsa em:
 \[
-  \nabla_\theta \E_\tau[\rec] \;\approx\; \E_\tau\!\left[\sum_{t=0}^{T-1}
-    \nabla_\theta \log \pol(a_t\mid s_t;\theta)\,
+  \nabla_\theta J(\theta) \;\approx\; \E_{\tau\sim\pol_\theta}\!\left[\sum_{t=0}^{\infty}
+    \gamma^t\,\nabla_\theta \log \pol_\theta(a_t\mid s_t)\,
     \mdestaque{rlLaranja}{\Ahat^{\pol}(s_t,a_t)}\right],
   \qquad
   \Adv^{\pol}(s,a) = \Qpi(s,a) - \Vpi(s).
@@ -269,9 +314,12 @@ $\E_{a\sim\pol}[\Adv^{\pol}(s,a)] = \E_{a\sim\pol}[\Qpi(s,a)] - \Vpi(s)
 \end{provabox}
 
 \begin{ideiabox}
-A vantagem é, por construção, \textbf{centrada}: metade das ações da política
-atual tem vantagem positiva e metade negativa, em média ponderada. Essa é a
-razão estatística de sua eficácia --- é a versão ``com média zero'' do sinal de
+A vantagem é, por construção, \textbf{centrada}: na média ponderada por
+$\pol(\cdot\mid s)$, ações acima da média recebem peso positivo e ações abaixo
+da média, peso negativo. Note também que $\Adv^{\pol} = \Qpi - \Vpi$ é
+``retorno esperado menos a linha de base prática'': ator--crítico é linha de base
+mais \emph{bootstrapping}. Essa é a
+razão estatística de sua eficácia: é a versão ``com média zero'' do sinal de
 aprendizado, e não apenas uma quantidade conveniente.
 \end{ideiabox}
 
@@ -282,26 +330,58 @@ caminhar do Monte Carlo puro para o TD puro.
 
 \medskip
 \begin{center}
+\small
 \begin{tabular}{@{}llll@{}}
 \toprule
 \textbf{Peso do escore} & \textbf{Nome} & \textbf{Viés} & \textbf{Variância} \\
 \midrule
 $\rec(\tau)$ & retorno total da trajetória & nenhum & altíssima \\
-$G_t = \sum_{t'\ge t} r_{t'}$ & retorno futuro & nenhum & muito alta \\
+$G_t = \sum_{t'\ge t} \gamma^{t'-t} r_{t'}$ & retorno futuro (causal) & nenhum & muito alta \\
 $G_t - b(s_t)$ & retorno com linha de base & nenhum & alta \\
-$G_t - V_w(s_t)$ & vantagem de Monte Carlo & só de $V_w$ & média \\
-$Q_w(s_t,a_t) - V_w(s_t)$ & vantagem estimada & de $Q_w$ e $V_w$ & baixa \\
-$\delta_t = r_t + \gamma V_w(s_{t+1}) - V_w(s_t)$ & erro de TD & maior & muito baixa \\
-$\Ahat_t^{\mathrm{GAE}(\gamma,\lambda)}$ & vantagem generalizada & ajustável & ajustável \\
+$G_t - V_w(s_t)$ & vantagem de Monte Carlo & nenhum$^\dagger$ & média \\
+$Q_w(s_t,a_t) - V_w(s_t)$ & vantagem estimada dupla & do crítico $Q_w$ & baixa \\
+$\delta_t = r_t + \gamma V_w(s_{t+1}) - V_w(s_t)$ & erro de TD de 1 passo & do crítico $V_w$ & muito baixa \\
+$\Ahat_t^{\mathrm{GAE}(\gamma,\lambda)} = \sum_{l\ge0}(\gamma\lambda)^l\delta_{t+l}$ & vantagem generalizada & ajustável ($\lambda$) & ajustável ($\lambda$) \\
 \bottomrule
 \end{tabular}
 \end{center}
 \vspace{-0.3em}
+{\small $^\dagger$ Subtrair $V_w(s_t)$ de $G_t$ é um caso de linha de base: não
+introduz viés no gradiente esperado, desde que $w$ não dependa da ação $a_t$. Erros
+do crítico só degradam a redução de variância.}
+
+\medskip
 A última linha interpola continuamente entre as demais por meio de um único
-parâmetro $\lambda \in [0,1]$, e é o assunto da Aula 7. Note que
+parâmetro $\lambda \in [0,1]$, e é o assunto da Aula 7.
+
+\subsection{O preço explícito do erro de TD}
+
 $\E[\delta_t \mid s_t,a_t] = \Adv^{\pol}(s_t,a_t)$ \emph{apenas} quando
-$V_w = \Vpi$; fora disso, o erro de TD é um estimador viesado da vantagem, e
-esse viés é o preço explícito da redução de variância.
+$V_w = \Vpi$. Com um crítico imperfeito, surge o viés
+\[
+  \E[\delta_t\mid s_t,a_t] - \Adv^{\pol}(s_t,a_t)
+  = \gamma\,\E\big[V_w(s_{t+1}) - \Vpi(s_{t+1})\mid s_t,a_t\big]
+    - \big(V_w(s_t)-\Vpi(s_t)\big).
+\]
+É uma troca deliberada: aceitamos um viés controlado pela qualidade do crítico em
+troca de variância mínima.
+
+\subsection{A variância de cada estimador ao longo do treino}
+
+A Figura~\ref{fig:variancia-treino} mede a variância do estimador do gradiente
+para cinco pesos da tabela, num problema pequeno, todos avaliados \emph{no
+mesmo lote} de trajetórias. A ordem é a da tabela, e as três curvas que usam o
+crítico caem nas primeiras iterações, enquanto o crítico aprende. Os detalhes do
+experimento estão no Apêndice~\ref{ap:sim}.
+
+\begin{figure}[h]
+  \centering
+  \input{fig-variancia-treino.tex}
+  \caption{Variância (traço da covariância do gradiente por episódio, escala log)
+  ao longo do treino, numa cadeia de 8 estados com recompensa ruidosa. Média
+  móvel de 5 iterações.}
+  \label{fig:variancia-treino}
+\end{figure}
 
 %% ------------------------------------------------------------
 \section{Os problemas estruturais do gradiente de política}
@@ -311,7 +391,7 @@ $\max_\theta J(\pol_\theta) \defeq \E_{\tau\sim\pol_\theta}\big[\sum_{t\ge 0}\ga
 atacado por subida de gradiente estocástica com
 $g = \E_{\tau\sim\pol_\theta}\big[\sum_{t\ge 0}\gamma^t
 \nabla_\theta \log \pol_\theta(a_t\mid s_t)\Adv^{\pol_\theta}(s_t,a_t)\big]$.
-Três limitações persistem mesmo com variância controlada.
+Duas barreiras persistem mesmo com a variância já controlada.
 
 \subsection{Eficiência amostral}
 
@@ -335,6 +415,18 @@ $\Pi = \left\{\pol \in \R^{\abs{\gS}\times\abs{\gA}} :
 \sum_a \pol_{sa} = 1,\; \pol_{sa}\ge 0\right\}$.
 O gradiente dá passos em $\theta$; o desempenho depende do deslocamento em
 $\Pi$. Não há razão para que a mesma régua sirva nos dois lugares.
+\end{defbox}
+
+Para medir o passo no espaço certo, precisamos de uma distância entre
+\emph{comportamentos}, e não entre parâmetros:
+
+\begin{defbox}{Divergência de Kullback--Leibler}
+$\KLd{P}{Q} = \sum_x P(x)\log\frac{P(x)}{Q(x)}$, e entre políticas num estado
+$s$: $\KLd{\polnovo}{\pol}[s] = \sum_{a\in\gA}\polnovo(a\mid s)\log
+\frac{\polnovo(a\mid s)}{\pol(a\mid s)}$. O índice $[s]$ indica o estado em
+que a KL é calculada: cada estado tem a sua distribuição sobre ações.
+Propriedades: $\KLd{P}{P} = 0$; \; $\KLd{P}{Q}\ge 0$; \;
+$\KLd{P}{Q}\ne\KLd{Q}{P}$ --- \textbf{não é simétrica}, logo não é uma métrica.
 \end{defbox}
 
 \begin{exbox}{resolvido — a política sigmoide}
@@ -367,16 +459,24 @@ significa progresso inaceitavelmente lento. E o tamanho ``certo'' \emph{muda com
 $\theta$}: nenhuma constante serve para a corrida inteira.
 \end{alertabox}
 
-\subsection{Uma observação: KL como métrica local}
+\subsection{Geometria local: visitação descontada e informação de Fisher}
 
-A ligação entre as duas colunas do exemplo anterior não é acidental. Para
-$\polnovo$ próxima de $\pol$, a expansão de Taylor de segunda ordem da
-divergência KL é
+A ligação entre as duas colunas do exemplo anterior não é acidental. Seja
+\[
+  \dpol(s) \defeq (1-\gamma)\sum_{t=0}^{\infty}\gamma^t\,\Prob(s_t = s\mid\pol),
+  \qquad
+  \sum_{s\in\gS}\dpol(s) = (1-\gamma)\sum_{t=0}^{\infty}\gamma^t = 1,
+\]
+a \textbf{distribuição descontada de visitação de estados}. Para deslocamentos
+pequenos $\Delta\theta$, a expansão de Taylor de segunda ordem da KL média nos
+estados $s\sim d^{\pol_\theta}$ é
 \[
   \KLbar(\theta + \Delta\theta \,\|\, \theta)
+  \defeq \E_{s\sim d^{\pol_\theta}}\!\left[\KLd{\pol_{\theta+\Delta\theta}}{\pol_\theta}[s]\right]
   \;\approx\; \tfrac{1}{2}\,\Delta\theta^\top F(\theta)\, \Delta\theta,
-  \qquad
-  F(\theta) = \E_{s\sim\dpol,\, a\sim\pol}\!\left[
+\]
+\[
+  F(\theta) = \E_{s\sim d^{\pol_\theta},\, a\sim\pol_\theta}\!\left[
     \nabla_\theta \log \pol_\theta(a\mid s)\,
     \nabla_\theta \log \pol_\theta(a\mid s)^\top\right],
 \]
@@ -384,7 +484,9 @@ onde $F$ é a \textbf{matriz de informação de Fisher}. Ou seja: a KL é
 localmente uma norma quadrática cuja métrica depende de $\theta$. Restringir a
 KL é medir o passo com a régua correta em cada ponto --- e usar $F^{-1}g$ em
 vez de $g$ como direção é precisamente o \emph{gradiente natural}, sobre o qual
-o TRPO se constrói. O PPO evita calcular $F$, e paga por isso em rigor.
+o TRPO (Schulman et al., 2015) se constrói, com uma restrição quadrática de KL.
+O PPO (Schulman et al., 2017) impõe proximidade em $\Pi$ só com informação de
+primeira ordem, sem construir nem inverter $F$, e paga por isso em rigor.
 
 %% ------------------------------------------------------------
 \section{Limites de desempenho relativo entre duas políticas}
@@ -462,17 +564,22 @@ E se simplesmente disséssemos $\dpolnovo \approx \dpol$?
 \]
 \end{teobox}
 
-O erro cometido ao trocar $\dpolnovo$ por $\dpol$ é controlado pela divergência
-KL média entre as políticas. Se elas são próximas em KL, a aproximação é boa e
+Aqui $C>0$ depende de $\gamma$ e de $\max_{s,a}\abs{\Adv^{\pol}(s,a)}$. O erro
+cometido ao trocar $\dpolnovo$ por $\dpol$ é controlado pela divergência KL
+média entre as políticas. Além disso, em $\polnovo = \pol$ o substituto toca o
+objetivo verdadeiro com a inclinação exata:
+\[
+  \Lsub{\pol}(\pol) = 0,
+  \qquad
+  \nabla_{\theta'}\Lsub{\pol_\theta}(\pol_{\theta'})\big|_{\theta'=\theta} = \nabla_\theta J(\pol_\theta).
+\]
+Equivalentemente, maximizar o limitante inferior
+\[
+  J(\polnovo) \;\ge\; J(\pol) + \Lsub{\pol}(\polnovo) - C\sqrt{\KLbar(\polnovo\,\|\,\pol)}
+\]
+garante melhoria real em $J$. Se elas são próximas em KL, a aproximação é boa e
 $\Lsub{\pol}(\polnovo)$ torna-se um \textbf{substituto} legítimo do objetivo.
 
-\begin{defbox}{Divergência de Kullback--Leibler}
-$\KLd{P}{Q} = \sum_x P(x)\log\frac{P(x)}{Q(x)}$, e entre políticas num estado
-$s$: $\KLd{\polnovo}{\pol}[s] = \sum_{a\in\gA}\polnovo(a\mid s)\log
-\frac{\polnovo(a\mid s)}{\pol(a\mid s)}$.
-Propriedades: $\KLd{P}{P} = 0$; \; $\KLd{P}{Q}\ge 0$; \;
-$\KLd{P}{Q}\ne\KLd{Q}{P}$ --- \textbf{não é simétrica}, logo não é uma métrica.
-\end{defbox}
 
 \subsection{O que se ganha com a aproximação}
 
@@ -515,11 +622,14 @@ A atualização resolve um problema \emph{sem restrição}, em que a KL entra co
 penalidade:
 \[
   \theta_{k+1} = \argmax_\theta\; \Lsub{\theta_k}(\theta)
-    - \beta_k\, \KLbar(\theta \| \theta_k),
+    - \beta_k\, \KLbar(\theta_k, \theta),
   \qquad
-  \KLbar(\theta\|\theta_k) = \E_{s\sim d^{\pol_k}}\!\left[
+  \KLbar(\theta_k,\theta) \defeq \E_{s\sim d^{\pol_k}}\!\left[
     \KLd{\pol_{\theta_k}(\cdot\mid s)}{\pol_\theta(\cdot\mid s)}\right].
 \]
+Tomar $\pol_{\theta_k}$ no primeiro argumento facilita o cálculo com dados de
+$\pol_{\theta_k}$ e preserva a mesma curvatura local
+$\tfrac12\,\Delta\theta^\top F(\theta_k)\,\Delta\theta$.
 
 \begin{algbox}{PPO com penalidade KL adaptativa}
 \textbf{Entrada:} $\theta_0$; penalidade inicial $\beta_0$; KL alvo $\delta$.
@@ -529,12 +639,13 @@ penalidade:
     \item Colete trajetórias parciais $\mathcal{D}_k$ executando $\pol_k = \pol(\theta_k)$.
     \item Estime as vantagens $\Ahat_t^{\pol_k}$ por qualquer método.
     \item Calcule $\theta_{k+1} = \argmax_\theta \Lsub{\theta_k}(\theta)
-          - \beta_k \KLbar(\theta\|\theta_k)$ com $K$ passos de SGD por
-          minilotes (Adam).
-    \item \textbf{se} $\KLbar(\theta_{k+1}\|\theta_k) \ge 1{,}5\,\delta$
-          \textbf{então} $\beta_{k+1} \leftarrow 2\beta_k$; \\
-          \textbf{senão se} $\KLbar(\theta_{k+1}\|\theta_k) \le \delta/1{,}5$
-          \textbf{então} $\beta_{k+1} \leftarrow \beta_k/2$.
+          - \beta_k \KLbar(\theta_k,\theta)$ com $K$ épocas de SGD/Adam em
+          minilotes.
+    \item \textbf{se} $\KLbar(\theta_k,\theta_{k+1}) \ge 1{,}5\,\delta$
+          \textbf{então} $\beta_{k+1} \leftarrow 2\beta_k$ (afastou-se demais); \\
+          \textbf{senão se} $\KLbar(\theta_k,\theta_{k+1}) \le \delta/1{,}5$
+          \textbf{então} $\beta_{k+1} \leftarrow \beta_k/2$ (cauteloso demais); \\
+          \textbf{senão} mantenha $\beta_{k+1} = \beta_k$.
   \end{enumerate}
 \end{enumerate}
 \end{algbox}
@@ -561,20 +672,56 @@ No início de cada época de otimização temos $\theta = \theta_k$, logo
 $r_t = 1$ e $L^{\mathrm{CLIP}} = \Lsub{\theta_k}$: o objetivo recortado coincide
 com o substituto exatamente onde o substituto é confiável.
 
+A Figura~\ref{fig:clip} mostra um termo de $L^{\mathrm{CLIP}}$ em função de
+$r_t$. O eixo vertical é o valor do termo de uma amostra,
+$\min\big(r_t\Ahat_t,\ \clipop(r_t,1-\epsilon,1+\epsilon)\,\Ahat_t\big)$, e o
+eixo horizontal marca o zero; o tracejado é o termo sem recorte, $r_t\Ahat_t$, e
+o ponto marca $r_t = 1$, onde a otimização começa a cada iteração.
+
+\begin{figure}[h]
+  \centering
+  \begin{tikzpicture}[x=2.4cm, y=1.4cm]
+    \node[font=\small\bfseries, text=rlAzulClaro] at (1,1.95) {$\Ahat_t>0$ (ação boa)};
+    \draw[-{Stealth}] (0,0) -- (2.15,0) node[below left, font=\scriptsize] {$r_t(\theta)$};
+    \draw[-{Stealth}] (0,0) -- (0,1.75) node[right, font=\scriptsize, rlCinza] {objetivo};
+    \foreach \x/\l in {0.8/1-\epsilon, 1/1, 1.2/1+\epsilon}
+      \draw[rlCinza!60, densely dotted] (\x,0) -- (\x,\x) node[pos=0, below, font=\tiny, text=black] {$\l$};
+    \draw[rlCinza!70, dashed, line width=1pt] (1.2,1.2) -- (1.6,1.6) node[right, font=\scriptsize, text=rlCinza] {$r_t\Ahat_t$};
+    \draw[rlAzulClaro, line width=2pt] (0,0) -- (1.2,1.2) -- (2.05,1.2);
+    \fill[rlAzul] (1,1) circle (2pt);
+    \node[font=\scriptsize, text=rlAzulClaro, below] at (1.7,1.2) {$\nabla_\theta = 0$ (teto)};
+  \end{tikzpicture}
+  \hspace{1.2cm}
+  \begin{tikzpicture}[x=2.4cm, y=1.4cm]
+    \node[font=\small\bfseries, text=rlLaranja] at (1,0.45) {$\Ahat_t<0$ (ação ruim)};
+    \draw[-{Stealth}] (0,0) -- (2.15,0) node[above left, font=\scriptsize] {$r_t(\theta)$};
+    \draw (0,0.1) -- (0,-1.75) node[right, font=\scriptsize, rlCinza] {objetivo};
+    \foreach \x/\l in {0.8/1-\epsilon, 1/1, 1.2/1+\epsilon}
+      \draw[rlCinza!60, densely dotted] (\x,0) -- (\x,-\x) node[pos=0, above, font=\tiny, text=black] {$\l$};
+    \draw[rlCinza!70, dashed, line width=1pt] (0,0) -- (0.8,-0.8);
+    \node[font=\scriptsize, text=rlCinza] at (0.22,-0.5) {$r_t\Ahat_t$};
+    \draw[rlLaranja, line width=2pt] (0,-0.8) -- (0.8,-0.8) -- (2.0,-1.6);
+    \fill[rlAzul] (1,-1) circle (2pt);
+    \node[font=\scriptsize, text=rlLaranja, below] at (0.4,-0.8) {$\nabla_\theta = 0$ (piso)};
+  \end{tikzpicture}
+  \caption{Leitura gráfica do recorte: um termo de $L^{\mathrm{CLIP}}$ em função de $r_t$.}
+  \label{fig:clip}
+\end{figure}
+
 \subsection{Análise caso a caso do recorte}
 
 Desenvolvendo o $\min$ nas seis combinações possíveis:
 
 \medskip
-\begin{center}
-\begin{tabular}{@{}lccc@{}}
+\begin{center}\small
+\begin{tabular}{@{}p{0.17\textwidth}p{0.24\textwidth}p{0.2\textwidth}p{0.29\textwidth}@{}}
 \toprule
  & $r_t < 1-\epsilon$ & $1-\epsilon \le r_t \le 1+\epsilon$ & $r_t > 1+\epsilon$ \\
 \midrule
-$\Ahat_t > 0$ (ação boa)  & $r_t\Ahat_t$ \; \emph{ativo} & $r_t\Ahat_t$ \; \emph{ativo}
-  & $(1+\epsilon)\Ahat_t$ \; \textbf{plano} \\
-$\Ahat_t < 0$ (ação ruim) & $(1-\epsilon)\Ahat_t$ \; \textbf{plano} & $r_t\Ahat_t$ \; \emph{ativo}
-  & $r_t\Ahat_t$ \; \emph{ativo} \\
+$\Ahat_t > 0$ (ação boa)  & $r_t\Ahat_t$ \; \emph{ativo: recupera} & $r_t\Ahat_t$ \; \emph{ativo}
+  & $(1+\epsilon)\Ahat_t$ \; \textbf{plano: trava a subida} \\
+$\Ahat_t < 0$ (ação ruim) & $(1-\epsilon)\Ahat_t$ \; \textbf{plano: trava a queda} & $r_t\Ahat_t$ \; \emph{ativo}
+  & $r_t\Ahat_t$ \; \emph{ativo: corrige o excesso} \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -583,12 +730,13 @@ $\Ahat_t < 0$ (ação ruim) & $(1-\epsilon)\Ahat_t$ \; \textbf{plano} & $r_t\Aha
 empurrar naquela direção.
 
 \begin{ideiabox}
-\textbf{A assimetria é deliberada.} O $\min$ escolhe sempre o ramo mais
-\emph{pessimista}. Para uma ação boa, o recorte remove o incentivo de aumentar
+\textbf{Freia a alteração, nunca o arrependimento.} O $\min$ escolhe sempre o
+ramo mais \emph{pessimista}. Para uma ação boa, o recorte remove o incentivo de aumentar
 sua probabilidade além de $1+\epsilon$. Para uma ação ruim que já foi empurrada
 para $r_t \gg 1$ por um passo anterior, o gradiente \textbf{continua ativo} ---
-o recorte nunca remove o incentivo de \emph{voltar}. É exatamente o
-comportamento que se deseja de um mecanismo de segurança.
+o ramo linear $r_t\Ahat_t$ é menor (mais negativo), e o recorte nunca remove o
+incentivo de \emph{voltar}. Em resumo: o gradiente só é desligado quando a
+mudança já foi na direção que a vantagem pedia.
 \end{ideiabox}
 
 \begin{alertabox}
@@ -601,25 +749,33 @@ não uma consequência dela. Na prática, deve-se monitorar a KL empírica.
 \subsection{O algoritmo completo, na forma usada em implementações}
 
 \begin{algbox}{PPO com objetivo recortado}
-\textbf{Entrada:} $\theta_0$ (ator), $w_0$ (crítico), $\epsilon$, épocas $K$,
-tamanho de minilote.
+\textbf{Entrada:} $\theta_0$ (ator), $w_0$ (crítico), $\epsilon \approx 0{,}2$,
+épocas $K\in[3,10]$, pesos $c_1\approx 0{,}5$ e $c_2\approx 0{,}01$.
 \begin{enumerate}[leftmargin=1.6em, itemsep=0.1em]
   \item \textbf{para} $k = 0,1,2,\dots$:
   \begin{enumerate}[leftmargin=1.4em, itemsep=0.05em, label=\alph*)]
-    \item Execute $\pol_{\theta_k}$ por $T$ passos em $N$ ambientes paralelos.
-    \item Estime as vantagens $\Ahat_t$ (na prática, por GAE --- Aula 7) e
-          \textbf{congele-as}.
-    \item Guarde $\log \pol_{\theta_k}(a_t\mid s_t)$: é o denominador de $r_t(\theta)$.
-    \item \textbf{para} época $=1,\dots,K$, e para cada minilote: um passo de
-          Adam sobre
-          $\;-L^{\mathrm{CLIP}} + c_1 L^{V} - c_2\,\mathcal{H}[\pol_\theta]$.
+    \item Execute $\pol_{\theta_k}$ por $T$ passos em $N$ ambientes paralelos
+          (lote de $NT$ transições).
+    \item Calcule os alvos $\hat G_t$ e as vantagens $\Ahat_t$ (na prática, por
+          GAE --- Aula 7) e \textbf{congele-os}.
+    \item Guarde $\log \pol_{\theta_k}(a_t\mid s_t)$ como constante: é o
+          denominador fixo de $r_t(\theta)$.
+    \item \textbf{para} época $=1,\dots,K$, e para cada minilote ($\Ahat_t$
+          normalizada, $\|\nabla\|\le 0{,}5$): um passo de Adam na perda conjunta.
   \end{enumerate}
 \end{enumerate}
 \end{algbox}
 
-São três termos na perda: o objetivo recortado do \textbf{ator}; o erro
-quadrático do \textbf{crítico}, $L^{V} = (V_w(s_t) - \hat{G}_t)^2$; e um bônus
-de \textbf{entropia} $\mathcal{H}$, que impede a política de se tornar
+A perda conjunta, minimizada a cada minilote, é
+\[
+  \mathcal{L}(\theta,w) = -L^{\mathrm{CLIP}}_{\theta_k}(\theta)
+    + c_1\big(V_w(s_t) - \hat G_t\big)^2 - c_2\,\mathcal{H}\big[\pol_\theta(\cdot\mid s_t)\big],
+\]
+com a razão calculada em espaço log, por estabilidade numérica:
+$r_t(\theta) = \exp\big(\log\pol_\theta(a_t\mid s_t) - \log\pol_{\theta_k}(a_t\mid s_t)\big)$.
+São três termos: o objetivo recortado melhora o \textbf{ator} com segurança; o erro
+quadrático treina o \textbf{crítico} por regressão aos alvos congelados; e o
+bônus de \textbf{entropia} $\mathcal{H}$ impede a política de se tornar
 determinística cedo demais e matar a exploração.
 
 \subsection{Valores usuais e armadilhas}
@@ -629,9 +785,12 @@ determinística cedo demais e matar a exploração.
         $c_1 \approx 0{,}5$; \; $c_2 \approx 0{,}01$.
   \item Vantagens normalizadas por minilote; corte da norma do gradiente em
         $0{,}5$.
-  \item \textbf{Monitorar} a KL empírica entre $\pol_\theta$ e $\pol_{\theta_k}$
-        e a \emph{fração de amostras recortadas}. KL disparando $\Rightarrow$
-        reduzir $K$ ou a taxa de aprendizado.
+  \item \textbf{Monitorar}, ao fim de cada iteração, a KL empírica entre
+        $\pol_\theta$ e $\pol_{\theta_k}$ e a \emph{fração de amostras recortadas}
+        ($\abs{r_t - 1} > \epsilon$). KL disparando $\Rightarrow$ reduzir $K$, a
+        taxa de aprendizado, ou aplicar \emph{early stopping} por KL. Fração
+        recortada subindo $\Rightarrow$ a política está mudando rápido demais
+        para o lote atual.
 \end{itemize}
 
 \begin{alertabox}
@@ -640,7 +799,9 @@ determinística cedo demais e matar a exploração.
   \item \emph{Recalcular} $\Ahat_t$ dentro do laço de épocas. As vantagens são
         de $\pol_{\theta_k}$ e devem permanecer congeladas durante as $K$ épocas.
   \item Não destacar o gradiente do denominador de $r_t(\theta)$: ele é uma
-        constante, não uma função de $\theta$.
+        constante numérica. Se o autodiff derivar também o denominador,
+        $r_t(\theta)\equiv 1$ e o gradiente é identicamente nulo. Use valores
+        armazenados ou \emph{detach}.
   \item $K$ grande demais. A política se afasta, e o recorte sozinho não segura
         a KL --- é a falha mais comum e a mais difícil de diagnosticar, porque
         a curva de aprendizado piora lentamente em vez de quebrar.
@@ -689,7 +850,8 @@ e não do objetivo em si.
 \]
 \[
   \abs{J(\polnovo) - J(\pol) - \Lsub{\pol}(\polnovo)}
-  \;\le\; C\sqrt{\E_{s\sim\dpol}\!\left[\KLd{\polnovo}{\pol}[s]\right]}.
+  \;\le\; C\sqrt{\E_{s\sim\dpol}\!\left[\KLd{\polnovo}{\pol}[s]\right]}
+  \;=\; C\sqrt{\KLbar(\polnovo\,\|\,\pol)}.
 \]
 
 \textbf{5. PPO}
@@ -809,6 +971,33 @@ que se vê em (i) e (ii) com o que acontece em (iii).
   \item O PPO garante melhoria monotônica? Se não, o que herda da Seção~5?
 \end{enumerate}
 \end{discbox}
+
+%% ------------------------------------------------------------
+\appendix
+\section{O experimento de variância por estimador}
+\label{ap:sim}
+
+A Figura~\ref{fig:variancia-treino} vem de uma simulação pequena, escrita para
+esta aula. O código (Python + NumPy, semente fixa) está em
+\texttt{aula06/sim/simulacao.py}, e as figuras são geradas por
+\texttt{aula06/sim/figuras.py}.
+
+\begin{itemize}[itemsep=0.15em]
+  \item \textbf{Problema.} Cadeia de 8 estados (0 a 7), início em 0, ações
+        esquerda ou direita. Recompensa $+1$ por passo, com ruído gaussiano de
+        desvio 2, e $+40$ ao chegar ao estado 7, que encerra o episódio.
+        Horizonte de 40 passos; $\gamma = 0{,}99$.
+  \item \textbf{Agente.} Política \emph{softmax} tabular, treinada com GAE
+        ($\lambda = 0{,}95$, passo $0{,}0005$); crítico $V$ tabular ajustado
+        por Monte Carlo (passo $0{,}002$).
+  \item \textbf{Medição.} 150 iterações de 48 episódios. Em cada iteração os
+        cinco pesos ($\rec(\tau)$, $G_t$, $G_t - V(s_t)$, GAE e $\delta_t$) são
+        avaliados \emph{no mesmo lote}; a variância é o traço da covariância do
+        gradiente por episódio. Curvas suavizadas por média móvel de 5 iterações.
+\end{itemize}
+
+Os números absolutos dependem do problema; o que importa é a ordem entre os
+estimadores e a queda inicial das curvas que dependem do crítico.
 
 %% ------------------------------------------------------------
 \section*{Referências}
