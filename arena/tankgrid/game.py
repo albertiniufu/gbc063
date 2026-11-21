@@ -239,12 +239,14 @@ class TankGridGame:
                 if self.base[team][y, x]])
             for team in (0, 1)]
         self._free_cells = {}
+        self.recorder = None        # gravador de replay (ver replay.py)
         self.reset(self.config.seed if seed is None else seed)
 
     # ------------------------------------------------------------------ #
     # Estado inicial
     # ------------------------------------------------------------------ #
     def reset(self, seed=None) -> None:
+        self.seed = seed
         self.rng = np.random.default_rng(seed)
         cfg = self.config
         self.step_count = 0
@@ -272,6 +274,8 @@ class TankGridGame:
                 self.tanks.append(tank)
         self._fill_shapes(initial=True)
         self.events = self._empty_events()
+        if self.recorder is not None:
+            self.recorder.on_reset(self)
 
     @staticmethod
     def _empty_events():
@@ -304,6 +308,8 @@ class TankGridGame:
                 a = (0, 0, 0)
             move, shoot, upgrade = (int(v) for v in a)
             acts[tank.id] = (move, shoot, upgrade)
+        if self.recorder is not None:
+            self.recorder.on_step(self, acts)
 
         for tank in self.tanks:
             if tank.alive and acts[tank.id][2]:
