@@ -106,7 +106,7 @@ class Tank:
                  "points", "history", "reload", "regen_timer", "alive",
                  "respawn", "facing", "burst_left", "burst_dir", "dash_timer",
                  "kills", "deaths", "damage_dealt", "last_hit_by", "last_hit_step",
-                 "auto", "build_pos")
+                 "auto", "build_pos", "died_at")
 
     def __init__(self, tank_id: int, team: int, slot: int):
         self.id = tank_id
@@ -133,6 +133,7 @@ class Tank:
         self.last_hit_step = 0
         self.auto = False
         self.build_pos = 0
+        self.died_at = -1
         self.hp = float(self.max_hp)
 
     @property
@@ -791,6 +792,7 @@ class TankGridGame:
                 continue
             tank.alive = False
             tank.respawn = int(self.config.respawn_delay)
+            tank.died_at = self.step_count
             tank.deaths += 1
             tank.burst_left = 0
             self.tank_at[tank.y, tank.x] = -1
@@ -819,6 +821,8 @@ class TankGridGame:
         for tank in self.tanks:
             if tank.alive:
                 continue
+            if tank.died_at == self.step_count:
+                continue        # morreu neste passo: a espera começa no próximo
             tank.respawn -= 1
             if tank.respawn > 0:
                 continue

@@ -79,3 +79,17 @@ def test_torre_atira_a_cada_3_passos():
         tiros += sum(x.owner == -1 and id(x) not in antes
                      for x in game.bullets)
     assert TOWER_RELOAD == 3 and tiros == 30 // TOWER_RELOAD
+
+
+def test_renascimento_leva_respawn_delay_passos():
+    """Morto no passo t, o tanque fica fora de `respawn_delay` decisões."""
+    game, a, b = duelo()
+    b.hp = 0.5
+    game.step({a.id: (0, 1, 0)})            # mata no 3º passo (6 casas)
+    while b.alive:
+        game.step({})
+    fora = 0
+    while not b.alive:
+        fora += 1
+        game.step({})
+    assert fora == game.config.respawn_delay == 8
