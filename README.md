@@ -4,6 +4,14 @@ Materiais da disciplina **GBC063 — Inteligência Artificial** (UFU/FACOM): sli
 
 **Pergunta do curso:** "Como construir agentes que tomam boas decisões?"
 
+> **Arena TankGrid:** o pacote do desafio está em [`arena/`](arena/).
+> Leia o [`README da arena`](arena/README.md) para instalar, treinar e
+> submeter; o zip pronto está em
+> [`gbc063-arena-alunos.zip`](gbc063-arena-alunos.zip). O template inicial
+> é mínimo de propósito; treinar e melhorar o agente é o desafio.
+>
+> ![TankGrid em ação](arena/demo.gif)
+
 ## Aulas
 
 | Aula | Slides | Resumo | Simulador | Atividades | Extras |
