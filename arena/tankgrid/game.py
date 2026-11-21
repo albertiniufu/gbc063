@@ -46,7 +46,6 @@ from .classes import (
     class_options,
     level_from_xp,
     max_hp,
-    perpendicular,
     regen_interval,
     reload_interval,
     rotate_dir,
@@ -450,13 +449,11 @@ class TankGridGame:
             d = rotate_dir(aim, rot)
             if klass.spread and self.rng.random() < klass.spread:
                 d = rotate_dir(d, 1 if self.rng.random() < 0.5 else -1)
+            # Todo cano atira da casa do tanque. O deslocamento lateral
+            # (`lateral`) é só visual: com tanques de uma casa, balas
+            # paralelas saindo das casas vizinhas passariam dos dois lados
+            # de um alvo alinhado e nunca o acertariam.
             sx, sy = tank.x, tank.y
-            if lateral:
-                px, py = perpendicular(d)
-                lx, ly = sx + lateral * px, sy + lateral * py
-                if (0 <= lx < self.W and 0 <= ly < self.H
-                        and not self.solid[ly, lx]):
-                    sx, sy = lx, ly
             self.bullets.append(Bullet(tank.team, tank.id, sx, sy, d,
                                        damage * mult, reach, klass.pierce))
 

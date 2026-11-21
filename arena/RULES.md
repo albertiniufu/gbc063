@@ -39,6 +39,8 @@ extremo do mapa. As torres ficam na coluna central.
 | Base | — | — | — | cura 1/passo aliados e tira 2/passo inimigos |
 | Muro | — | — | — | bloqueia passagem e tiros |
 
+Todo tiro sai da casa do tanque, inclusive o dos canos lado a lado
+(Duplo, Duplo-flanco, Artilheiro): os dois tiros seguem a mesma linha.
 Tiros atravessam aliados e torres do próprio time. A bala é bloqueada por
 muros e formas; o tiro continua na grade, mesmo com a física contínua das
 formas.
