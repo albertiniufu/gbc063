@@ -484,8 +484,11 @@ class TankGridGame:
         for tower in self.towers:
             if tower.owner < 0:
                 continue
+            # Mesmo esquema da recarga dos tanques: desconta e atira ao
+            # chegar a 0, ou seja, um tiro a cada TOWER_RELOAD passos.
             if tower.cooldown > 0:
                 tower.cooldown -= 1
+            if tower.cooldown > 0:
                 continue
             best, best_d = None, TOWER_RANGE + 1
             for tank in self.tanks:

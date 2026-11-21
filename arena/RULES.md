@@ -35,7 +35,7 @@ extremo do mapa. As torres ficam na coluna central.
 | Triângulo | 3 | 5 | 2 | flutua |
 | Pentágono | 10 | 20 | 5 | orbita o ninho central |
 | Invasor | 3 | 8 | 1,5 | acelera rumo ao tanque a até 6 casas e explode (3 de dano) |
-| Torre (2 × 2) | 15 | 25 ao capturar | — | atira (dano 1 a cada 3 passos) em inimigos a até 6 casas |
+| Torre (2 × 2) | 15 | 25 ao capturar | — | atira (dano 1 a cada 3 passos) em inimigos a até 6 casas, na direção (das 8) mais próxima |
 | Base | — | — | — | cura 1/passo aliados e tira 2/passo inimigos |
 | Muro | — | — | — | bloqueia passagem e tiros |
 

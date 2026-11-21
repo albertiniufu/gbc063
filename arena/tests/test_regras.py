@@ -59,3 +59,23 @@ def test_abate_recente_tem_credito():
 
 def test_credito_de_abate_expira():
     assert _morre_na_base_inimiga(espera=100) == 0
+
+
+def test_torre_atira_a_cada_3_passos():
+    from tankgrid.game import TOWER_RELOAD
+    game, a, b = duelo()
+    torre = game.towers[1]                   # cantos (23..24, 14..15)
+    torre.owner = 0
+    game.tank_at[b.y, b.x] = -1
+    b.x, b.y = 28, 15                        # 4 casas a leste da torre
+    game.tank_at[b.y, b.x] = b.id
+    b.hp = 1e6
+    for _ in range(6):                       # passa o cooldown inicial
+        game.step({})
+    tiros = 0
+    for _ in range(30):
+        antes = {id(x) for x in game.bullets}
+        game.step({})
+        tiros += sum(x.owner == -1 and id(x) not in antes
+                     for x in game.bullets)
+    assert TOWER_RELOAD == 3 and tiros == 30 // TOWER_RELOAD
