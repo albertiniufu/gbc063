@@ -1,0 +1,6 @@
+# Versões obrigatórias do projeto.
+# Python 3.13.18 (veja README.md).
+torch==2.15.0
+numpy==2.5.4
+gymnasium==1.4.0
+pygame==2.6.1

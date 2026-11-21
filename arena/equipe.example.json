@@ -1,0 +1,10 @@
+{
+  "time": "NOME DO TIME",
+  "integrantes": [
+    {
+      "nome": "Nome Completo do Integrante",
+      "matricula": "000000"
+    }
+  ],
+  "alteracoes": "Descreva o que você mudou em agent.py e no algoritmo de treino."
+}
