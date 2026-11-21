@@ -248,7 +248,10 @@ class TankGridGame:
         self.rng = np.random.default_rng(seed)
         cfg = self.config
         self.step_count = 0
-        self.version = 0
+        # `version` identifica o estado para o cache de observações: só
+        # cresce, inclusive entre partidas (voltar a 0 no reset faria o
+        # cache devolver a observação da partida anterior).
+        self.version = getattr(self, "version", -1) + 1
         self.score = [0, 0]
         self.hold = [0, 0]
         self.winner = None          # None em jogo; 0/1 vencedor; -1 empate
