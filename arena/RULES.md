@@ -23,7 +23,7 @@ extremo do mapa. As torres ficam na coluna central.
 | Vida | 10 (pode subir com atributos) |
 | Movimento | 1 casa por passo, em 8 direções |
 | Tiro | 8 direções; a bala anda 2 casas por passo até o alcance |
-| Morte | perde metade do XP; o abatedor ganha +5; renasce na base após 8 passos |
+| Morte | perde metade do XP; o abatedor (quem causou dano nos últimos 30 passos) ganha esse XP + 5; renasce na base após 8 passos |
 | Classe | não se perde na morte; o nível cai junto com o XP |
 | Upgrade | automático no torneio (atributos e classes escolhidos pelo jogo) |
 

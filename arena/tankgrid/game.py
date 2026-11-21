@@ -80,6 +80,7 @@ TOWER_XP = 25.0
 
 BULLET_SPEED = 2
 KILL_BONUS_XP = 5.0
+KILL_CREDIT_STEPS = 30          # o último dano dá o abate por até 30 passos
 BASE_HEAL = 1.0
 BASE_DAMAGE = 2.0
 
@@ -104,8 +105,8 @@ class Tank:
     __slots__ = ("id", "team", "slot", "x", "y", "hp", "xp", "level", "cls",
                  "points", "history", "reload", "regen_timer", "alive",
                  "respawn", "facing", "burst_left", "burst_dir", "dash_timer",
-                 "kills", "deaths", "damage_dealt", "last_hit_by", "auto",
-                 "build_pos")
+                 "kills", "deaths", "damage_dealt", "last_hit_by", "last_hit_step",
+                 "auto", "build_pos")
 
     def __init__(self, tank_id: int, team: int, slot: int):
         self.id = tank_id
@@ -129,6 +130,7 @@ class Tank:
         self.deaths = 0
         self.damage_dealt = 0.0
         self.last_hit_by = None
+        self.last_hit_step = 0
         self.auto = False
         self.build_pos = 0
         self.hp = float(self.max_hp)
@@ -562,6 +564,7 @@ class TankGridGame:
         src = self._credit(owner)
         if src is not None:
             tank.last_hit_by = src.id
+            tank.last_hit_step = self.step_count
             src.damage_dealt += amount
             self.events[src.team]["damage"] += amount
 
@@ -793,6 +796,8 @@ class TankGridGame:
             tank.xp -= lost
             self._shrink_level(tank)
             killer = self._credit(tank.last_hit_by)
+            if self.step_count - tank.last_hit_step > KILL_CREDIT_STEPS:
+                killer = None   # dano antigo: morte sem abatedor
             tank.last_hit_by = None
             if killer is not None and killer.team != tank.team:
                 killer.kills += 1

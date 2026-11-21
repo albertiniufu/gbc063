@@ -31,3 +31,31 @@ def test_recarga_pronta_quando_o_tiro_sai():
         atirou = any(x.owner == a.id and id(x) not in antes
                      for x in game.bullets)
         assert pronta == float(atirou)
+
+
+def _morre_na_base_inimiga(espera):
+    """O azul acerta o vermelho uma vez, espera `espera` passos e o
+    vermelho morre na base azul (sem dono do dano). Devolve os abates."""
+    from tankgrid.game import BASE_DAMAGE
+    game, a, b = duelo()
+    game.step({a.id: (0, 1, 0)})
+    for _ in range(3):
+        game.step({})
+    assert b.last_hit_by == a.id
+    for _ in range(espera):
+        game.step({})
+    game.tank_at[b.y, b.x] = -1
+    b.x, b.y = 1, 15
+    game.tank_at[b.y, b.x] = b.id
+    b.hp = BASE_DAMAGE
+    game.step({})
+    assert not b.alive
+    return a.kills
+
+
+def test_abate_recente_tem_credito():
+    assert _morre_na_base_inimiga(espera=5) == 1
+
+
+def test_credito_de_abate_expira():
+    assert _morre_na_base_inimiga(espera=100) == 0
