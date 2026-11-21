@@ -6,16 +6,8 @@ Dois times de 3 tanques numa arena 48 × 30. Os tanques destroem formas para
 ganhar XP, sobem de nível, evoluem de classe e disputam 3 torres no centro.
 Ganha quem tiver mais pontos ao fim de 800 passos ou quem segurar as 3
 torres por 100 passos seguidos. As regras completas estão em
-[RULES.md](RULES.md).
-
-### Checklist de submissão
-
-- [ ] Modifiquei `agent.py` e o algoritmo de treino.
-- [ ] `equipe.json` tem o nome do time e **todos** os integrantes.
-- [ ] `python submit.py` passa sem erros (versões, agente, zip).
-- [ ] `gbc063_submission.zip` está na raiz do repositório e foi commitado.
-- [ ] O repositório é **público** no GitHub e foi enviado ao professor.
-- [ ] Não modifiquei `tankgrid/`.
+[RULES.md](RULES.md). Antes de entregar, confira o
+[checklist de submissão](#checklist-de-submissão).
 
 ### Orientações 
 
@@ -222,6 +214,15 @@ time.
 - Avalie com `play.py` contra `random` e `heuristic` em várias seeds.
 - Não use bibliotecas fora de `requirements.txt`: apenas as dependências
   do projeto estão disponíveis.
+
+## Testes do motor
+
+`tests/` tem testes das regras e do ambiente (sem tela e sem torch):
+
+```bash
+pip install pytest
+pytest tests
+```
 
 ## Pacote auto-contido
 

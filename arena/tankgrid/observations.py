@@ -5,7 +5,7 @@ A observação é uma imagem `(C, V, V)` centrada no tanque (V = `view_size`,
 é espelhado na horizontal, então todo tanque "nasce na esquerda". Assim uma
 mesma política serve aos dois lados (útil para self-play e torneio).
 
-Canais espaciais (0..13), recortados do mapa:
+Canais espaciais (0..15), recortados do mapa:
 
 | canal | conteúdo |
 | --- | --- |

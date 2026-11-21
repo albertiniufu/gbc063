@@ -69,7 +69,7 @@ abre a evolução de classe.
 | Vida máxima | +2 (10 → 20) |
 | Regeneração | 1 de vida a cada 10 → 3 passos |
 | Dano | +0,5 (1 → 3,5) |
-| Recarga | intervalo de 4 → 2 passos |
+| Recarga | intervalo de 4 → 2 passos: 4, 4, 3, 3, 2, 2 com 0 a 5 pontos (arredondado; o 1º e o 3º ponto não mudam o intervalo) |
 | Alcance | +2 casas (8 → 18) |
 
 No nível 5 o Básico escolhe um ramo; no nível 10, uma especialização.
