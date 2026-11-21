@@ -76,6 +76,16 @@ def encode_action(move: int, shoot: int, team: int) -> int:
     return to_world_dir(move, team) * 9 + to_world_dir(shoot, team)
 
 
+def _ready(tank) -> bool:
+    """O tanque atira (ou investe, no Esmagador) se pedir no próximo passo?
+
+    O motor desconta a recarga antes de testar o tiro, então o tiro sai
+    com `reload == 1` (o mesmo vale para `dash_timer` na investida).
+    """
+    timer = tank.reload if tank.klass.barrels else tank.dash_timer
+    return timer <= 1
+
+
 class ObservationBuilder:
     """Constrói observações; o mapa global é recalculado uma vez por passo."""
 
@@ -154,7 +164,7 @@ class ObservationBuilder:
         scalars = [
             max(0.0, tank.hp) / tank.max_hp if tank.alive else 0.0,
             tank.level / MAX_LEVEL,
-            1.0 if tank.reload == 0 else 0.0,
+            1.0 if _ready(tank) else 0.0,
             min(1.0, tank.pending_points / 5.0),
             1.0 if tank.class_options else 0.0,
             (tank.cls + 1) / N_CLASSES,
