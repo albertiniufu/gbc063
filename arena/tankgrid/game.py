@@ -46,7 +46,6 @@ from .classes import (
     class_options,
     level_from_xp,
     max_hp,
-    perpendicular,
     regen_interval,
     reload_interval,
     rotate_dir,
@@ -81,6 +80,7 @@ TOWER_XP = 25.0
 
 BULLET_SPEED = 2
 KILL_BONUS_XP = 5.0
+KILL_CREDIT_STEPS = 30          # o último dano dá o abate por até 30 passos
 BASE_HEAL = 1.0
 BASE_DAMAGE = 2.0
 
@@ -105,8 +105,8 @@ class Tank:
     __slots__ = ("id", "team", "slot", "x", "y", "hp", "xp", "level", "cls",
                  "points", "history", "reload", "regen_timer", "alive",
                  "respawn", "facing", "burst_left", "burst_dir", "dash_timer",
-                 "kills", "deaths", "damage_dealt", "last_hit_by", "auto",
-                 "build_pos")
+                 "kills", "deaths", "damage_dealt", "last_hit_by", "last_hit_step",
+                 "auto", "build_pos", "died_at")
 
     def __init__(self, tank_id: int, team: int, slot: int):
         self.id = tank_id
@@ -130,8 +130,10 @@ class Tank:
         self.deaths = 0
         self.damage_dealt = 0.0
         self.last_hit_by = None
+        self.last_hit_step = 0
         self.auto = False
         self.build_pos = 0
+        self.died_at = -1
         self.hp = float(self.max_hp)
 
     @property
@@ -248,7 +250,10 @@ class TankGridGame:
         self.rng = np.random.default_rng(seed)
         cfg = self.config
         self.step_count = 0
-        self.version = 0
+        # `version` identifica o estado para o cache de observações: só
+        # cresce, inclusive entre partidas (voltar a 0 no reset faria o
+        # cache devolver a observação da partida anterior).
+        self.version = getattr(self, "version", -1) + 1
         self.score = [0, 0]
         self.hold = [0, 0]
         self.winner = None          # None em jogo; 0/1 vencedor; -1 empate
@@ -447,13 +452,11 @@ class TankGridGame:
             d = rotate_dir(aim, rot)
             if klass.spread and self.rng.random() < klass.spread:
                 d = rotate_dir(d, 1 if self.rng.random() < 0.5 else -1)
+            # Todo cano atira da casa do tanque. O deslocamento lateral
+            # (`lateral`) é só visual: com tanques de uma casa, balas
+            # paralelas saindo das casas vizinhas passariam dos dois lados
+            # de um alvo alinhado e nunca o acertariam.
             sx, sy = tank.x, tank.y
-            if lateral:
-                px, py = perpendicular(d)
-                lx, ly = sx + lateral * px, sy + lateral * py
-                if (0 <= lx < self.W and 0 <= ly < self.H
-                        and not self.solid[ly, lx]):
-                    sx, sy = lx, ly
             self.bullets.append(Bullet(tank.team, tank.id, sx, sy, d,
                                        damage * mult, reach, klass.pierce))
 
@@ -482,8 +485,11 @@ class TankGridGame:
         for tower in self.towers:
             if tower.owner < 0:
                 continue
+            # Mesmo esquema da recarga dos tanques: desconta e atira ao
+            # chegar a 0, ou seja, um tiro a cada TOWER_RELOAD passos.
             if tower.cooldown > 0:
                 tower.cooldown -= 1
+            if tower.cooldown > 0:
                 continue
             best, best_d = None, TOWER_RANGE + 1
             for tank in self.tanks:
@@ -562,6 +568,7 @@ class TankGridGame:
         src = self._credit(owner)
         if src is not None:
             tank.last_hit_by = src.id
+            tank.last_hit_step = self.step_count
             src.damage_dealt += amount
             self.events[src.team]["damage"] += amount
 
@@ -785,6 +792,7 @@ class TankGridGame:
                 continue
             tank.alive = False
             tank.respawn = int(self.config.respawn_delay)
+            tank.died_at = self.step_count
             tank.deaths += 1
             tank.burst_left = 0
             self.tank_at[tank.y, tank.x] = -1
@@ -793,6 +801,8 @@ class TankGridGame:
             tank.xp -= lost
             self._shrink_level(tank)
             killer = self._credit(tank.last_hit_by)
+            if self.step_count - tank.last_hit_step > KILL_CREDIT_STEPS:
+                killer = None   # dano antigo: morte sem abatedor
             tank.last_hit_by = None
             if killer is not None and killer.team != tank.team:
                 killer.kills += 1
@@ -811,6 +821,8 @@ class TankGridGame:
         for tank in self.tanks:
             if tank.alive:
                 continue
+            if tank.died_at == self.step_count:
+                continue        # morreu neste passo: a espera começa no próximo
             tank.respawn -= 1
             if tank.respawn > 0:
                 continue

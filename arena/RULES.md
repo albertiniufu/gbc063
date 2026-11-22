@@ -23,7 +23,7 @@ extremo do mapa. As torres ficam na coluna central.
 | Vida | 10 (pode subir com atributos) |
 | Movimento | 1 casa por passo, em 8 direções |
 | Tiro | 8 direções; a bala anda 2 casas por passo até o alcance |
-| Morte | perde metade do XP; o abatedor ganha +5; renasce na base após 8 passos |
+| Morte | perde metade do XP; o abatedor (quem causou dano nos últimos 30 passos) ganha esse XP + 5; renasce na base após 8 passos |
 | Classe | não se perde na morte; o nível cai junto com o XP |
 | Upgrade | automático no torneio (atributos e classes escolhidos pelo jogo) |
 
@@ -35,10 +35,12 @@ extremo do mapa. As torres ficam na coluna central.
 | Triângulo | 3 | 5 | 2 | flutua |
 | Pentágono | 10 | 20 | 5 | orbita o ninho central |
 | Invasor | 3 | 8 | 1,5 | acelera rumo ao tanque a até 6 casas e explode (3 de dano) |
-| Torre (2 × 2) | 15 | 25 ao capturar | — | atira (dano 1 a cada 3 passos) em inimigos a até 6 casas |
+| Torre (2 × 2) | 15 | 25 ao capturar | — | atira (dano 1 a cada 3 passos) em inimigos a até 6 casas, na direção (das 8) mais próxima |
 | Base | — | — | — | cura 1/passo aliados e tira 2/passo inimigos |
 | Muro | — | — | — | bloqueia passagem e tiros |
 
+Todo tiro sai da casa do tanque, inclusive o dos canos lado a lado
+(Duplo, Duplo-flanco, Artilheiro): os dois tiros seguem a mesma linha.
 Tiros atravessam aliados e torres do próprio time. A bala é bloqueada por
 muros e formas; o tiro continua na grade, mesmo com a física contínua das
 formas.
@@ -67,7 +69,7 @@ abre a evolução de classe.
 | Vida máxima | +2 (10 → 20) |
 | Regeneração | 1 de vida a cada 10 → 3 passos |
 | Dano | +0,5 (1 → 3,5) |
-| Recarga | intervalo de 4 → 2 passos |
+| Recarga | intervalo de 4 → 2 passos: 4, 4, 3, 3, 2, 2 com 0 a 5 pontos (arredondado; o 1º e o 3º ponto não mudam o intervalo) |
 | Alcance | +2 casas (8 → 18) |
 
 No nível 5 o Básico escolhe um ramo; no nível 10, uma especialização.

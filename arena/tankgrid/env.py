@@ -65,6 +65,7 @@ class TankGridEnv(gym.Env):
         self._current = 0
         self._totals = None
         self._invalid = 0
+        self._next_seed = int(cfg.seed)
 
     # ------------------------------------------------------------------ #
     @property
@@ -74,7 +75,11 @@ class TankGridEnv(gym.Env):
 
     def reset(self, *, seed: int | None = None, options: dict | None = None):
         super().reset(seed=seed)
-        game_seed = self.config.seed if seed is None else int(seed)
+        # Sem seed, cada reset joga a partida seguinte (seed + 1), como o
+        # Gymnasium espera; antes todo reset() repetia a mesma partida.
+        # Continua determinístico: a 1ª partida usa `config.seed`.
+        game_seed = self._next_seed if seed is None else int(seed)
+        self._next_seed = game_seed + 1
         self.game.reset(game_seed)
         for bot, offset in ((self.opponent, 1), (self.ally_bot, 2)):
             if hasattr(bot, "reset"):

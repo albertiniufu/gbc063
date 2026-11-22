@@ -77,7 +77,8 @@ class TankClass:
     key: str
     label: str
     tier: int                       # 0 = Básico, 1 = nível 5, 2 = nível 10
-    # (rot em passos de 45°, deslocamento lateral -1/0/1, mult. de dano)
+    # (rot em passos de 45°, deslocamento lateral -1/0/1, mult. de dano);
+    # o deslocamento lateral só muda o desenho: a bala sai da casa do tanque
     barrels: tuple[tuple[int, int, float], ...] = ((0, 0, 1.0),)
     reload_mult: float = 1.0
     reload_fixed: int | None = None  # intervalo fixo (metralhadoras)
