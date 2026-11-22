@@ -75,7 +75,7 @@ python train.py --episodes 200 --opponent random --device cpu
 | --- | --- |
 | `agent.py` | **seu agente**: modelo mínimo (média + linear) + `Agent.act(obs)`. Modifique. |
 | `train.py` | template REINFORCE sem baseline. Modifique à vontade. |
-| `play.py` | assiste seu agente contra um bot de referência. |
+| `play.py` | assiste seu agente contra um bot de referência; grava e reproduz replays. |
 | `submit.py` | valida o contrato e gera o zip da submissão. |
 | `equipe.json` | nome do time e integrantes (criado por você). |
 | `tankgrid/` | motor da arena. **Não modifique.** |
@@ -101,6 +101,34 @@ O agente comanda os **3 tanques azuis** com parâmetros compartilhados
   mudá-la no seu `train.py` (o torneio avalia vitória/placar).
 
 O ambiente é um `gymnasium.Env`; exemplos de uso estão em `train.py`.
+
+## Replays
+
+Um replay guarda a config, a seed e as ações de cada passo (alguns KB por
+partida). Como o motor é determinístico, a partida inteira é re-simulada na
+hora de assistir.
+
+```bash
+python play.py --weights checkpoints/policy.pt --save-replay replays/p.npz
+python play.py --replay replays/p.npz          # não precisa dos pesos
+python play.py --replay replays/p.npz --fps 4  # mais devagar; espaço pausa
+```
+
+Para gravar partidas do treino ou da avaliação, ligue um `Recorder` ao
+jogo do ambiente. Cada `reset` começa uma gravação nova, e `save` guarda a
+partida atual:
+
+```python
+from tankgrid.replay import Recorder
+
+rec = Recorder(env.game)
+obs, _ = env.reset(seed=3)
+...                          # joga até o fim
+rec.save("replays/derrota_seed3.npz")
+```
+
+`tankgrid.replay.replay_game(arquivo)` devolve o estado do jogo a cada
+passo, para analisar a partida em código.
 
 ## Contrato de execução
 
