@@ -9,7 +9,7 @@ https://github.com/Felby/GBCIA-UFU
 https://github.com/FlorenceFrankllin/Inteligencia_Artificial-
 https://github.com/gabrielhca/agent-dedoverde
 https://github.com/gabryeltomaz/agente-operador-de-mercado-financeiro.git
-https://github.com/giovanaalmeida/gbcintelig-ncia-artificial
+https://github.com/giovanaalmeida19/gbc063---intelig-ncia-artificial
 https://github.com/HenryckRA/rl-braco-r
 https://github.com/joaoVitorAlvesdeSouza/IA.git
 https://github.com/JoseEMiranda/Robo-Armazem
@@ -25,7 +25,7 @@ https://github.com/math-mcruz/IA-Truco-Mineiro
 https://github.com/samuel-famorim/Lead-Scoring-RL-Agent
 https://github.com/sergio-matos-tech/pitwall-rl
 https://github.com/UnderworldBlues/super-mario-RL
-https://github.com/viniciussilva/IA-gbc
+https://github.com/viniciussilva010/IA-gbc063-
 https://github.com/vitormrocha/Trabalho_IA_GBC
 https://github.com/williancasagrandi/gbckvcache-rl
 https://github.com/YgrMateus/IA-GBC
