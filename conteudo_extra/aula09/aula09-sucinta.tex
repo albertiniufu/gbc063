@@ -1,6 +1,8 @@
 %% ============================================================
 %%  Aula 9 — Aprendizagem por reforço eficiente em dados I:
 %%           bandidos multi-braços, arrependimento e otimismo
+%%  Versão sucinta: roteiro do apresentador (poucas palavras,
+%%  mesmas definições e figuras do aula09.tex)
 %%  Adaptação em pt-BR do CS234 (Stanford, Emma Brunskill), Lecture 9
 %%  Prof. Marcelo Keese Albertini — Universidade Federal de Uberlândia
 %%  Compilar com XeLaTeX (2x) — latexmk -xelatex aula09.tex
@@ -8,7 +10,7 @@
 \documentclass[aspectratio=169, 10pt]{beamer}
 %% .sty do projeto na raiz do repositório (../)
 \makeatletter
-\def\input@path{{./}{../}}
+\def\input@path{{./}{../}{../../}}
 \makeatother
 
 
@@ -76,7 +78,7 @@
   \pause
 
   \begin{respbox}[fontupper=\footnotesize]
-    \textbf{Nenhuma das três.} (1) O DPO dispensa o modelo explícito: a
+    \textbf{Nenhuma das três.} (1) DPO dispensa o modelo explícito: a
     recompensa fica \emph{implícita} em
     $\log\frac{\pol_\theta}{\pol_{\text{ref}}}$. (2) Otimizar uma recompensa
     aprendida permite \emph{superar} os exemplos vistos. (3)
@@ -99,19 +101,17 @@
     \end{column}
     \begin{column}{0.46\textwidth}
       \begin{ideiabox}
-        Até agora perguntamos \emph{``o algoritmo converge para a política
-        ótima?''}. A partir de hoje perguntamos algo mais exigente:
-        \emph{``quantos erros ele comete no caminho?''}
+        Antes: \emph{``o algoritmo converge para a política ótima?''}
+        Agora: \emph{``quantos erros ele comete no caminho?''}
       \end{ideiabox}
     \end{column}
   \end{columns}
 
   \bigskip
   \begin{alertabox}
-    Convergência assintótica é um critério barato. Um algoritmo que testa
-    todas as ações um milhão de vezes cada e depois age otimamente
-    ``converge'' — e é inútil se cada teste custa um paciente, um cliente
-    ou uma hora de robô.
+    Convergência assintótica é critério barato: testar todas as ações um
+    milhão de vezes e depois agir otimamente ``converge'' — e é inútil se
+    cada teste custa um paciente, um cliente ou uma hora de robô.
   \end{alertabox}
 \end{frame}
 
@@ -172,10 +172,10 @@
 
   \bigskip
   \begin{ideiabox}
-    A matriz cenário $\times$ arcabouço $\times$ abordagem não é preenchida
-    ponto a ponto: \textbf{uma mesma abordagem costuma atender vários
-    arcabouços em vários cenários}. O otimismo, que veremos hoje em
-    bandidos, reaparecerá quase sem alteração em MDPs.
+    A matriz cenário $\times$ arcabouço $\times$ abordagem não é ponto a
+    ponto: \textbf{uma mesma abordagem costuma atender vários arcabouços em
+    vários cenários} — o otimismo, visto hoje em bandidos, reaparece quase
+    sem alteração em MDPs.
   \end{ideiabox}
 \end{frame}
 
@@ -195,9 +195,9 @@
   \bigskip
   \begin{alertabox}
     O critério (5) é o único que fala do \emph{custo da própria
-    aprendizagem}. Em ensaios clínicos, precificação, recomendação e
-    robótica, ele é o que importa: cada decisão subótima é um dano real,
-    não um número numa curva de treino.
+    aprendizagem} — e o que importa em ensaios clínicos, precificação,
+    recomendação e robótica: cada decisão subótima é dano real, não número
+    numa curva de treino.
   \end{alertabox}
 \end{frame}
 
@@ -214,10 +214,11 @@
     $r_t \sim \mathcal{R}_{a_t}$. Objetivo: maximizar $\sum_{\tau} r_\tau$.
   \end{defbox}
 
+  \vspace{-2mm}
   \begin{columns}[T]
     \begin{column}{0.54\textwidth}
       \begin{itemize}\small
-        \item Não há estado: a ação de hoje não altera o problema de amanhã.
+        \item Sem estado: a ação de hoje não altera o problema de amanhã.
         \item O único acoplamento entre passos é \textbf{informacional}:
               o que aprendi ontem muda o que escolho hoje.
       \end{itemize}
@@ -256,10 +257,10 @@
   \begin{columns}[T]
     \begin{column}{0.48\textwidth}
       \begin{ideiabox}
-        A exploração é \emph{difícil} nos três casos, mas por razões
-        diferentes. No bandido, basta decidir \emph{o que testar}. No MDP,
-        é preciso decidir também \emph{como chegar} ao lugar onde vale a
-        pena testar --- exploração profunda.
+        A exploração é \emph{difícil} nos três casos, por razões diferentes:
+        no bandido, basta decidir \emph{o que testar}. No MDP, é preciso
+        decidir também \emph{como chegar} ao lugar onde vale a pena testar
+        --- exploração profunda.
       \end{ideiabox}
     \end{column}
     \begin{column}{0.48\textwidth}
@@ -285,16 +286,16 @@
         \item Três opções: \textbf{(1)} cirurgia, \textbf{(2)}
               imobilização com esparadrapo no dedo vizinho
               (\emph{buddy taping}), \textbf{(3)} não fazer nada.
-        \item Desfecho binário: o dedo consolidou (\;$+1$\;) ou não
-              (\;$0$\;) após seis semanas, avaliado por radiografia.
+        \item Desfecho binário: consolidou ($+1$) ou não ($0$) após seis
+              semanas, por radiografia.
         \item Cada braço é uma variável de Bernoulli com parâmetro
               desconhecido $\theta_i$.
       \end{itemize}
     \end{column}
     \begin{column}{0.43\textwidth}
       \begin{alertabox}
-        Exemplo \textbf{fictício}. Os números abaixo não representam a
-        eficácia real de nenhum tratamento ortopédico.
+        Exemplo \textbf{fictício} — os números não representam a eficácia
+        real de nenhum tratamento ortopédico.
       \end{alertabox}
       \begin{defbox}{Parâmetros verdadeiros (desconhecidos)}
         \centering\small
@@ -396,10 +397,9 @@
       \pause
       \begin{alertabox}
         \textbf{O guloso jamais encontrará o melhor braço.} Escolhido
-        $a_2$, sua média amostral converge para $0{,}9 > 0$; os outros dois
-        permanecem congelados em $\Qhat = 0$ porque nunca mais são
-        testados. A cirurgia --- de fato superior --- ficou eliminada por
-        um único paciente azarado.
+        $a_2$, os outros dois permanecem congelados em $\Qhat = 0$: nunca
+        mais são testados. A cirurgia --- de fato superior --- ficou
+        eliminada por um único paciente azarado.
       \end{alertabox}
       \begin{ideiabox}
         A falha não é de estimação, é de \emph{cobertura}: o estimador de
@@ -430,6 +430,7 @@
     \]
   \end{defbox}
 
+  \vspace{-2.5mm}
   \begin{ideiabox}
     Maximizar recompensa acumulada $\iff$ minimizar arrependimento total:
     mesmo objetivo, sinal trocado, deslocamento $tV^{*}$. Mas o
@@ -454,17 +455,17 @@
   \begin{columns}[T]
     \begin{column}{0.52\textwidth}
       \begin{ideiabox}
-        Um bom algoritmo mantém \textbf{contagens pequenas onde as lacunas
-        são grandes}. O problema: as lacunas são exatamente o que não
-        sabemos --- se soubéssemos $\gap_a$, não haveria nada a aprender.
+        Bom algoritmo: \textbf{contagens pequenas onde as lacunas são
+        grandes}. O problema: as lacunas são exatamente o que não sabemos
+        --- se soubéssemos $\gap_a$, não haveria nada a aprender.
       \end{ideiabox}
     \end{column}
     \begin{column}{0.46\textwidth}
       \begin{alertabox}
         Toda a dificuldade da exploração está nesta frase. Não é preciso
         estimar $Q$ bem em todo braço: basta estimar bem o suficiente para
-        \emph{ordenar} --- e ordenar exige menos amostras onde a lacuna é
-        grande, mais onde ela é pequena.
+        \emph{ordenar} --- menos amostras onde a lacuna é grande, mais onde
+        ela é pequena.
       \end{alertabox}
     \end{column}
   \end{columns}
@@ -492,17 +493,16 @@
   \begin{columns}[T]
     \begin{column}{0.48\textwidth}
       \begin{alertabox}
-        Note as linhas 2 e 4: \textbf{a recompensa observada foi $+1$ e
-        mesmo assim houve arrependimento}. O arrependimento não compara com
-        o que aconteceu, mas com o que aconteceria \emph{em média} sob a
-        melhor ação.
+        Linhas 2 e 4: \textbf{a recompensa observada foi $+1$ e mesmo assim
+        houve arrependimento} — não compara com o que aconteceu, mas com o
+        que aconteceria \emph{em média} sob a melhor ação.
       \end{alertabox}
     \end{column}
     \begin{column}{0.48\textwidth}
       \begin{ideiabox}
-        Se o guloso permanecer em $a_2$, cada passo adicional custa
-        $0{,}05$. Ao fim de $T$ decisões, $\Reg_T \approx 0{,}05\,T$:
-        \textbf{arrependimento linear}. A curva nunca achata.
+        Em $a_2$ para sempre: cada passo adicional custa $0{,}05$. Ao fim
+        de $T$ decisões, $\Reg_T \approx 0{,}05\,T$: \textbf{arrependimento
+        linear}. A curva nunca achata.
       \end{ideiabox}
     \end{column}
   \end{columns}
@@ -524,6 +524,7 @@
     partir dos dados.
   \end{defbox}
 
+  \vspace{-2mm}
   \begin{columns}[T]
     \begin{column}{0.48\textwidth}
       \begin{defbox}{Cota independente do problema}
@@ -562,10 +563,9 @@
   \end{tikzpicture}
 
   \begin{ideiabox}
-    ``Bom'' significa \textbf{sublinear}: $\Reg_T / T \to 0$, ou seja, a
-    fração de decisões erradas tende a zero. Explorar para sempre dá
-    arrependimento linear; nunca explorar também. A pergunta da aula é se
-    existe algo no meio --- e a resposta é sim.
+    ``Bom'' = \textbf{sublinear}: $\Reg_T / T \to 0$ — a fração de decisões
+    erradas tende a zero. Explorar para sempre: linear; nunca explorar:
+    também. Existe algo no meio? Sim.
   \end{ideiabox}
 \end{frame}
 
@@ -595,10 +595,9 @@
     \end{column}
     \begin{column}{0.46\textwidth}
       \begin{alertabox}
-        O preço é permanente: com $\epsilon$ fixo, o algoritmo toma uma
-        decisão deliberadamente subótima em uma fração $\epsilon$ dos
-        passos --- \textbf{para sempre}, muito depois de já saber qual é o
-        melhor braço.
+        O preço é permanente: com $\epsilon$ fixo, uma fração $\epsilon$
+        dos passos é deliberadamente subótima --- \textbf{para sempre},
+        muito depois de já saber qual é o melhor braço.
       \end{alertabox}
     \end{column}
   \end{columns}
@@ -635,9 +634,9 @@
       \end{respbox}
       \pause
       \begin{ideiabox}
-        \textbf{Sim, $a_3$ voltará a ser escolhido} --- e não poucas vezes:
-        cerca de $T/30$ pacientes receberão ``não fazer nada'', um
-        tratamento que já sabemos ser péssimo.
+        \textbf{Sim, $a_3$ voltará a ser escolhido} --- cerca de $T/30$
+        pacientes receberão ``não fazer nada'', um tratamento que já
+        sabemos ser péssimo.
       \end{ideiabox}
     \end{column}
   \end{columns}
@@ -645,6 +644,7 @@
 
 %% ============================================================
 \begin{frame}{Teste sua compreensão: arrependimento do $\epsilon$-guloso}
+  \vspace{-2mm}
   \begin{quizbox}{}
     Lembre que $\Reg_t = \sum_{a} \E[\Nc_t(a)]\,\gap_a$, e que
     informalmente um algoritmo tem \textbf{arrependimento linear} se toma
@@ -662,11 +662,11 @@
   \pause
 
   \begin{respbox}
-    \textbf{As duas} --- e por motivos opostos, o que é o ponto da pergunta.
-    Com $\epsilon = 0{,}1$ o algoritmo \emph{explora demais}: puxa braços
-    ruins numa fração fixa $\epsilon/m$ dos passos, para sempre, e
-    $\Reg_T \ge \frac{\epsilon}{m}\bigl(\sum_a \gap_a\bigr) T$. Com
-    $\epsilon = 0$ ele \emph{explora de menos}: é o guloso, que pode travar
+    \textbf{As duas} --- por motivos opostos, o que é o ponto da pergunta.
+    $\epsilon = 0{,}1$: \emph{explora demais} — braços ruins numa fração
+    fixa $\epsilon/m$ dos passos, para sempre, e
+    $\Reg_T \ge \frac{\epsilon}{m}\bigl(\sum_a \gap_a\bigr) T$.
+    $\epsilon = 0$: \emph{explora de menos} — é o guloso, que pode travar
     num braço subótimo e pagar $\gap\,T$. No exemplo dos dedos, a taxa com
     $\epsilon = 0{,}1$ é $\frac{0{,}1}{3}(0{,}05 + 0{,}85) = 0{,}03$ por
     passo.
@@ -697,10 +697,9 @@
   \end{teobox}
 
   \begin{alertabox}
-    O agendamento ótimo depende de $\gap$, que é desconhecido. É por isso
-    que o $\epsilon$-guloso decrescente é teoricamente correto mas
-    praticamente frágil --- e por que vale a pena procurar algo que se
-    adapte sozinho.
+    O agendamento ótimo depende de $\gap$, que é desconhecido. Por isso o
+    $\epsilon$-guloso decrescente é teoricamente correto mas praticamente
+    frágil --- e por que vale a pena procurar algo que se adapte sozinho.
   \end{alertabox}
 \end{frame}
 
@@ -729,9 +728,9 @@
     \begin{column}{0.43\textwidth}
       \begin{ideiabox}[fontupper=\footnotesize]
         Sublinear, portanto ``bom'' --- mas $T^{2/3}$ está longe de
-        $\sqrt{T}$. A perda vem de \textbf{separar} exploração e explotação
-        em fases estanques: o ETC não usa o que aprendeu \emph{durante} a
-        exploração para abandonar cedo um braço ruim.
+        $\sqrt{T}$: \textbf{separar} exploração e explotação em fases
+        estanques desperdiça o que se aprendeu \emph{durante} a exploração
+        para abandonar cedo um braço ruim.
       \end{ideiabox}
       \begin{alertabox}[fontupper=\footnotesize]
         \textbf{Exploração e explotação devem ser entrelaçadas}, não
@@ -748,8 +747,8 @@
           semelhança entre o braço ótimo e os demais.
     \item Problemas difíceis têm braços que \emph{parecem} iguais mas têm
           médias diferentes: é preciso muita amostra para separá-los.
-    \item Formalmente, isto é capturado pela lacuna $\gap_a$ e pela
-          divergência $\KL(\mathcal{R}_a \,\|\, \mathcal{R}_{a^{*}})$.
+    \item Formalmente: a lacuna $\gap_a$ e a divergência
+          $\KL(\mathcal{R}_a \,\|\, \mathcal{R}_{a^{*}})$.
   \end{itemize}
 
   \begin{teobox}{Teorema (Lai e Robbins, 1985)}
@@ -817,31 +816,29 @@
   \end{defbox}
 
   \pause
-  Por quê? Porque há apenas dois desfechos possíveis, e ambos são bons:
+  Por quê? Há apenas dois desfechos possíveis, e ambos são bons:
 
   \begin{columns}[T]
     \begin{column}{0.48\textwidth}
       \begin{teobox}{Desfecho 1 --- acertamos}
-        Se o braço de fato tem média alta, colhemos recompensa alta.
-        Nenhum arrependimento.
+        Braço com média alta de fato: colhemos recompensa alta. Nenhum
+        arrependimento.
       \end{teobox}
     \end{column}
     \begin{column}{0.48\textwidth}
       \begin{teobox}{Desfecho 2 --- aprendemos}
-        Se o braço tem média baixa, puxá-lo reduz (em esperança) sua média
-        estimada \emph{e} a incerteza sobre ela. O braço é rebaixado e não
-        volta a enganar.
+        Média baixa: puxá-lo reduz (em esperança) sua média estimada
+        \emph{e} a incerteza. O braço é rebaixado e não volta a enganar.
       \end{teobox}
     \end{column}
   \end{columns}
 
   \pause
   \begin{ideiabox}
-    O otimismo é \textbf{autocorretivo}: só se pode estar
-    excessivamente otimista sobre um braço por um número limitado de
-    puxadas, porque cada puxada corrige o excesso. É exatamente esta
-    contagem --- ``quantas vezes posso me enganar antes de ser
-    desmentido?'' --- que se transformará na demonstração da cota.
+    Otimismo é \textbf{autocorretivo}: só se pode estar excessivamente
+    otimista por um número limitado de puxadas — cada puxada corrige o
+    excesso. Essa contagem --- ``quantas vezes posso me enganar antes de
+    ser desmentido?'' --- vira a demonstração da cota.
   \end{ideiabox}
 \end{frame}
 
@@ -895,17 +892,16 @@
 
   \begin{ideiabox}
     Recompensas em $[0,1]$ --- como as do nosso exemplo --- são
-    $\tfrac12$-sub-gaussianas pelo lema de Hoeffding. Usar $\sigma = 1$,
-    como faremos, é apenas conservador: as barras saem mais largas do que
-    o necessário, nunca mais estreitas.
+    $\tfrac12$-sub-gaussianas pelo lema de Hoeffding. Usar $\sigma = 1$ é
+    apenas conservador: barras mais largas que o necessário, nunca mais
+    estreitas.
   \end{ideiabox}
 \end{frame}
 
 %% ============================================================
 \begin{frame}{Invertendo a desigualdade}
-  Queremos, em vez de ``qual a probabilidade de errar por
-  $\varepsilon$?'', a pergunta operacional: ``\emph{dado} um risco
-  $\delta$ que aceito correr, qual $\varepsilon$?''
+  Pergunta operacional: ``\emph{dado} um risco $\delta$ que aceito correr,
+  qual $\varepsilon$?''
 
   \[
     \delta \;=\; \exp\Bigl(-\frac{n\varepsilon^2}{2\sigma^2}\Bigr)
@@ -986,8 +982,8 @@
   \begin{columns}[T]
     \begin{column}{0.5\textwidth}
       \begin{ideiabox}
-        Em $t = 8$, $a_3$ é escolhido \emph{apesar} de $\Qhat(a_3) = 0$: seu
-        bônus, intocado desde a primeira puxada, ultrapassou os dos outros
+        Em $t = 8$, $a_3$ é escolhido \emph{apesar} de $\Qhat(a_3) = 0$:
+        bônus intocado desde a primeira puxada ultrapassou os dos outros
         dois, que encolheram. O otimismo cobra a dívida de exploração ---
         uma vez.
       \end{ideiabox}
@@ -1017,11 +1013,10 @@
   \end{itemize}
 
   \begin{alertabox}
-    Se quisermos que todas as cotas valham simultaneamente com
-    probabilidade $1 - \delta$, cada uma precisa de risco $\delta/(mT)$.
-    Como o $\delta$ entra como $\log(1/\delta)$, o preço é apenas
-    $\log(mT)$ --- \textbf{logarítmico no número de cotas}. É por isso que
-    a união de eventos, brutal como parece, é aceitável aqui.
+    Todas simultâneas com probabilidade $1 - \delta$: cada cota precisa de
+    risco $\delta/(mT)$. Como $\delta$ entra como $\log(1/\delta)$, o
+    preço é apenas $\log(mT)$ --- \textbf{logarítmico no número de cotas}.
+    União de eventos, brutal como parece, é aceitável aqui.
   \end{alertabox}
 
   \begin{ideiabox}
@@ -1033,12 +1028,13 @@
 
 %% ============================================================
 \begin{frame}{Cota de arrependimento do UCB --- montagem}
-  Sejam $\gap_i = \mu^{*} - \mu_i$ e $\Nc_i(n)$ o número de puxadas do
-  braço $i$ até o passo $n$. Já sabemos que
+  Sejam $\gap_i = \mu^{*} - \mu_i$ e $\Nc_i(n)$ as puxadas do braço $i$ até
+  o passo $n$. Já sabemos:
   \[
     \Reg_n = \sum_{i \,:\, \gap_i > 0} \gap_i \, \E[\Nc_i(n)].
   \]
 
+  \vspace{-4mm}
   \begin{defbox}{O ``bom evento'' $G_i$}
     A média do braço $i$ nunca ultrapassa sua cota, e a cota do braço ótimo
     nunca cai abaixo de $\mu^{*}$:
@@ -1056,10 +1052,10 @@
     \qquad u_i \defeq \frac{2\log(1/\delta)}{\gap_i^2}.
   \]
   \vspace{-0.5em}
+  \vspace{-3mm}
   \begin{ideiabox}
-    \textbf{No bom evento limitamos as puxadas por um argumento
-    determinístico; fora dele limitamos por $n$, e mostramos que sua
-    probabilidade é minúscula.}
+    \textbf{No bom evento: puxadas limitadas por argumento determinístico;
+    fora dele, por $n$ — probabilidade minúscula.}
   \end{ideiabox}
 \end{frame}
 
@@ -1129,10 +1125,11 @@
 
 %% ============================================================
 \begin{frame}{A cota independente do problema}
-  A cota anterior é inútil quando alguma lacuna é minúscula. Solução:
-  \textbf{partir os braços em dois grupos} num limiar $\gap$ à escolha.
+  Cota anterior inútil com lacuna minúscula. Solução: \textbf{partir os
+  braços em dois grupos} num limiar $\gap$ à escolha.
   \vspace{-0.3em}
 
+  \vspace{-4mm}
   \[
     \Reg_n \;\le\;
       \underbrace{n\gap}_{\substack{\text{braços com } \gap_i \le \gap:\\ \text{errar custa pouco}}}
@@ -1144,6 +1141,7 @@
   \vspace{-0.5em}
   Minimizando em $\gap$: $\gap^{\star} = \sqrt{4m\log n / n}$, e
 
+  \vspace{-3mm}
   \begin{teobox}{Cota de pior caso}
     \[
       \Reg_n \;\le\; 4\sqrt{m\,n\log n} \;=\; O\bigl(\sqrt{m\,n\log n}\bigr).
@@ -1151,10 +1149,9 @@
   \end{teobox}
 
   \begin{ideiabox}
-    O piso minimax é $\Omega(\sqrt{m n})$: o UCB1 fica a um fator
-    $\sqrt{\log n}$ do ótimo, eliminável por variantes (MOSS, KL-UCB). E
-    \textbf{o mesmo algoritmo} satisfaz as duas cotas: adapta-se sozinho à
-    dificuldade do problema.
+    Piso minimax $\Omega(\sqrt{m n})$: UCB1 a um fator $\sqrt{\log n}$
+    (MOSS, KL-UCB eliminam). \textbf{O mesmo algoritmo} satisfaz as duas
+    cotas: adapta-se sozinho à dificuldade do problema.
   \end{ideiabox}
 \end{frame}
 
@@ -1176,11 +1173,11 @@
   \end{tabular}
 
   \vspace{0.8em}
+  \vspace{-2mm}
   \begin{alertabox}[fontupper=\footnotesize]
-    \textbf{As cotas do UCB são piores que o desempenho observado dos
-    métodos ingênuos} --- e isso não é erro: é o que significa uma cota de
-    \emph{pior caso}. Ela vale para todo bandido com estas lacunas; os
-    números do guloso valem para \emph{esta} realização.
+    \textbf{Cotas do UCB piores que o desempenho observado dos métodos
+    ingênuos} — não é erro: cota de \emph{pior caso} vale para todo bandido
+    com estas lacunas; números do guloso, para \emph{esta} realização.
   \end{alertabox}
   \begin{ideiabox}[fontupper=\footnotesize]
     A comparação honesta é assintótica: em $n = 10^6$ o guloso paga
@@ -1242,11 +1239,12 @@
     atualize a posteriori.
   \end{algbox}
 
+  \vspace{-3mm}
   \begin{ideiabox}
-    O nome vem da propriedade que a define: cada braço é escolhido com
-    probabilidade \emph{igual à probabilidade posterior de ele ser o
-    ótimo}. A exploração não é imposta por um bônus --- ela emerge da
-    incerteza da posteriori, e desaparece sozinha quando a incerteza some.
+    Cada braço é escolhido com probabilidade \emph{igual à probabilidade
+    posterior de ele ser o ótimo}. A exploração não é imposta por um bônus
+    --- ela emerge da incerteza da posteriori, e desaparece sozinha quando
+    a incerteza some.
   \end{ideiabox}
 \end{frame}
 
@@ -1278,15 +1276,15 @@
     \end{column}
     \begin{column}{0.48\textwidth}
       \begin{ideiabox}
-        Compare com o $\epsilon$-guloso, que daria $3{,}3\%$ a $a_3$
-        \emph{para sempre}. Thompson dá $6{,}6\%$ \emph{agora}, quando ainda
-        há dúvida legítima, e essa fração cai sozinha à medida que a
-        posteriori de $a_3$ se concentra perto de $0{,}1$.
+        $\epsilon$-guloso daria $3{,}3\%$ a $a_3$ \emph{para sempre}.
+        Thompson dá $6{,}6\%$ \emph{agora}, quando ainda há dúvida
+        legítima, e essa fração cai sozinha à medida que a posteriori de
+        $a_3$ se concentra perto de $0{,}1$.
       \end{ideiabox}
       \begin{alertabox}
-        Note que $\Prob(\text{melhor}) \ne$ ordenação das médias: $a_3$ tem
-        média posterior bem menor, mas $6{,}6\%$ de chance de ser o melhor
-        --- com uma única observação, a cauda ainda é gorda.
+        $\Prob(\text{melhor}) \ne$ ordenação das médias: $a_3$ tem média
+        posterior bem menor, mas $6{,}6\%$ de chance de ser o melhor ---
+        com uma única observação, a cauda ainda é gorda.
       \end{alertabox}
     \end{column}
   \end{columns}

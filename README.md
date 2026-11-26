@@ -23,10 +23,17 @@ Materiais da disciplina **GBC063 — Inteligência Artificial** (UFU/FACOM): sli
 | 5 — Gradientes de política I | [PDF](aula05/aula05.pdf) | [PDF](aula05/handout-aula05.pdf) | [Lab. gradiente](https://albertiniufu.github.io/gbc063/aula05/aula05-laboratorio-gradiente-de-politica.html) · [Lab. gradiente — versão CartPole](https://albertiniufu.github.io/gbc063/aula05/aula05-laboratorio-gradiente-de-politica-v2.html) | [REINFORCE](atividades/2_reinforce.ipynb) | — |
 | 6 — Gradientes de política II: variância, confiança e PPO | [PDF](aula06/aula06.pdf) | [PDF](aula06/handout-aula06.pdf) | — | [A2C](atividades/3_a2c.ipynb) | — |
 | 7 — PPO, GAE e imitação | [PDF](aula07/aula07.pdf) · [HTML](https://albertiniufu.github.io/gbc063/aula07/aula07-ppo.html) | [PDF](aula07/handout-aula07.pdf) | — | [PPO](atividades/4_ppo.ipynb) | — |
-| 8 — Imitação, aprendizado de recompensa e RLHF | [PDF](aula08/aula08.pdf) | [PDF](aula08/handout-aula08.pdf) | — | — | — |
-| 9 — Bandidos e arrependimento | [PDF](aula09/aula09.pdf) | [PDF](aula09/handout-aula09.pdf) | — | — | — |
-| 10 — Aprendizado rápido II | [PDF](aula10/aula10.pdf) | [PDF](aula10/handout-aula10.pdf) | — | — | — |
-| 11 — Bandits bayesianos | [PDF](aula11/aula11.pdf) | [PDF](aula11/handout-aula11.pdf) | [Bandits](https://albertiniufu.github.io/gbc063/aula11/interativo-aula11.html) | — | — |
-| 12 — Aprendizagem rápida em MDPs | [PDF](aula12/aula12.pdf) | [PDF](aula12/handout-aula12.pdf) | — | — | — |
-| 13 — MCTS e a família AlphaZero | [PDF](aula13/aula13.pdf) | [PDF](aula13/handout-aula13.pdf) | [MCTS](https://albertiniufu.github.io/gbc063/aula13/lab13-mcts.html) | — | — |
-| 14 — MCTS II: AlphaZero | [PDF](aula14/aula14.pdf) | [PDF](aula14/handout-aula14.pdf) | [Lig-4](https://albertiniufu.github.io/gbc063/aula14/laboratorio-mcts.html) | — | — |
+
+## Conteúdo extra
+
+As aulas 1–7 são o conteúdo programático atual da disciplina. O material das aulas 8–14 foi mantido em `conteudo_extra/` como referência, fora do conteúdo atual.
+
+| Aula | Slides | Resumo | Simulador |
+|------|--------|--------|-----------|
+| 8 — Imitação, aprendizado de recompensa e RLHF | [PDF](conteudo_extra/aula08/aula08.pdf) | [PDF](conteudo_extra/aula08/handout-aula08.pdf) | — |
+| 9 — Bandidos e arrependimento | [PDF](conteudo_extra/aula09/aula09.pdf) | [PDF](conteudo_extra/aula09/handout-aula09.pdf) | — |
+| 10 — Aprendizado rápido II | [PDF](conteudo_extra/aula10/aula10.pdf) | [PDF](conteudo_extra/aula10/handout-aula10.pdf) | — |
+| 11 — Bandits bayesianos | [PDF](conteudo_extra/aula11/aula11.pdf) | [PDF](conteudo_extra/aula11/handout-aula11.pdf) | [Bandits](https://albertiniufu.github.io/gbc063/conteudo_extra/aula11/interativo-aula11.html) |
+| 12 — Aprendizagem rápida em MDPs | [PDF](conteudo_extra/aula12/aula12.pdf) | [PDF](conteudo_extra/aula12/handout-aula12.pdf) | — |
+| 13 — MCTS e a família AlphaZero | [PDF](conteudo_extra/aula13/aula13.pdf) | [PDF](conteudo_extra/aula13/handout-aula13.pdf) | [MCTS](https://albertiniufu.github.io/gbc063/conteudo_extra/aula13/lab13-mcts.html) |
+| 14 — MCTS II: AlphaZero | [PDF](conteudo_extra/aula14/aula14.pdf) | [PDF](conteudo_extra/aula14/handout-aula14.pdf) | [Lig-4](https://albertiniufu.github.io/gbc063/conteudo_extra/aula14/laboratorio-mcts.html) |

@@ -1,7 +1,5 @@
 %% ============================================================
 %%  Aula 12 — Aprendizagem rápida em MDPs
-%%  Versão sucinta: roteiro do apresentador (poucas palavras,
-%%  mesmas definições e figuras do aula12.tex)
 %%  Adaptação em pt-BR do CS234 (Stanford, Emma Brunskill), Lecture 12
 %%  Prof. Marcelo Keese Albertini — Universidade Federal de Uberlândia
 %%  Compilar com XeLaTeX (2x)
@@ -9,7 +7,7 @@
 \documentclass[aspectratio=169, 11pt]{beamer}
 %% .sty do projeto na raiz do repositório (../)
 \makeatletter
-\def\input@path{{./}{../}}
+\def\input@path{{./}{../}{../../}}
 \makeatother
 
 
@@ -77,12 +75,13 @@
     \end{column}
     \begin{column}{0.5\textwidth}
       \begin{ideiabox}
-        Tudo valia para \emph{uma única decisão} repetida. Hoje há \alert{estados}:
-        uma ação ruim decide \emph{onde} você estará nos próximos mil.
+        Tudo isso valia para \emph{uma única decisão} repetida. Hoje há \alert{estados}:
+        uma ação ruim não custa só a recompensa daquele passo --- ela decide
+        \emph{onde} você estará nos próximos mil.
       \end{ideiabox}
       \begin{alertabox}
-        Dependência temporal: exploração em MDPs \emph{qualitativamente}
-        mais difícil, não só mais cara.
+        É essa dependência temporal que torna a exploração em MDPs
+        \emph{qualitativamente} mais difícil, e não apenas mais cara.
       \end{alertabox}
     \end{column}
   \end{columns}
@@ -114,22 +113,23 @@
   \begin{columns}[T]
     \begin{column}{0.53\textwidth}
       \begin{enumerate}
-        \item \textbf{Um novo critério: PAC.} Arrependimento: área sob a curva de
+        \item \textbf{Um novo critério: PAC.} Arrependimento mede área sob a curva de
               erro; PAC \emph{conta} decisões ruins.
         \item \textbf{Otimismo em MDPs: MBIE-EB} e sua garantia PAC.
-        \item \textbf{Lema da simulação:} erro de \emph{modelo} → erro de
+        \item \textbf{Lema da simulação:} converte erro de \emph{modelo} em erro de
               \emph{valor}.
         \item \textbf{PSRL:} amostrar um MDP inteiro por episódio.
-        \item \textbf{Generalização:} quando não dá para contar visitas.
+        \item \textbf{Generalização:} o que sobra quando não dá para contar visitas.
       \end{enumerate}
     \end{column}
     \begin{column}{0.45\textwidth}
       \begin{teobox}{A pergunta de fundo}
-        Em \emph{qualquer} MDP tabular, \alert{polinomial} decisões ruins? Sim ---
-        e não é a taxa de aprendizado nem a arquitetura.
+        Existe algoritmo que, em \emph{qualquer} MDP tabular, cometa apenas um número
+        \alert{polinomial} de decisões ruins? Sim --- e o que decide isso não é a taxa
+        de aprendizado nem a arquitetura.
       \end{teobox}
       \begin{ideiabox}
-        No \textit{RiverSwim} adiante: $\epsilon$-guloso colhe $85$; otimismo,
+        No \textit{RiverSwim} adiante, $\epsilon$-guloso colhe $85$ e otimismo colhe
         $8\,580$ --- mesmo ambiente, mesmo orçamento.
       \end{ideiabox}
     \end{column}
@@ -189,8 +189,9 @@
               resto, é ótimo.
       \end{itemize}
       \smallskip
-      Em ensaio clínico, tutor inteligente ou controle de processo, a pergunta é
-      \alert{``em quantos momentos entreguei uma decisão ruim?''}
+      Em ensaio clínico, tutor inteligente ou controle de processo, a pergunta não é
+      ``quanto perdi no total'', mas \alert{``em quantos momentos entreguei uma decisão
+      ruim?''}
     \end{column}
     \begin{column}{0.46\textwidth}
       \centering
@@ -262,13 +263,15 @@
     \begin{column}{0.5\textwidth}
       \begin{teobox}{Não são equivalentes}
         Arrependimento $O(\sqrt{T})$ admite infinitas decisões $\epsilon$-ruins (basta
-        rarearem); PAC pode ter arrependimento linear se as $N$ ruins forem caríssimas.
+        rarearem); e um algoritmo PAC pode ter arrependimento linear se as $N$ decisões
+        ruins forem caríssimas.
       \end{teobox}
     \end{column}
     \begin{column}{0.5\textwidth}
       \begin{ideiabox}
-        Na prática, a \emph{mesma} família atende ambos: reduzir incerteza de forma
-        \alert{dirigida}, não por sorteio.
+        Na prática, ambos são atendidos pela \emph{mesma} família de algoritmos, porque
+        ambos exigem a mesma coisa: reduzir incerteza de forma \alert{dirigida}, não
+        por sorteio.
       \end{ideiabox}
     \end{column}
   \end{columns}
@@ -307,14 +310,14 @@
   \begin{columns}[T]
     \begin{column}{0.49\textwidth}
       \begin{alertabox}
-        Recompensa grande a cinco passos improváveis, caminho \emph{contra}
+        A recompensa grande está a cinco passos improváveis, e o caminho é \emph{contra}
         a dinâmica. A política ótima ($\gamma=0{,}95$) nada à direita em todo estado.
       \end{alertabox}
     \end{column}
     \begin{column}{0.49\textwidth}
       \begin{ideiabox}
-        Ruído local não produz uma \emph{sequência} coerente de cinco escolhas
-        certas: explorar exige um \alert{plano} de exploração.
+        Nenhuma quantidade de \emph{ruído local} produz uma \emph{sequência} coerente de
+        cinco escolhas certas. Explorar bem exige um \alert{plano} de exploração.
       \end{ideiabox}
     \end{column}
   \end{columns}
@@ -387,8 +390,9 @@
     \end{pseudo}
   \end{algbox}
   \vspace{-0.4em}
-  {\small\color{rlCinza} Contagens → modelo; bônus que decai; \emph{planeje} no modelo
-  otimista e siga o plano. Sem $\epsilon$-guloso: a política executada é determinística.}
+  {\small\color{rlCinza} Estime o modelo por contagens, some um \emph{bônus} que decai,
+  \emph{planeje} no modelo otimista e siga o plano --- sem nenhum $\epsilon$-guloso: a
+  política executada é determinística.}
 \end{frame}
 
 %% ============================================================
@@ -397,10 +401,11 @@
     \begin{column}{0.5\textwidth}
       \begin{teobox}{1 --- concentração}
         Com $n$ amostras i.i.d.\ em $[0,1]$, Hoeffding dá
-        $\abs{\Rhat - \rec} \le \sqrt{\ln(2/\delta')/(2n)}$ com prob.\ $1-\delta'$.
+        $\abs{\Rhat - \rec} \le \sqrt{\ln(2/\delta')/(2n)}$ com probabilidade
+        $1-\delta'$.
       \end{teobox}
       \begin{teobox}{2 --- limitante da união}
-        Vale para $\abs{\gS}\abs{\gA}$ pares e $m$ níveis: troque $\delta'$ por
+        Deve valer para $\abs{\gS}\abs{\gA}$ pares e $m$ níveis: troque $\delta'$ por
         $\delta/(2\abs{\gS}\abs{\gA}m)$ --- daí o logaritmo em $\beta$.
       \end{teobox}
       \begin{teobox}{3 --- propagação}
@@ -419,8 +424,8 @@
         \]
       \end{defbox}
       \begin{ideiabox}
-        Nunca visitados: $\Qtil = \tfrac{1}{1-\gamma}$, o maior valor possível ---
-        o desconhecido é, \emph{por construção}, o mais atraente do mapa.
+        Estados nunca visitados começam com $\Qtil = \tfrac{1}{1-\gamma}$, o maior valor
+        possível: o desconhecido é, \emph{por construção}, o mais atraente do mapa.
       \end{ideiabox}
     \end{column}
   \end{columns}
@@ -499,9 +504,9 @@
     \end{column}
     \begin{column}{0.45\textwidth}
       \begin{ideiabox}
-        Passo (4) é o pivô: \emph{ser otimista transforma cada erro em informação}.
-        Ação não-ótima → $\Qtil$ inflado em algum ponto do caminho --- só onde
-        falta experiência.
+        O passo (4) é o pivô: \emph{ser otimista transforma cada erro em informação}.
+        Se a ação não é boa, $\Qtil$ está inflado em algum ponto do caminho --- e só
+        infla onde falta experiência.
       \end{ideiabox}
       \begin{alertabox}
         Os expoentes são frouxos; Azar et al.\ (2017) atingem a dependência minimax.
@@ -635,7 +640,7 @@
         \]
       \end{defbox}
       \begin{ideiabox}
-        Atualizar custa \emph{duas somas}. É essa conveniência algébrica que
+        Atualizar a crença custa \emph{duas somas}. É essa conveniência algébrica que
         torna Thompson barato o bastante para rodar em produção.
       \end{ideiabox}
     \end{column}
@@ -685,8 +690,9 @@
         \]
       \end{defbox}
       \begin{ideiabox}
-        Calcular é intratável, mas \emph{amostrar} é trivial: sorteie um MDP,
-        resolva-o, aja de forma ótima nele --- sem calcular a integral.
+        Calcular essa probabilidade é intratável, mas \emph{amostrar} dela é trivial:
+        sorteie um MDP, resolva-o, aja de forma ótima nele. A ação já sai distribuída
+        assim, sem nunca calcular a integral.
       \end{ideiabox}
     \end{column}
   \end{columns}
@@ -714,13 +720,14 @@
       \begin{teobox}{Garantia}
         Arrependimento \emph{bayesiano}
         $\tilde{O}\bigl(H\sqrt{\abs{\gS}\abs{\gA}T}\bigr)$ --- comparável aos melhores
-        algoritmos otimistas, em geral melhor na prática.
+        algoritmos otimistas, e em geral melhor na prática.
       \end{teobox}
     \end{column}
     \begin{column}{0.49\textwidth}
       \begin{ideiabox}
-        PSRL \emph{não} tem: $\epsilon$, bônus, constante de concentração. A exploração
-        emerge da variância do \textit{a posteriori}, que encolhe sozinha.
+        Repare no que PSRL \emph{não} tem: nenhum $\epsilon$, nenhum bônus, nenhuma
+        constante de concentração. A exploração emerge da variância do
+        \textit{a posteriori}, que encolhe sozinha.
       \end{ideiabox}
     \end{column}
   \end{columns}
@@ -739,8 +746,8 @@
         muda de ideia, volta. O agregado vira um \emph{passeio aleatório}.
       \end{defbox}
       \begin{ideiabox}
-        Uma hipótese por episódio = análogo bayesiano da propagação do bônus: ambos
-        dão \alert{exploração profunda}.
+        Comprometer-se com uma hipótese por um episódio é o análogo bayesiano da
+        propagação do bônus: ambos dão \alert{exploração profunda}.
       \end{ideiabox}
     \end{column}
     \begin{column}{0.49\textwidth}
@@ -787,15 +794,16 @@
   \begin{columns}[T]
     \begin{column}{0.49\textwidth}
       \begin{ideiabox}
-        Ambos: ``não sei'' → ``vale a pena ir ver''. Otimismo: \emph{determinístico,
-        pior caso}; Thompson: \emph{estocástico, na média}.
+        Ambos transformam ``não sei'' em ``vale a pena ir ver''. Otimismo faz isso
+        \emph{deterministicamente e no pior caso}; Thompson, \emph{estocasticamente e
+        na média}.
       \end{ideiabox}
     \end{column}
     \begin{column}{0.49\textwidth}
       \begin{teobox}{Amostragem por semente}
-        Dimakopoulou \& Van Roy (2018): com $M$ agentes em paralelo, amostragem
-        independente faz todos seguirem hipóteses parecidas. \emph{Semente} fixa por
-        agente gera diversidade coordenada.
+        Dimakopoulou \& Van Roy (2018): com $M$ agentes em paralelo, amostrar
+        independentemente faz todos seguirem hipóteses parecidas. Uma \emph{semente}
+        fixa por agente gera diversidade coordenada.
       \end{teobox}
     \end{column}
   \end{columns}
@@ -838,7 +846,7 @@
         \]
         \vspace{-1.2em}
 
-        Cada estado visitado no máximo uma vez: $n(s,a) \in \{0,1\}$, o bônus
+        Se cada estado é visitado no máximo uma vez, $n(s,a) \in \{0,1\}$: o bônus
         deixa de informar.
       \end{alertabox}
       \begin{defbox}{Três coisas a reconstruir}
@@ -851,9 +859,10 @@
     \end{column}
     \begin{column}{0.48\textwidth}
       \begin{ideiabox}
-        A generalização \emph{muda o problema de exploração}: estados parecidos →
-        valores parecidos; visitar um informa os outros. Escala com a
-        \emph{complexidade da classe de funções}, não com $\abs{\gS}$.
+        A generalização \emph{muda o problema de exploração}: se estados parecidos têm
+        valores parecidos, visitar um informa sobre os outros. A exploração deixa de
+        escalar com $\abs{\gS}$ e passa a escalar com a \emph{complexidade da classe
+        de funções}.
       \end{ideiabox}
       \begin{teobox}{Roteiro}
         Primeiro os bandits contextuais lineares; depois, os MDPs.
@@ -871,9 +880,9 @@
         \textbf{Sem dinâmica:} $s_{t+1}$ não depende de $a_t$.
       \end{defbox}
       \begin{ideiabox}
-        Meio-termo entre bandit e MDP: \emph{estado} (exige generalização), sem
-        \emph{consequência} (sem exploração profunda). Teoria completa; quase toda a
-        aplicação industrial.
+        Meio-termo exato entre bandit e MDP: tem \emph{estado} (exige generalização) mas
+        não tem \emph{consequência} (não exige exploração profunda). É onde a teoria é
+        completa --- e onde vive quase toda a aplicação industrial.
       \end{ideiabox}
     \end{column}
     \begin{column}{0.49\textwidth}
@@ -902,8 +911,10 @@
         \theta^{\!\top}\feat(s,a) = \theta_a^{\!\top}\feat(s).
       \]
       \begin{alertabox}
-        Preço: $d \to Kd$ --- modelo disjunto \alert{não compartilha informação entre
-        braços}. Um $\feat(s,a)$ bem projetado aprende sobre um braço observando outro.
+        O preço é a dimensão: $d \to Kd$. E esse é o ponto --- o modelo disjunto
+        \alert{não compartilha informação entre braços}, e a dimensão maior é a
+        expressão formal disso. Um $\feat(s,a)$ bem projetado aprende sobre um braço
+        observando outro.
       \end{alertabox}
     \end{column}
     \begin{column}{0.46\textwidth}
@@ -953,8 +964,8 @@
       {\scriptsize\color{rlCinza} arrependimento acumulado ao fim de $T$}
       \vspace{0.6em}
       \begin{teobox}{A leitura teórica}
-        UCB: $\tilde{O}(\sqrt{KT})$; LinUCB: $\tilde{O}(d\sqrt{T})$: braços saem do
-        limitante, substituídos pela dimensão.
+        UCB: $\tilde{O}(\sqrt{KT})$; LinUCB: $\tilde{O}(d\sqrt{T})$. O número de braços
+        sai do limitante, substituído pela dimensão.
       \end{teobox}
     \end{column}
     \begin{column}{0.51\textwidth}
@@ -976,7 +987,7 @@
       \end{tikzpicture}}
       \\[0.3em]
       \begin{alertabox}
-        Ganho existe \emph{se o modelo linear estiver correto}. Sob má especificação,
+        O ganho existe \emph{se o modelo linear estiver correto}. Sob má especificação,
         LinUCB converge com confiança para o braço errado --- risco que o UCB não corre.
       \end{alertabox}
     \end{column}
@@ -1011,8 +1022,8 @@
     \end{column}
     \begin{column}{0.46\textwidth}
       \begin{ideiabox}
-        $\sqrt{\feat^{\!\top}A_t^{-1}\feat}$: largura do elipsoide \emph{na direção} de
-        $\feat$ --- o análogo de $1/\sqrt{n(s,a)}$, sensível à geometria.
+        O termo $\sqrt{\feat^{\!\top}A_t^{-1}\feat}$ é a largura do elipsoide \emph{na
+        direção} de $\feat$: o análogo de $1/\sqrt{n(s,a)}$, sensível à geometria.
       \end{ideiabox}
       \begin{quizbox}{}
         Por que representar a incerteza sobre $\theta$ basta para representar a
@@ -1034,13 +1045,14 @@
         informativo.
       \end{respbox}
       \begin{alertabox}
-        Explorar para reduzir ruído aleatório é desperdício: bônus proporcional à
-        \emph{variância total} exploraria para sempre o braço mais ruidoso.
+        Explorar para reduzir ruído aleatório é desperdício. Um bônus proporcional à
+        \emph{variância total} exploraria para sempre o braço mais ruidoso, ainda que
+        sua média já fosse conhecida.
       \end{alertabox}
     \end{column}
     \begin{column}{0.48\textwidth}
       \begin{ideiabox}
-        A distinção atravessa a aula inteira:
+        Esta distinção atravessa a aula inteira:
         \begin{itemize}
           \item $\beta/\sqrt{n(s,a)}$ no MBIE-EB é epistêmico e decai;
           \item a variância do \textit{a posteriori} do PSRL é epistêmica e encolhe;
@@ -1071,8 +1083,8 @@
           \nabla_w \hat{Q}
         \]
       \end{algbox}
-      {\small\color{rlCinza} Idêntico ao MBIE-EB: bônus entra no \emph{alvo} de
-      Bellman, propagado para trás; muda só \emph{como} calculá-lo.}
+      {\small\color{rlCinza} Idêntico ao MBIE-EB: o bônus entra no \emph{alvo} de
+      Bellman e é propagado para trás. Muda só \emph{como} calculá-lo.}
     \end{column}
     \begin{column}{0.47\textwidth}
       \begin{teobox}{Estimar novidade sem contar}
@@ -1117,8 +1129,8 @@
         \end{itemize}
       \end{alertabox}
       \begin{ideiabox}
-        O que separa agente que funciona do que não: \emph{como ele decide o que ainda
-        não sabe}.
+        A diferença entre um agente que funciona e um que não funciona está em
+        \emph{como ele decide o que ainda não sabe}.
       \end{ideiabox}
     \end{column}
   \end{columns}
@@ -1178,8 +1190,8 @@
         implícito muito mais rico --- a distribuição de tarefas de treino.
       \end{teobox}
       \begin{ideiabox}
-        Fecha-se o círculo: pior caso no início; no fim, aprende-se o \textit{a priori}
-        que o torna irrelevante.
+        Fecha-se o círculo: começamos exigindo garantias no pior caso e terminamos
+        aprendendo o \textit{a priori} que o torna irrelevante.
       \end{ideiabox}
     \end{column}
   \end{columns}
@@ -1211,8 +1223,9 @@
         \end{itemize}
       \end{teobox}
       \begin{alertabox}
-        A pergunta em aberto: \emph{quais propriedades do domínio} tornam a exploração
-        tratável. Fora delas, limitantes inferiores exponenciais.
+        A pergunta em aberto não é ``existe algoritmo eficiente?'', e sim \emph{quais
+        propriedades do domínio} tornam a exploração tratável. Fora delas, há limitantes
+        inferiores exponenciais.
       \end{alertabox}
     \end{column}
   \end{columns}

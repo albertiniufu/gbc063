@@ -1,14 +1,13 @@
 %% ============================================================
 %%  Aula 14 — Busca em árvore Monte Carlo II: AlphaZero
-%%  Versão sucinta: roteiro do apresentador (poucas palavras,
-%%  mesmas definições e figuras do aula14.tex)
 %%  Adaptação em pt-BR do CS234 (Stanford, Emma Brunskill), Lecture 14
-%%  Compilar com XeLaTeX (2x)
+%%  Prof. Marcelo Keese Albertini — Universidade Federal de Uberlândia
+%%  Compilar com XeLaTeX (2x): latexmk -xelatex aula14.tex
 %% ============================================================
 \documentclass[aspectratio=169, 10pt]{beamer}
 %% .sty do projeto na raiz do repositório (../)
 \makeatletter
-\def\input@path{{./}{../}}
+\def\input@path{{./}{../}{../../}}
 \makeatother
 
 
@@ -59,12 +58,21 @@
 %% ------------------------------------------------------------
 \begin{frame}{Plano de hoje}
   \begin{enumerate}\setlength{\itemsep}{0.35em}
-    \item \textbf{Planejar agora, em vez de resolver tudo} — computação local por \emph{uma} jogada; MCTS usa o orçamento.
-    \item \textbf{AlphaZero} — rollout vira rede de \emph{política} e \emph{valor}: PUCT, quatro fases, política da raiz.
-    \item \textbf{Auto-jogo} — busca vira dados de treino; adversário = cópia de si.
-    \item \textbf{A evidência} — arquitetura vs.\ busca vs.\ dados humanos; números do artigo.
-    \item \textbf{Além do tabuleiro} — AlphaTensor, AlphaDev, MuZero: descoberta como busca.
-    \item \textbf{Um olhar crítico} — UCT é o algoritmo certo para gastar simulações?
+    \item \textbf{Planejar agora, em vez de resolver tudo} — por que faz sentido
+          gastar computação local para decidir \emph{uma} jogada, e o que a busca
+          em árvore Monte Carlo (MCTS) faz com esse orçamento.
+    \item \textbf{AlphaZero} — o que acontece quando a rollout aleatória é
+          substituída por uma rede que devolve \emph{política} e \emph{valor}:
+          a regra PUCT, as quatro fases, a política da raiz.
+    \item \textbf{Auto-jogo} — o laço que transforma busca em dados de treino, e
+          por que o adversário ser uma cópia de si mesmo é uma vantagem, não um
+          acaso.
+    \item \textbf{A evidência} — quanto vem da arquitetura, quanto vem da busca,
+          quanto vem dos dados humanos. Os números do artigo.
+    \item \textbf{Além do tabuleiro} — AlphaTensor, AlphaDev, MuZero: descoberta
+          científica reescrita como problema de busca.
+    \item \textbf{Um olhar crítico} — o UCT é mesmo o algoritmo certo para gastar
+          simulações? Aqui a resposta é mais interessante do que parece.
   \end{enumerate}
 \end{frame}
 
@@ -73,15 +81,24 @@
   \begin{columns}[T]
     \begin{column}{0.52\textwidth}
       \small
-      \begin{itemize}
-        \item Antes: política \alert{para todo} o espaço de estados — iteração de valor, $Q$-learning, DQN, gradientes, PPO; $\pol : \gS \to \gA$.
-        \item Hoje: dado $s_t$, computação para \alert{uma} ação boa. Depois, repetir.
-        \item As visões não competem: AlphaZero usa uma para melhorar a outra.
-      \end{itemize}
+      Até aqui, quase tudo foi sobre calcular uma política \alert{para todo o
+      espaço de estados}: iteração de valor, $Q$-learning, DQN, gradientes de
+      política, PPO. O objeto produzido é uma função $\pol : \gS \to \gA$.
+
+      \medskip
+      Hoje o objeto é outro: dado o estado \emph{atual} $s_t$, gastar computação
+      para escolher \alert{uma} ação boa — e só ela. Depois, repetir.
+
+      \medskip
+      As duas visões não competem: AlphaZero usa uma para melhorar a outra.
     \end{column}
     \begin{column}{0.46\textwidth}
       \begin{ideiabox}
-        Global = \emph{amortizada}; local = \emph{sob demanda}. $\abs{\gS}$ astronômico: só a local viável — a global vira aproximação corrigida na hora.
+        Uma política global é uma resposta \emph{amortizada}: paga-se caro uma
+        vez e consulta-se barato para sempre. O planejamento local é uma resposta
+        \emph{sob demanda}: nada é pago antecipadamente, mas cada decisão custa.
+        Quando $\abs{\gS}$ é astronômico, só a segunda é viável — e a primeira
+        vira uma \emph{aproximação} que a segunda corrige na hora.
       \end{ideiabox}
     \end{column}
   \end{columns}
@@ -92,7 +109,7 @@
 %% ------------------------------------------------------------
 \begin{frame}{Busca Monte Carlo simples}{Um passo de melhoria de política, e nada mais}
   \small
-  Modelo (simulador) $\mathcal{M}$ + política de simulação $\pol$:
+  Dados um modelo (simulador) $\mathcal{M}$ e uma política de simulação $\pol$:
   \begin{itemize}
     \item Para cada ação $a \in \gA$, simule $K$ episódios a partir do estado real $s_t$:
       \[
@@ -106,14 +123,17 @@
   \end{itemize}
 
   \begin{alertabox}
-    \textbf{Um passo} de melhoria sobre $\pol$: guloso em $Q^{\pol}$, não $\polstar$. $\pol$ ruim $\Rightarrow$ estimativa ruim.
+    Isto é exatamente \textbf{um passo} de melhoria de política sobre $\pol$: o
+    resultado é gulosos-em-relação-a-$Q^{\pol}$, não $\polstar$. Se $\pol$ for
+    ruim, a estimativa que orienta a decisão também é.
   \end{alertabox}
 \end{frame}
 
 %% ------------------------------------------------------------
 \begin{frame}{Podemos fazer melhor: a árvore expectimax}
   \footnotesize
-  Com o modelo, dá para calcular $Q^{*}(s_t,a)$ \emph{exatamente} — expandir a árvore completa a partir de $s_t$ e retropropagar
+  Com o modelo em mãos, dá para calcular $Q^{*}(s_t,a)$ \emph{exatamente} — basta
+  expandir a árvore de decisão completa a partir de $s_t$ e retropropagar
   \[
     Q^{*}(s,a) = \rec(s,a) + \gamma \sum_{s'} \tran{s'}{s,a}\,\max_{a'} Q^{*}(s',a').
   \]
@@ -127,7 +147,7 @@
     \end{column}
     \begin{column}{0.48\textwidth}
       \begin{alertabox}
-        Árvore cresce como $(\abs{\gS}\abs{\gA})^{H}$.
+        O tamanho da árvore cresce como $(\abs{\gS}\abs{\gA})^{H}$.
         No Go: fator de ramificação $\approx 250$, partida com
         $\approx 150$ jogadas. Uma árvore de $250^{150} \approx 10^{360}$ folhas.
       \end{alertabox}
@@ -159,7 +179,9 @@
 %% ------------------------------------------------------------
 \begin{frame}{Busca em árvore Monte Carlo: crescer a árvore onde importa}
   \small
-  Resposta ao $(\abs{\gS}\abs{\gA})^{H}$: não construir a árvore toda — árvore \alert{assimétrica}, fundo só onde as simulações indicaram valer.
+  A resposta da MCTS ao $(\abs{\gS}\abs{\gA})^{H}$ é não construir a árvore toda.
+  Constrói-se uma árvore \alert{assimétrica}, aprofundada só nas regiões que as
+  simulações indicaram valer a pena.
 
   \medskip
   \centering
@@ -192,7 +214,8 @@
   \end{tikzpicture}
 
   \medskip
-  A árvore da direita é o \emph{produto} do algoritmo, não sua entrada: cada simulação a torna informativa onde a decisão é difícil.
+  A árvore da direita é o \emph{produto} do algoritmo, não sua entrada: cada
+  simulação a torna um pouco mais informativa exatamente onde a decisão é difícil.
 \end{frame}
 
 %% ------------------------------------------------------------
@@ -237,13 +260,17 @@
 
   \medskip
   \small
-  Repita $K$ vezes; ação real sai das estatísticas da raiz. \alert{Todo o desenho está em duas escolhas:} seleção (fase 1) e origem do $v$ (fase 3).
+  Repita $K$ vezes. Ao final, a ação real é escolhida a partir das estatísticas da
+  raiz. \alert{Todo o desenho do algoritmo está em duas escolhas:} como selecionar
+  na fase 1, e de onde vem o $v$ da fase 3.
 \end{frame}
 
 %% ------------------------------------------------------------
 \begin{frame}{UCT: cada nó da árvore é um bandit}
   \small
-  Seleção: UCT (Kocsis e Szepesvári, 2006) — cada nó, ações como braços, cota superior de confiança.
+  A fase de seleção precisa de uma regra. O UCT (Kocsis e Szepesvári, 2006)
+  empresta a ideia dos bandits: em cada nó $i$ onde há escolha, trate as ações
+  como braços e mantenha uma cota superior de confiança.
 
   \begin{teobox}{Regra de seleção do UCT}
     \[
@@ -254,9 +281,13 @@
   \end{teobox}
 
   \begin{itemize}
-    \item $\Nvis(i,a)$: simulações por $a$ em $i$; $G_k(i,a)$: $k$-ésimo retorno dali.
-    \item \alert{A política de simulação muda a cada episódio} — a árvore se adapta ao já visto.
-    \item $\overline{G}$: média sobre política \emph{não estacionária} — última seção.
+    \item $\Nvis(i,a)$: quantas simulações passaram por $a$ no nó $i$;
+          $G_k(i,a)$: o $k$-ésimo retorno observado a partir dali.
+    \item Consequência importante: \alert{a política de simulação muda a cada
+          episódio.} A árvore não é percorrida por uma política fixa — ela é
+          percorrida por uma política que se adapta ao que já foi visto.
+    \item Guarde esta observação: a média $\overline{G}$ é uma média sobre uma
+          política \emph{não estacionária}. Voltaremos a isso na última seção.
   \end{itemize}
 \end{frame}
 
@@ -266,19 +297,31 @@
   \begin{columns}[T]
     \begin{column}{0.52\textwidth}
       \begin{itemize}\setlength{\itemsep}{0.4em}
-        \item \textbf{Busca seletiva pelo melhor primeiro.} Orçamento onde a decisão aperta, não onde a árvore é larga.
-        \item \textbf{Avaliação dinâmica de estados.} Valor do nó construído pelas simulações que passam.
-        \item \textbf{Amostragem quebra a maldição da dimensionalidade.} Custo = orçamento, não $\abs{\gS}$.
-        \item \textbf{Basta um modelo ``caixa-preta''.} Nada de $\tran{s'}{s,a}$ — só \emph{amostrar} transições.
-        \item \textbf{Barato, \emph{anytime} e paralelizável.} Pare quando o relógio acabar; a resposta já serve.
+        \item \textbf{Busca seletiva pelo melhor primeiro.} O orçamento vai para
+              onde a decisão é apertada, não para onde a árvore é larga.
+        \item \textbf{Avaliação dinâmica de estados.} Não há função de avaliação
+              fixa: o valor de um nó é construído pelas simulações que passam por
+              ele.
+        \item \textbf{Amostragem quebra a maldição da dimensionalidade.} O custo
+              deixa de depender de $\abs{\gS}$ e passa a depender do orçamento de
+              simulações.
+        \item \textbf{Basta um modelo ``caixa-preta''.} Nada de $\tran{s'}{s,a}$
+              explícito — só a capacidade de \emph{amostrar} transições.
+        \item \textbf{Barato, \emph{anytime} e paralelizável.} Interrompa quando o
+              relógio acabar; a resposta atual já é utilizável.
       \end{itemize}
     \end{column}
     \begin{column}{0.46\textwidth}
       \begin{ideiabox}
-        ``Anytime'': iteração de valor nada entrega antes de convergir; MCTS entrega após a 1ª simulação. Xadrez, Go, tempo real: usável vs.\ inútil.
+        ``Anytime'' é uma propriedade rara e valiosa. A iteração de valor não
+        entrega nada útil até convergir razoavelmente; a MCTS entrega uma resposta
+        defensável após a primeira simulação e vai refinando. Em xadrez, Go e
+        controle em tempo real, isso é a diferença entre usável e inútil.
       \end{ideiabox}
       \begin{alertabox}
-        Custo no orçamento: milhares de simulações por decisão — memória e pré-computação viram \emph{tempo de decisão}.
+        O custo é escondido no orçamento: cada decisão real exige milhares de
+        simulações. A MCTS troca memória e pré-computação por \emph{tempo de
+        decisão}.
       \end{alertabox}
     \end{column}
   \end{columns}
@@ -292,7 +335,8 @@
       \begin{itemize}
         \item 2\,500 anos de idade; o jogo de tabuleiro clássico mais difícil.
         \item Desafio histórico da IA — John McCarthy o citava como marco.
-        \item Alfa-beta com avaliação manual \alert{fracassou} no Go, ao contrário do xadrez.
+        \item A busca em árvore tradicional (alfa-beta com função de avaliação
+              manual) \alert{fracassou} no Go, ao contrário do xadrez.
       \end{itemize}
       \medskip
       \begin{center}
@@ -318,9 +362,11 @@
       \pause
       \vspace{-0.3em}
       \begin{respbox}
-        \textbf{Não.} Regras conhecidas e determinísticas; recompensa verificável.
-        Falta é \emph{usar} o modelo: $\abs{\gS}\approx 10^{170}$, $H \approx 150$.
-        AlphaZero = \alert{planejamento} com heurísticas aprendidas.
+        \textbf{Não.} As regras do Go são conhecidas e determinísticas; a
+        recompensa (vitória/derrota) é conhecida e verificável ao final. O que
+        falta não é o \emph{modelo} — é a capacidade de \emph{usá-lo}:
+        $\abs{\gS}\approx 10^{170}$ e $H \approx 150$. AlphaZero é, antes de tudo,
+        \alert{planejamento} com heurísticas aprendidas.
       \end{respbox}
     \end{column}
   \end{columns}
@@ -348,22 +394,32 @@
 
   \medskip
   \begin{ideiabox}
-    Sequência de \emph{remoções} de muletas humanas; tirar a rollout — o ``Monte Carlo'' — \emph{melhorou}. A Bayesiana já deslocava o peso para a rede de valor (Chen et al., 2018).
+    A trajetória é uma sequência de \emph{remoções}: cada versão tirou uma muleta
+    humana e ficou mais forte. O detalhe contraintuitivo é que retirar a rollout —
+    a parte ``Monte Carlo'' da busca em árvore Monte Carlo — \emph{melhorou} o
+    sistema. A otimização bayesiana dos hiperparâmetros do AlphaGo já vinha
+    deslocando o peso da mistura para a rede de valor a cada ciclo, até a rollout
+    ser abandonada de vez (Chen et al., 2018).
   \end{ideiabox}
 \end{frame}
 
 %% ------------------------------------------------------------
 \begin{frame}{A rede: uma função, duas saídas}
   \small
-  Uma rede residual $f_{\theta}$ recebe $s$ (tabuleiro cru + histórico recente + vez) e devolve
+  Uma única rede residual $f_{\theta}$ recebe a posição $s$ (o tabuleiro cru, mais
+  o histórico recente e de quem é a vez) e devolve
   \[
     f_{\theta}(s) \;=\; \bigl(\redepol(s),\; \redeval(s)\bigr),
     \qquad
     \redepol(s) \in \Delta(\gA),\quad \redeval(s) \in [-1,1].
   \]
   \begin{itemize}
-    \item $\redepol(s)$ — \textbf{cabeça de política}: distribuição sobre as jogadas legais; \emph{prior} por onde olhar.
-    \item $\redeval(s)$ — \textbf{cabeça de valor}: resultado final ($+1$ vitória, $-1$ derrota); substitui a rollout.
+    \item $\redepol(s)$ — \textbf{cabeça de política}: uma distribuição sobre as
+          jogadas legais. Papel na busca: \emph{prior} que diz por onde começar a
+          olhar.
+    \item $\redeval(s)$ — \textbf{cabeça de valor}: estimativa do resultado final
+          do ponto de vista de quem joga agora ($+1$ vitória, $-1$ derrota).
+          Papel na busca: substitui a rollout.
   \end{itemize}
 
   \begin{columns}[T]
@@ -387,7 +443,9 @@
 %% ------------------------------------------------------------
 \begin{frame}{PUCT: a regra de seleção do AlphaZero}
   \small
-  Por ação, no nó: $\Nvis(s,a)$, $\Wtot(s,a)$, $Q(s,a)=\Wtot/\Nvis$ e o prior $P(s,a) = \redepol(s)_a$. Ação simulada:
+  Em cada nó da árvore, mantêm-se por ação: $\Nvis(s,a)$ (visitas),
+  $\Wtot(s,a)$ (soma dos valores retropropagados), $Q(s,a)=\Wtot/\Nvis$ e o prior
+  $P(s,a) = \redepol(s)_a$. A ação simulada é
 
   \begin{teobox}{PUCT --- \emph{Predictor} $+$ UCT}
     \[
@@ -397,9 +455,11 @@
   \end{teobox}
 
   \begin{itemize}
-    \item $\Nvis$ pequeno $\Rightarrow$ $U$ domina: busca segue o \alert{prior da rede}.
-    \item Visitas crescem $\Rightarrow$ $U \to 0$, $Q$ assume: a busca \alert{corrige} a rede por lookahead.
-    \item $\cpuct$ regula a transferência de poder.
+    \item Enquanto $\Nvis(s,a)$ é pequeno, o termo $U$ domina e a busca segue o
+          \alert{prior da rede}: começa-se olhando o que a política acha plausível.
+    \item À medida que as visitas se acumulam, $U \to 0$ e $Q$ assume: a busca
+          \alert{corrige} a rede com evidência obtida por lookahead.
+    \item $\cpuct$ regula a data dessa transferência de poder.
   \end{itemize}
 \end{frame}
 
@@ -422,7 +482,11 @@
   \end{center}
 
   \begin{alertabox}
-    PUCT \textbf{não} é cota de confiança: prior baixo pode nunca ser visitado. Go: $\approx 250$ jogadas, 1\,600 simulações — viável, e exige o ruído de Dirichlet.
+    O PUCT \textbf{não} é uma cota de confiança. Ele perdeu a justificativa
+    estatística do UCT e ganhou outra, mais útil: \emph{as ações com prior baixo
+    podem nunca ser visitadas}. Em Go, com $\approx 250$ jogadas legais e 1\,600
+    simulações, isso é o que torna a busca viável — e é também o que exige o ruído
+    de Dirichlet que veremos adiante.
   \end{alertabox}
 \end{frame}
 
@@ -431,10 +495,14 @@
   \small
   \begin{columns}[T]
     \begin{column}{0.48\textwidth}
-      \textbf{1. Seleção.} Da raiz, desça $\argmax_a [Q+U]$ até $s_L$ fora da árvore.
+      \textbf{1. Seleção.} Da raiz, desça escolhendo $\argmax_a [Q+U]$ até chegar
+      a um nó $s_L$ que ainda não está na árvore.
 
       \medskip
-      \textbf{2. Expansão e avaliação.} Uma chamada $f_{\theta}(s_L) = (\redepol, \redeval)$; nó com $\Nvis=\Wtot=Q=0$, priors $\redepol$; $v = \redeval(s_L)$. \alert{Não há rollout.}
+      \textbf{2. Expansão e avaliação.} Uma única chamada
+      $f_{\theta}(s_L) = (\redepol, \redeval)$. O nó entra na árvore com
+      $\Nvis=\Wtot=Q=0$ e priors $\redepol$; o valor $v = \redeval(s_L)$ é a
+      avaliação. \alert{Não há rollout.}
 
       \medskip
       \textbf{3. Retropropagação.} Para cada aresta $(s,a)$ do caminho:
@@ -443,11 +511,16 @@
         \Wtot \mathrel{+}= \pm v, \quad
         Q = \Wtot/\Nvis .
       \]
-      Sinal alterna com o jogador da vez.
+      O sinal alterna com o jogador da vez.
     \end{column}
     \begin{column}{0.5\textwidth}
       \begin{ideiabox}
-        \textbf{Rollout → rede = MC → TD.} Rollout: não enviesado vs.\ política de rollout, variância enorme, viés vs.\ $\polstar$. Rede: bootstrap, viés baixo que encolhe com o treino.
+        \textbf{Trocar a rollout pela rede é a mesma troca de MC por TD.}
+        A rollout é um retorno Monte Carlo: não enviesado em relação à política de
+        rollout, mas de variância enorme e enviesado em relação a $\polstar$,
+        porque a política de rollout é fraca. A rede de valor é um
+        \emph{bootstrap}: enviesado, de variância baixa, e o viés diminui com o
+        treino.
       \end{ideiabox}
       \begin{defbox}{Min-max implícito}
         Como $v$ é sempre ``do ponto de vista de quem joga'', alternar o sinal na
@@ -461,7 +534,9 @@
 %% ------------------------------------------------------------
 \begin{frame}{O PUCT em câmera lenta}{Um exemplo mínimo que cabe no quadro}
   \small
-  Raiz com três jogadas; a rede erra: prior alto em $a_1$, a pior das razoáveis. Folhas: $\redeval = (0{,}10;\ 0{,}55;\ -0{,}40)$; $\cpuct = 1{,}5$.
+  Raiz com três jogadas. A rede erra: dá prior alto para $a_1$, que é a pior das
+  duas jogadas razoáveis. Os valores das folhas são
+  $\redeval = (0{,}10;\ 0{,}55;\ -0{,}40)$ e $\cpuct = 1{,}5$.
 
   \medskip
   \centering
@@ -493,15 +568,21 @@
   \begin{columns}[T]
     \begin{column}{0.49\textwidth}
       \begin{itemize}\setlength{\itemsep}{0.35em}
-        \item \textbf{$k=1$--$2$: a rede manda.} $Q\equiv 0$; escolha = prior.
-        \item \textbf{$k=3$: a evidência entra.} $a_1$ devolve $0{,}10$, abaixo do prior → busca migra.
-        \item \textbf{$k=7$: a busca volta a $a_1$.} $1+\Nvis(s,a_2)$ cresceu; $U$ confere.
-        \item \textbf{$a_3$ fica de fora até $k=23$.} Prior baixo + orçamento pequeno = jogada nunca examinada.
+        \item \textbf{$k=1$--$2$: a rede manda.} Nada foi avaliado ainda, então
+              $Q\equiv 0$ e a escolha é puramente o prior.
+        \item \textbf{$k=3$: a evidência entra.} Assim que $a_1$ devolve
+              $0{,}10$ — abaixo do que o prior prometia — a busca migra.
+        \item \textbf{$k=7$: a busca volta a $a_1$.} O denominador
+              $1+\Nvis(s,a_2)$ cresceu; o sistema confere se não errou. Isso é o
+              termo $U$ fazendo seu trabalho.
+        \item \textbf{$a_3$ fica de fora até $k=23$.} Prior baixo somado a
+              orçamento pequeno é igual a jogada nunca examinada.
       \end{itemize}
     \end{column}
     \begin{column}{0.49\textwidth}
       \begin{alertabox}
-        \textbf{Prior muito errado custa caro.} $P = (0{,}95;\ 0{,}04;\ 0{,}01)$, mesmo $\redeval$:
+        \textbf{Quando o prior está muito errado, custa caro.} Com
+        $P = (0{,}95;\ 0{,}04;\ 0{,}01)$ e o mesmo $\redeval$:
         \smallskip
         \begin{center}\scriptsize
         \begin{tabular}{rccc}
@@ -515,7 +596,8 @@
         \end{tabular}
         \end{center}
         \smallskip
-        A busca \emph{corrige} a rede; preço = orçamento. Rede melhor $\Rightarrow$ menos simulações.
+        A busca \emph{corrige} a rede, mas o preço é orçamento. Rede melhor
+        $\Rightarrow$ menos simulações para a mesma decisão.
       \end{alertabox}
     \end{column}
   \end{columns}
@@ -542,14 +624,19 @@
 
   \medskip
   \begin{ideiabox}
-    Não é cosmético: Bayesiana nos hiperparâmetros da MCTS rendeu \textbf{94 e 103 Elo} antes do Lee Sedol; 100 Elo $\approx$ 64\% de vitórias.
+    Não é um parâmetro cosmético. No AlphaGo, ajustar por otimização bayesiana os
+    hiperparâmetros da MCTS — $\cpuct$ entre eles — rendeu \textbf{94 e 103 pontos
+    de Elo} em dois ciclos de projeto antes da partida contra Lee Sedol. Cem
+    pontos de Elo são cerca de 64\% de vitórias contra a versão anterior.
   \end{ideiabox}
 \end{frame}
 
 %% ------------------------------------------------------------
 \begin{frame}{Ruído de Dirichlet: garantir que tudo possa ser tentado}
   \footnotesize
-  Prior abre a porta; se a de $a_3$ nunca abre, a rede errada não é descoberta. Em \alert{auto-jogo} (não em partida oficial), perturba-se o prior \emph{apenas na raiz}:
+  Se o prior é o que abre a porta e a porta de $a_3$ nunca abre, o sistema não
+  consegue descobrir que a rede está errada sobre $a_3$. Em \alert{auto-jogo}
+  (não em partida oficial), o AlphaZero perturba o prior \emph{apenas na raiz}:
   \[
     P(s_0,a) \;=\; (1-\varepsilon)\,\redepol(s_0)_a \;+\; \varepsilon\,\eta_a,
     \qquad \eta \sim \mathrm{Dir}(\alpha),\qquad \varepsilon = 0{,}25 .
@@ -578,10 +665,14 @@
     \end{column}
     \begin{column}{0.48\textwidth}
       \begin{ideiabox}
-        Só na raiz: dá para tentar a estranha, descartável quando $Q$ mostra que é ruim — exploração que a evidência veta, oposto do $\epsilon$-guloso.
+        O ruído fica só na raiz: a busca precisa \emph{poder} tentar a jogada
+        estranha, mas continua livre para descartá-la assim que $Q$ mostrar que é
+        ruim. É exploração que a evidência pode vetar — o oposto de
+        $\epsilon$-guloso, que força a ação aleatória.
       \end{ideiabox}
       \begin{alertabox}
-        Removido em avaliação e partidas oficiais: mecanismo de \emph{coleta de dados}, não de jogo.
+        Em avaliação e partidas oficiais o ruído é removido. Ele é um mecanismo de
+        \emph{coleta de dados}, não de jogo.
       \end{alertabox}
     \end{column}
   \end{columns}
@@ -590,14 +681,14 @@
 %% ------------------------------------------------------------
 \begin{frame}{A política da raiz: contagens de visita, não valores}
   \footnotesize
-  Terminadas as $K$ simulações, a política exportada na raiz:
+  Terminadas as $K$ simulações, a política que o AlphaZero exporta na raiz é
   \[
     \raizpol(a \mid s_0) \;=\; \frac{\Nvis(s_0,a)^{1/\tau}}{\sum_b \Nvis(s_0,b)^{1/\tau}} .
   \]
 
   \begin{columns}[T]
     \begin{column}{0.47\textwidth}
-      No exemplo anterior, $\Nvis = (5,11,0)$:
+      No exemplo anterior, com $\Nvis = (5,11,0)$:
       \medskip
       \begin{center}\small
       \begin{tabular}{cccc}
@@ -612,7 +703,8 @@
       \end{tabular}
       \end{center}
       \medskip
-      Auto-jogo: $\tau = 1$ nas 30 primeiras jogadas (diversidade), depois $\tau \to 0$.
+      No auto-jogo: $\tau = 1$ nas 30 primeiras jogadas (diversidade de
+      posições), depois $\tau \to 0$ (jogar para valer).
     \end{column}
     \begin{column}{0.51\textwidth}
       \begin{quizbox}{}
@@ -622,7 +714,9 @@
       \end{quizbox}
       \pause
       \begin{respbox}
-        $\Nvis$ mais robusto que $Q$: visitada 3 vezes, ação pode ter $Q$ alto por sorte. Contagens incorporam a confiança.
+        Porque $\Nvis$ é mais robusto que $Q$: uma ação visitada 3 vezes pode ter
+        $Q$ alto por sorte. As contagens já incorporam a confiança — só recebe
+        muitas visitas o que sobreviveu à comparação repetida.
       \end{respbox}
     \end{column}
   \end{columns}
@@ -641,16 +735,23 @@
 
   \begin{columns}[T]
     \begin{column}{0.49\textwidth}
-      \textbf{De onde vem.} $\redepol(s_0)$ julga por padrões; $\raizpol$ após olhar $K$ continuações — informação que $\redepol$ não tinha.
+      \textbf{De onde vem a melhora.} $\redepol(s_0)$ julga a posição por
+      reconhecimento de padrões; $\raizpol$ julga a mesma posição \emph{depois de
+      olhar $K$ continuações}. É informação que $\redepol$ não tinha.
       \smallskip
-      \textbf{Consequência.} Treinar $\redepol$ para imitar $\raizpol$ = passo de melhoria; repetir = iteração de política, busca no lugar do guloso.
+      \textbf{Consequência.} Se a busca melhora a política, treinar $\redepol$
+      para imitar $\raizpol$ é um passo de melhoria. Basta repetir: iteração de
+      política, com a busca no lugar do passo guloso.
     \end{column}
     \begin{column}{0.49\textwidth}
       \begin{ideiabox}
-        \textbf{Deliberação treina intuição:} busca = pensar devagar; rede = pensar rápido — \emph{Expert Iteration} (Anthony, Tian e Barber, 2017).
+        \textbf{Pensar devagar para treinar o pensar rápido.} A busca é
+        deliberação, lenta e cara; a rede é intuição, rápida e barata. Anthony,
+        Tian e Barber (2017) chamaram isso de \emph{Expert Iteration}.
       \end{ideiabox}
       \begin{alertabox}
-        ``Tipicamente'' $\neq$ ``sempre'': $\redeval$ sistematicamente enviesado numa região → mais busca amplifica o erro.
+        ``Tipicamente'' não é ``sempre'': se $\redeval$ for sistematicamente
+        enviesado numa região, mais busca amplifica o erro.
       \end{alertabox}
     \end{column}
   \end{columns}
@@ -659,7 +760,8 @@
 %% ------------------------------------------------------------
 \begin{frame}{O que o PUCT está realmente otimizando}{Grill et al., ICML 2020}
   \footnotesize
-  Contagens não são subproduto arbitrário: resolvem aproximadamente um \alert{problema de otimização de política regularizada}:
+  As contagens de visita não são um subproduto arbitrário. Elas resolvem
+  aproximadamente um problema de \alert{otimização de política regularizada}:
   \[
     \bar{\raizpol} \;\approx\; \argmax_{y \in \Delta(\gA)}
       \Bigl[\, \bm{q}^{\top} y \;-\; \lambda_{\Nvis}\,\mathrm{KL}\bigl(\redepol \,\|\, y\bigr) \Bigr],
@@ -688,7 +790,10 @@
   \medskip
   \vspace{-0.35em}
   \begin{ideiabox}
-    $\lambda_{\Nvis} \sim \Nvis^{-1/2} \to 0$: pouca busca $\Rightarrow$ perto do prior; muita $\Rightarrow$ $\argmax$ de $q$. A ``proximidade regularizada'' do TRPO/PPO, agora \emph{dentro} de um planejador.
+    Como $\lambda_{\Nvis} \sim \Nvis^{-1/2} \to 0$, a regularização enfraquece com
+    o orçamento: pouca busca $\Rightarrow$ fique perto do prior; muita busca
+    $\Rightarrow$ vá para o $\argmax$ de $q$. É a ``proximidade regularizada'' do
+    TRPO e do PPO, agora \emph{dentro} de um planejador.
   \end{ideiabox}
 \end{frame}
 
@@ -738,7 +843,8 @@
 %% ------------------------------------------------------------
 \begin{frame}{Os dois alvos, e por que só um é escasso}
   \small
-  Cada jogada gera $(s_t,\ \raizpol_t,\ z)$, com $z \in \{-1,0,+1\}$ o resultado \emph{final} visto de $s_t$.
+  Cada jogada da partida gera um exemplo $(s_t,\ \raizpol_t,\ z)$, com $z \in \{-1,0,+1\}$
+  o resultado \emph{final} da partida visto de $s_t$.
 
   \begin{teobox}{A perda}
     \[
@@ -752,13 +858,20 @@
   \begin{columns}[T]
     \begin{column}{0.49\textwidth}
       \begin{itemize}
-        \item \textbf{Alvo de política: denso.} 200 jogadas → 200 alvos $\raizpol_t$ ricos (distribuições, não rótulos duros); melhoria destilada.
-        \item \textbf{Alvo de valor: escasso.} Um bit por partida, replicado em todas as posições; exemplos correlacionados, sinal fraco.
+        \item \textbf{Alvo de política: denso.} Uma partida de 200 jogadas dá 200
+              alvos $\raizpol_t$ ricos — distribuições inteiras, não rótulos
+              duros. É o passo de melhoria sendo destilado.
+        \item \textbf{Alvo de valor: escasso.} Um único bit por partida, replicado
+              em todas as posições dela. Alta correlação entre exemplos, sinal
+              fraco por partida.
       \end{itemize}
     \end{column}
     \begin{column}{0.49\textwidth}
       \begin{alertabox}
-        ``Go tem recompensa esparsa'' = meia verdade: alvo de treino da política é denso — a busca fabrica supervisão em cada posição. Gradiente puro patinaria.
+        Diz-se que ``o Go tem recompensa esparsa''. Meia verdade: a
+        \emph{recompensa} é terminal, mas o \emph{alvo de treino} da política é
+        denso, porque a busca fabrica supervisão em cada posição. É um dos motivos
+        pelos quais gradiente de política puro patinaria aqui.
       \end{alertabox}
     \end{column}
   \end{columns}
@@ -770,9 +883,14 @@
   \begin{columns}[T]
     \begin{column}{0.5\textwidth}
       \begin{itemize}\setlength{\itemsep}{0.4em}
-        \item \textbf{O gargalo é só computação.} Sem anotador, especialista ou banco de partidas.
-        \item \textbf{Adversário sempre à altura} — cópia de si; vitórias $\approx 50\%$ no treino todo.
-        \item Adversário na medida = definição operacional de \textbf{currículo}: dificuldade sobe com a competência.
+        \item \textbf{O gargalo é só computação.} Nenhum anotador, nenhum
+              especialista, nenhum banco de partidas.
+        \item \textbf{O adversário está sempre à altura.} Como é uma cópia de si
+              mesmo, a taxa de vitórias fica em torno de 50\% durante todo o
+              treino.
+        \item Um adversário na medida é a definição operacional de um
+              \textbf{currículo}: a dificuldade sobe exatamente na velocidade da
+              competência.
       \end{itemize}
       \medskip
       \begin{quizbox}{}
@@ -784,10 +902,16 @@
     \begin{column}{0.48\textwidth}
       \pause
       \begin{respbox}
-        Equilíbrio: $z$ quase moeda honesta — entropia máxima, $\approx 1$ bit por partida. Muito mais forte: $z \equiv -1$, nada a aprender; fraco: o mesmo, sinal trocado. Auto-jogo mantém a recompensa \alert{densa em informação}.
+        Com jogadores equilibrados, $z$ é quase uma moeda honesta: a entropia do
+        resultado é máxima e cada partida carrega perto de 1 bit sobre $\theta$.
+        Contra um adversário muito mais forte, $z \equiv -1$ e não há nada a
+        aprender; contra um muito mais fraco, o mesmo com o sinal trocado. O
+        auto-jogo mantém a recompensa \alert{densa em informação}.
       \end{respbox}
       \begin{ideiabox}
-        Por que RL funciona em jogos e sofre no real: jogos vêm com gerador de currículo embutido; robótica não.
+        Isto é uma resposta parcial à pergunta ``por que RL funciona em jogos e
+        sofre no mundo real''. Jogos de dois jogadores vêm com um gerador de
+        currículo embutido. Robótica não vem.
       \end{ideiabox}
     \end{column}
   \end{columns}
@@ -798,7 +922,10 @@
 %% ------------------------------------------------------------
 \begin{frame}{Quanto vem da arquitetura?}
   \footnotesize
-  Quatro redes, \emph{mesmo} conjunto fixo de partidas: política/valor \emph{separadas} (sep) ou \emph{conjuntas} (dual); \emph{conv} ou \emph{res}. Mesma busca, 5\,s por jogada.
+  Quatro redes treinadas no \emph{mesmo} conjunto fixo de partidas de auto-jogo,
+  combinando: política e valor \emph{separadas} (sep) ou \emph{conjuntas} (dual);
+  rede \emph{convolucional} (conv) ou \emph{residual} (res). Todas avaliadas com a
+  mesma busca, 5\,s por jogada.
 
   \medskip
   \centering
@@ -818,14 +945,17 @@
 
   \medskip
   \begin{ideiabox}
-    Cada mudança vale sozinha mais de \textbf{600 Elo}; juntas, mais de 1\,200. Parte do ``algoritmo'' era engenharia de rede.
+    Cada mudança de arquitetura vale, sozinha, mais de \textbf{600 Elo}; juntas,
+    mais de 1\,200. Resultado desconfortável: parte substancial do avanço
+    atribuído ao ``algoritmo'' era engenharia de rede.
   \end{ideiabox}
 \end{frame}
 
 %% ------------------------------------------------------------
 \begin{frame}{Quanto vem da busca?}
   \footnotesize
-  Rede do AlphaGo Zero \alert{sem nenhum lookahead} — $\argmax_a \redepol(s)_a$ — contra o sistema completo:
+  A rede treinada do AlphaGo Zero, jogando \alert{sem nenhum lookahead} — apenas
+  $\argmax_a \redepol(s)_a$ — contra o sistema completo:
 
   \medskip
   \centering
@@ -855,7 +985,9 @@
     \end{column}
     \begin{column}{0.46\textwidth}
       \begin{ideiabox}
-        Busca = \textbf{amplificador de computação em tempo de decisão} — a mesma alavanca do \emph{test-time compute}.
+        A busca é um \textbf{amplificador de computação em tempo de decisão} — a
+        mesma alavanca hoje explorada em modelos de linguagem sob o nome de
+        \emph{test-time compute}.
       \end{ideiabox}
     \end{column}
   \end{columns}
@@ -864,23 +996,34 @@
 %% ------------------------------------------------------------
 \begin{frame}{Os dados humanos são necessários?}
   \footnotesize
-  Mesmo laço de treino: rede iniciada por supervisionado sobre partidas humanas (KGS) vs.\ pesos aleatórios.
+  Comparação direta feita no artigo: o mesmo laço de treino, partindo de uma rede
+  inicializada por aprendizado supervisionado sobre partidas humanas (KGS), versus
+  partindo de pesos aleatórios.
 
   \begin{columns}[T]
     \begin{column}{0.5\textwidth}
       \begin{itemize}
-        \item Supervisionada: \textbf{mais rápida no início}, prevê jogadas humanas melhor — o tempo todo.
-        \item \emph{Tabula rasa}: ultrapassa em poucas horas, termina \textbf{mais forte}.
-        \item Zero derrotou a versão do Lee Sedol \textbf{100 a 0}, 4 TPUs vs.\ 48.
-        \item 3 dias: 4,9 milhões de partidas. 40 dias, 40 blocos: 29 milhões, Elo 5\,185.
+        \item A versão supervisionada aprende \textbf{mais rápido no início} e
+              prevê jogadas humanas com mais acurácia — o tempo todo.
+        \item A versão \emph{tabula rasa} ultrapassa a supervisionada em poucas
+              horas e termina \textbf{mais forte}.
+        \item AlphaGo Zero derrotou a versão que venceu Lee Sedol por
+              \textbf{100 a 0}, usando 4 TPUs contra 48.
+        \item Rodada de 3 dias: 4,9 milhões de partidas de auto-jogo.
+              Rodada de 40 dias, rede de 40 blocos: 29 milhões de partidas,
+              Elo 5\,185.
       \end{itemize}
     \end{column}
     \begin{column}{0.48\textwidth}
       \begin{alertabox}
-        \textbf{Prever o humano ≠ jogar bem.} Imitação carrega o teto do imitado; o auto-jogo não tem teto.
+        \textbf{Prever bem o humano e jogar bem não são a mesma coisa.} A rede
+        supervisionada é melhor na primeira tarefa e pior na segunda. Imitação
+        carrega o teto do imitado; o auto-jogo não tem esse teto.
       \end{alertabox}
       \begin{ideiabox}
-        Simulador perfeito + recompensa verificável é raro; sem eles (diálogo, medicina, direção), ``dispensar humanos'' \emph{não} se transfere.
+        Cuidado ao generalizar: aqui há simulador perfeito e recompensa
+        verificável. Onde faltam essas duas coisas — diálogo, medicina, direção —
+        a conclusão ``dados humanos são dispensáveis'' \emph{não} se transfere.
       \end{ideiabox}
     \end{column}
   \end{columns}
@@ -889,7 +1032,8 @@
 %% ------------------------------------------------------------
 \begin{frame}{Um algoritmo, três jogos}
   \footnotesize
-  Removeu o restante específico do Go (simetrias do tabuleiro, torneio entre gerações); mesmo código em xadrez, shogi e Go.
+  O AlphaZero removeu o que restava de específico do Go (simetrias do tabuleiro,
+  torneio de avaliação entre gerações) e rodou o mesmo código em xadrez, shogi e Go.
 
   \medskip
   \centering
@@ -909,12 +1053,16 @@
   \begin{columns}[T]
     \begin{column}{0.52\textwidth}
       \begin{ideiabox}
-        $10^3\times$ menos posições examinadas, vitória: a rede não acelera a busca — escolhe \emph{muito melhor} o que examinar.
+        Mil vezes menos posições examinadas, e ainda assim vitória: a rede não
+        acelera a busca, ela escolhe \emph{muito melhor} o que examinar.
       \end{ideiabox}
     \end{column}
     \begin{column}{0.46\textwidth}
       \begin{alertabox}
-        Condições contestadas (versão, hardware, tempo, sem livro de aberturas); superior até 10:1 em desvantagem de tempo. Informativo, não medição limpa.
+        As condições foram contestadas: versão do Stockfish, hardware, controle de
+        tempo, ausência de livro de aberturas. Com desvantagem de tempo o
+        AlphaZero se manteve superior até 10:1. A comparação é informativa, não
+        uma medição limpa.
       \end{alertabox}
     \end{column}
   \end{columns}
@@ -949,13 +1097,17 @@
 
   \medskip
   \small
-  Só muda o simulador; busca, PUCT, auto-jogo e perda conjunta permanecem.
+  A única peça que muda é o simulador. A busca, o PUCT, o auto-jogo e a perda
+  conjunta permanecem.
 \end{frame}
 
 %% ------------------------------------------------------------
 \begin{frame}{AlphaTensor: multiplicar matrizes mais rápido}
   \footnotesize
-  Multiplicar $n \times n$ = decompor $\mathcal{T}_n$ em tríades de posto 1; \emph{posto} = número de multiplicações escalares. Ação = tríade; episódio termina quando o tensor residual zera.
+  Multiplicar duas matrizes $n \times n$ é equivalente a decompor um tensor
+  $\mathcal{T}_n$ em somas de tríades de posto 1. O \emph{posto} da decomposição é
+  o número de multiplicações escalares. Cada ação do jogo é uma tríade; o
+  episódio termina quando o tensor residual zera.
 
   \medskip
   \centering
@@ -975,12 +1127,17 @@
   \begin{columns}[T]
     \begin{column}{0.5\textwidth}
       \begin{ideiabox}
-        $4\times4$ vale em $\mathbb{Z}_2$, não nos reais — distinção que a imprensa perdeu. Ainda assim, primeiro avanço em dois níveis em meio século.
+        O resultado do $4\times4$ vale em aritmética modular ($\mathbb{Z}_2$), não
+        nos reais --- distinção que boa parte da imprensa perdeu. Ainda assim, é o
+        primeiro avanço sobre Strassen em dois níveis em meio século.
       \end{ideiabox}
     \end{column}
     \begin{column}{0.48\textwidth}
       \begin{alertabox}
-        Penalizar o \emph{tempo medido} na V100 rendeu 10--20\% \emph{naquele} hardware: otimalidade é relativa à máquina. Depois, Kauers e Moosbauer: $5\times5$ GF(2) a 95, busca clássica.
+        Penalizar o \emph{tempo medido} numa GPU V100 rendeu algoritmos 10--20\%
+        mais rápidos \emph{naquele} hardware: otimalidade é relativa à máquina.
+        Meses depois, Kauers e Moosbauer baixaram o $5\times5$ sobre GF(2) a 95 por
+        busca clássica.
       \end{alertabox}
     \end{column}
   \end{columns}
@@ -989,15 +1146,23 @@
 %% ------------------------------------------------------------
 \begin{frame}{AlphaDev: escrever assembly mais rápido que o humano}
   \small
-  \textbf{AssemblyGame:} estado = programa assembly construído; ação = instrução; recompensa = \emph{correção} (testada contra entradas) + \emph{latência}.
+  \textbf{AssemblyGame:} o estado é o programa em assembly construído até agora; a
+  ação é acrescentar uma instrução; a recompensa combina \emph{correção} (testada
+  contra entradas) e \emph{latência}.
 
   \begin{columns}[T]
     \begin{column}{0.5\textwidth}
       \begin{itemize}
-        \item Alvo: \texttt{sort3}, \texttt{sort4}, \texttt{sort5} — folhas de qualquer ordenação maior.
-        \item Duas sequências novas (\emph{swap}, \emph{copy}): economizam uma instrução por aplicação.
-        \item \texttt{VarSort4}: estrutura diferente, 29 instruções mais curto que o humano.
-        \item Integrado à \texttt{libc++} do LLVM — primeira mudança na década e a primeira vinda de RL.
+        \item Alvo: \texttt{sort3}, \texttt{sort4}, \texttt{sort5} --- rotinas
+              chamadas por dentro de qualquer ordenação maior.
+        \item Descobriu duas sequências novas, batizadas de \emph{swap} e
+              \emph{copy} do AlphaDev, que economizam uma instrução cada vez que
+              são aplicadas.
+        \item \texttt{VarSort4}: algoritmo com estrutura diferente, 29 instruções
+              mais curto que o de referência humano.
+        \item Integrado à \texttt{libc++} do LLVM --- a primeira mudança nessa
+              parte da biblioteca em mais de uma década, e a primeira originada de
+              aprendizagem por reforço.
       \end{itemize}
     \end{column}
     \begin{column}{0.48\textwidth}
@@ -1007,7 +1172,9 @@
         Também $\approx 30\%$ em funções de \emph{hash} na faixa de 9 a 16 bytes.
       \end{teobox}
       \begin{ideiabox}
-        Rotinas otimizadas são \emph{folhas}: melhora muito a folha, pouco o todo — mas chamadas trilhões de vezes por dia.
+        Por que 70\% num caso e 1,7\% no outro? Porque as rotinas otimizadas são
+        as \emph{folhas} de algoritmos maiores. Melhorar a folha melhora muito a
+        folha e pouco o todo --- mas a folha é chamada trilhões de vezes por dia.
       \end{ideiabox}
     \end{column}
   \end{columns}
@@ -1016,22 +1183,29 @@
 %% ------------------------------------------------------------
 \begin{frame}{MuZero e o retorno do modelo desconhecido}
   \small
-  AlphaZero exige simulador perfeito; MuZero \alert{aprende} um modelo — só o suficiente para planejar.
+  AlphaZero exige um simulador perfeito. O MuZero remove essa exigência: em vez de
+  usar as regras, \alert{aprende} um modelo --- mas apenas o suficiente para
+  planejar.
 
   \begin{columns}[T]
     \begin{column}{0.52\textwidth}
       Três funções aprendidas conjuntamente:
       \begin{itemize}
         \item \textbf{Representação} $h$: observação $\mapsto$ estado latente $s^0$.
-        \item \textbf{Dinâmica} $g$: $(s^k, a) \mapsto (s^{k+1}, r^k)$, no espaço latente.
+        \item \textbf{Dinâmica} $g$: $(s^k, a) \mapsto (s^{k+1}, r^k)$, no espaço
+              latente.
         \item \textbf{Predição} $f$: $s^k \mapsto (\bm{p}, v)$.
       \end{itemize}
       \medskip
-      MCTS roda \emph{inteiramente} no latente; nada reconstruir a observação — só política, valor e recompensa certos.
+      A MCTS roda \emph{inteiramente} no espaço latente. Nada obriga $s^k$ a
+      reconstruir a observação --- o modelo é treinado só para que política, valor
+      e recompensa saiam certos.
     \end{column}
     \begin{column}{0.46\textwidth}
       \begin{ideiabox}
-        \textbf{Suficiente para decidir, não para prever} — modelo orientado ao valor, não gerativo; prever pixels é caro e irrelevante.
+        \textbf{Modelo suficiente para decidir, não para prever.} É a diferença
+        entre um modelo \emph{gerativo} do mundo e um modelo \emph{orientado ao
+        valor}. Prever pixels é caro e, em boa parte, irrelevante para a decisão.
       \end{ideiabox}
       \begin{defbox}{Alcance}
         Mesmo algoritmo, mesmo desempenho em Go, xadrez e shogi --- e estado da
@@ -1046,7 +1220,8 @@
 %% ------------------------------------------------------------
 \begin{frame}{A pergunta incômoda}
   \small
-  UCT: cada nó = bandit; cota superior de confiança escolhe a ação a simular.
+  O UCT trata cada nó como um bandit e usa uma cota superior de confiança para
+  escolher a ação a simular.
 
   \begin{quizbox}{}
     Por que isso é um pouco estranho? Lembre por que as cotas superiores de
@@ -1058,7 +1233,13 @@
 
   \pause
   \begin{respbox}
-    Bandit real: braço puxado \emph{custa}; arrependimento cumulativo é o objetivo certo. Na simulação não se perde nada — só CPU; objetivo: \alert{melhor decisão na raiz ao final do orçamento}. UCT resolve o errado.
+    Em um bandit real, cada braço puxado \emph{custa}: a recompensa perdida é
+    perda de verdade, e minimizar arrependimento cumulativo é o objetivo correto.
+    \smallskip
+    Dentro da simulação não se perde nada. Puxar mil vezes um braço ruim custa
+    apenas tempo de CPU. O objetivo aqui não é acumular recompensa simulada ---
+    é \alert{tomar a melhor decisão na raiz ao final do orçamento}. São dois
+    problemas diferentes, e o UCT resolve o errado.
   \end{respbox}
 \end{frame}
 
@@ -1088,7 +1269,9 @@
         $r_n$ decai apenas \alert{polinomialmente} em $n$.
       \end{teobox}
       \begin{ideiabox}
-        Para $R_n$ pequeno, para-se de amostrar o aparentemente ruim — exatamente o que traria certeza sobre o melhor.
+        A intuição é direta: para ter $R_n$ pequeno, é preciso parar de amostrar
+        os braços aparentemente ruins --- e é exatamente amostrá-los que traria
+        certeza sobre qual é o melhor.
       \end{ideiabox}
     \end{column}
   \end{columns}
@@ -1097,7 +1280,8 @@
 %% ------------------------------------------------------------
 \begin{frame}{O que se deveria fazer: raciocínio metanível}
   \footnotesize
-  Pergunta certa não é ``qual ação simular por mais recompensa simulada'', e sim:
+  A pergunta correta não é ``qual ação simular para ganhar mais recompensa
+  simulada'', e sim:
 
   \begin{center}
     \begin{minipage}{0.84\textwidth}
@@ -1111,14 +1295,23 @@
   \begin{columns}[T]
     \begin{column}{0.5\textwidth}
       \begin{itemize}
-        \item Literalmente um MDP: estados = crenças sobre valores; ações = \emph{computações} (Hay, Russell, Tolpin e Shimony, 2012).
-        \item Só vale se puder \alert{mudar} a jogada; refinar o último colocado é desperdício.
-        \item BRUE, SHOT, \emph{sequential halving} em árvores: superam o UCT em orçamento fixo.
+        \item Isto é, literalmente, um MDP --- cujos estados são \emph{estados de
+              crença sobre valores} e cujas ações são \emph{computações}
+              (Hay, Russell, Tolpin e Shimony, 2012).
+        \item Uma computação só vale a pena se puder \alert{mudar} a jogada
+              escolhida. Refinar a estimativa do braço que já está em último lugar
+              é desperdício, por mais incerta que ela seja.
+        \item Algoritmos desenhados para esse objetivo --- BRUE, SHOT, e variantes
+              de \emph{sequential halving} em árvores --- superam o UCT em vários
+              cenários de orçamento fixo.
       \end{itemize}
     \end{column}
     \begin{column}{0.48\textwidth}
       \begin{ideiabox}
-        PUCT afasta-se do UCT na direção certa (por acaso histórico): decaimento $\Nvis(s,a)^{-1}$, crescimento $\sqrt{\Nvis(s)}$ — o que Grill et al.\ formalizam.
+        Curiosamente, o \textbf{PUCT se afasta do UCT na direção certa}, ainda que
+        por acidente histórico: o decaimento $\Nvis(s,a)^{-1}$ e o crescimento
+        $\sqrt{\Nvis(s)}$ distribuem visitas mais como uma \emph{política} do que
+        como uma cota de confiança --- que é o que Grill et al.\ formalizam.
       \end{ideiabox}
     \end{column}
   \end{columns}
@@ -1127,7 +1320,10 @@
 %% ------------------------------------------------------------
 \begin{frame}{A parede da profundidade}{Um experimento pequeno, um resultado desconfortável}
   \footnotesize
-  \textbf{Árvore-armadilha} (espírito de Coquelin e Munos, 2007): em cada $d$, \emph{parar} = $0{,}9 - 0{,}4\,d/D$; \emph{seguir} até $D$ = $1{,}0$. Tentação no começo, recompensa no fim.
+  \textbf{Árvore-armadilha} (no espírito de Coquelin e Munos, 2007). Em cada
+  profundidade $d$: \emph{parar} termina com valor $0{,}9 - 0{,}4\,d/D$;
+  \emph{seguir} até $d = D$ vale $1{,}0$, o ótimo. A tentação está no começo e a
+  recompensa está no fim.
   \smallskip
   \begin{columns}[T]
     \begin{column}{0.46\textwidth}
@@ -1151,10 +1347,15 @@
     \end{column}
     \begin{column}{0.52\textwidth}
       \begin{alertabox}
-        \textbf{Duas causas:} (i) rollout alcança a folha com prob.\ $2^{-D}$; (ii) UCT retropropaga a \emph{média}, não o máximo — política mudou, viés se compõe ao subir.
+        \textbf{Duas causas.} (i) A rollout aleatória alcança a folha profunda com
+        probabilidade $2^{-D}$: o valor bom quase nunca é visto. (ii) O UCT
+        retropropaga a \emph{média}, não o máximo --- e a política que a gerou foi
+        mudando, então o viés de cada nível se compõe ao subir.
       \end{alertabox}
       \begin{ideiabox}
-        Coquelin e Munos: amostras \emph{exponencial em exponencial} na profundidade; consistência assintótica verdadeira e inútil.
+        Coquelin e Munos exibem árvores em que o UCT precisa de um número de
+        amostras \emph{exponencial em uma exponencial} na profundidade. A
+        consistência assintótica é verdadeira e inútil.
       \end{ideiabox}
     \end{column}
   \end{columns}
@@ -1163,7 +1364,8 @@
 %% ------------------------------------------------------------
 \begin{frame}{O ajuste de $c$ não é secundário}
   \footnotesize
-  Mesma árvore, $D=6$, orçamento fixo de 2\,000 simulações, variando só a constante de exploração:
+  Mesma árvore com $D=6$ e orçamento fixo de 2\,000 simulações, variando apenas a
+  constante de exploração:
 
   \medskip
   \centering
@@ -1182,12 +1384,18 @@
   \begin{columns}[T]
     \begin{column}{0.52\textwidth}
       \begin{alertabox}
-        Curva \textbf{não monotônica nem suave}: $c=0{,}7$ acerta 65\%; $c=1{,}0$ falha sempre. Pouca exploração não sai da armadilha; muita contamina as médias.
+        A curva \textbf{não é monotônica nem suave}: $c=0{,}7$ acerta 65\% das
+        vezes e $c=1{,}0$ falha sempre. Pouca exploração nunca sai da armadilha
+        rasa; muita contamina as médias retropropagadas.
       \end{alertabox}
     \end{column}
     \begin{column}{0.46\textwidth}
       \begin{ideiabox}
-        Explica os 94/103 Elo só com Bayesiana nos hiperparâmetros; pergunte \emph{quanto} ajuste houve — $c$ pode valer mais que o algoritmo.
+        Isso explica os 94 e 103 pontos de Elo obtidos apenas com otimização
+        bayesiana dos hiperparâmetros da busca no AlphaGo. Ao ler um resultado de
+        MCTS, pergunte sempre \emph{quanto} de ajuste houve --- a diferença entre
+        um valor de $c$ e outro pode ser maior que a diferença entre dois
+        algoritmos.
       \end{ideiabox}
     \end{column}
   \end{columns}
@@ -1199,10 +1407,19 @@
   \begin{columns}[T]
     \begin{column}{0.5\textwidth}
       \begin{enumerate}\setlength{\itemsep}{0.4em}
-        \item \textbf{A rollout foi eliminada.} Causa (i) some: folha avaliada por $\redeval$, não por partida aleatória.
-        \item \textbf{O prior poda a largura.} $\approx 250$ jogadas no Go → uma dúzia examinada; ramificação efetiva despenca.
-        \item \textbf{As árvores reais não são adversárias.} Em Go e xadrez, posições boas têm vizinhos bons — o gradiente existe.
-        \item \textbf{O laço de treino conserta a heurística.} Onde $\redeval$ erra, o auto-jogo gera dados ali.
+        \item \textbf{A rollout foi eliminada.} A causa (i) da parede da
+              profundidade desaparece quando a folha é avaliada por $\redeval$ em
+              vez de por uma partida aleatória. O bom valor não precisa mais ser
+              \emph{encontrado} por sorte.
+        \item \textbf{O prior poda a largura.} Das $\approx 250$ jogadas legais no
+              Go, o PUCT examina seriamente uma dúzia. O fator de ramificação
+              efetivo despenca.
+        \item \textbf{As árvores reais não são adversárias.} Nas armadilhas
+              construídas por Coquelin e Munos o valor está escondido atrás de um
+              caminho estreito; em Go e xadrez, posições boas costumam ter vizinhos
+              bons --- o gradiente existe.
+        \item \textbf{O laço de treino conserta a heurística.} Onde $\redeval$
+              erra sistematicamente, o auto-jogo gera dados exatamente ali.
       \end{enumerate}
     \end{column}
     \begin{column}{0.48\textwidth}
@@ -1212,7 +1429,9 @@
         avaliador de folha}.
       \end{teobox}
       \begin{alertabox}
-        Diagnóstico: suspeite primeiro do avaliador de folha e do prior; só depois da constante de exploração ou do orçamento.
+        Consequência prática: ao diagnosticar um planejador que decide mal,
+        suspeite primeiro do avaliador de folha e do prior, e só depois da
+        constante de exploração ou do orçamento.
       \end{alertabox}
     \end{column}
   \end{columns}
@@ -1240,12 +1459,13 @@
   \vspace{-0.35em}
   \begin{respbox}
     \textbf{Falso, falso, verdadeiro.}
-    \textbf{(1)} MDP exato: iteração de valor devolve $\polstar$ para
-    \emph{todos} os estados, mesmo preço.
-    \textbf{(2)} A árvore ramifica \emph{em cada ação}; poucos estados →
-    programação dinâmica viável.
-    \textbf{(3)} Amostragem substitui a soma sobre $s'$; custo = orçamento,
-    não $\abs{\gS}$.
+    \textbf{(1)} Poucos estados e horizonte curto: resolva o MDP exatamente — a
+    iteração de valor devolve $\polstar$ para \emph{todos} os estados pelo mesmo
+    preço.
+    \textbf{(2)} A árvore ramifica \emph{em cada ação}, e com poucos estados a
+    programação dinâmica volta a ser viável.
+    \textbf{(3)} Aqui a amostragem paga: substitui a soma sobre $s'$ e faz o custo
+    depender do orçamento, não de $\abs{\gS}$.
   \end{respbox}
 \end{frame}
 
@@ -1268,9 +1488,11 @@
 
   \pause
   \begin{respbox}
-    \textbf{As duas são verdadeiras} — a segunda é o ponto. Arrependimento
-    simulado \alert{não é um custo}; objetivo = arrependimento \emph{simples} na
-    raiz — minimizar um prejudica o outro.
+    \textbf{As duas são verdadeiras} — e a segunda é o ponto da aula. O UCT de
+    fato minimiza arrependimento cumulativo ao longo dos episódios simulados, mas
+    arrependimento simulado \alert{não é um custo}: nada se perde ao explorar uma
+    linha ruim dentro do simulador. O objetivo correto é o arrependimento
+    \emph{simples} na raiz — e minimizar um prejudica o outro.
   \end{respbox}
 \end{frame}
 
@@ -1292,9 +1514,10 @@
   \pause
   \begin{respbox}
     \textbf{Verdadeira. Verdadeira. Depende do cenário.}
-    \textbf{Bandit}: modelo de recompensa conhecido encerra o problema.
-    \textbf{MDP}: não — com $\tran{s'}{s,a}$ desconhecida, incerteza sobre
-    \emph{para onde} cada ação leva. Recompensa conhecida $\neq$ valor conhecido.
+    Em um \textbf{bandit}, conhecer o modelo de recompensa encerra o problema.
+    Em um \textbf{MDP}, não: mesmo com $\rec$ conhecida, se $\tran{s'}{s,a}$ é
+    desconhecida ainda há incerteza sobre \emph{para onde} cada ação leva —
+    recompensa conhecida não implica valor conhecido.
   \end{respbox}
 \end{frame}
 
@@ -1306,18 +1529,31 @@
   \begin{columns}[T]
     \begin{column}{0.49\textwidth}
       \begin{enumerate}\setlength{\itemsep}{0.35em}
-        \item \textbf{Go: modelo conhecido, grande demais} — AlphaZero é planejamento com heurísticas aprendidas.
-        \item \textbf{Busca = operador de melhoria de política.} Treinar para imitar a busca = iteração de política.
-        \item \textbf{Auto-jogo = gerador de currículo.} Resultado incerto e, portanto, informativo.
-        \item \textbf{Alavanca principal: avaliador de folha.} Rollout → rede de valor = MC → TD (viés–variância).
+        \item \textbf{Go não era um problema de modelo desconhecido.} Era um
+              problema de modelo conhecido e grande demais para usar. AlphaZero é
+              planejamento com heurísticas aprendidas.
+        \item \textbf{A busca é um operador de melhoria de política.} Treinar a
+              rede para imitar a saída da busca é iteração de política com a busca
+              no lugar do passo guloso.
+        \item \textbf{Auto-jogo é um gerador de currículo.} O adversário sempre à
+              altura mantém o resultado incerto e, portanto, informativo.
+        \item \textbf{A alavanca principal é o avaliador de folha.} Trocar rollout
+              por rede de valor é a mesma troca de Monte Carlo por TD, com o mesmo
+              balanço viés--variância.
       \end{enumerate}
     \end{column}
     \begin{column}{0.49\textwidth}
       \begin{enumerate}\setlength{\itemsep}{0.35em}\setcounter{enumi}{4}
-        \item \textbf{PUCT ≠ cota de confiança.} Regularização ao prior, enfraquece com $\Nvis^{-1/2}$.
-        \item \textbf{UCT resolve o problema errado.} Importa o arrependimento simples; MCTS moderna funciona apesar disso.
-        \item \textbf{Busca = computação em tempo de decisão.} Mesma rede vale 2\,100 Elo a mais pensando antes.
-        \item \textbf{Cuidado ao extrapolar.} Simulador perfeito + recompensa verificável é raro; ``dispensar humanos'' não transfere.
+        \item \textbf{O PUCT não é uma cota de confiança.} É uma regularização
+              implícita em direção ao prior, que enfraquece com $\Nvis^{-1/2}$.
+        \item \textbf{O UCT resolve o problema errado.} Dentro da simulação, o que
+              importa é o arrependimento simples, não o cumulativo. A MCTS moderna
+              funciona apesar disso.
+        \item \textbf{Busca é computação em tempo de decisão.} A mesma rede vale
+              2\,100 Elo a mais quando pensa antes de responder.
+        \item \textbf{Cuidado ao extrapolar.} Simulador perfeito mais recompensa
+              verificável é uma combinação rara. Sem ela, ``dispensar dados
+              humanos'' não se transfere.
       \end{enumerate}
     \end{column}
   \end{columns}

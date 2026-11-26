@@ -1,7 +1,5 @@
 %% ============================================================
 %%  Aula 8 — Aprendizagem por imitação, aprendizado de recompensa e RLHF
-%%  Versão sucinta: roteiro do apresentador (poucas palavras,
-%%  mesmas definições e figuras do aula08.tex)
 %%  Adaptação em pt-BR do CS234 (Stanford, Emma Brunskill), Lecture 8
 %%  Prof. Marcelo Keese Albertini — Universidade Federal de Uberlândia
 %%  Compilar com XeLaTeX (2x) — latexmk -xelatex aula08.tex
@@ -9,7 +7,7 @@
 \documentclass[aspectratio=169, 11pt]{beamer}
 %% .sty do projeto na raiz do repositório (../)
 \makeatletter
-\def\input@path{{./}{../}}
+\def\input@path{{./}{../}{../../}}
 \makeatother
 
 
@@ -63,20 +61,22 @@
       amostras.
     \item \textbf{Aulas 5--6:} parametrizar a política e subir o gradiente do
       retorno --- REINFORCE, ator--crítico, TRPO, PPO.
-    \item \textbf{Aula 7:} sem recompensa escrita? Primeira resposta:
+    \item \textbf{Aula 7:} e se ninguém escrever a recompensa? Primeira resposta:
       \emph{copie um especialista}.
-    \item \textbf{Hoje:} por que copiar não basta; \emph{inferir} a recompensa;
-      \emph{preferências humanas} --- o caminho até o RLHF e o DPO.
+    \item \textbf{Hoje:} por que copiar não basta, como \emph{inferir} a
+      recompensa e como usar \emph{preferências humanas} --- o caminho até o
+      RLHF e o DPO.
   \end{itemize}
 
   \begin{ideiabox}
-    A partir de hoje $\rec$ vira \emph{objeto de aprendizado} --- quase todos
-    os problemas novos nascem daí.
+    Até aqui $\rec$ era um dado do problema. A partir de hoje ela vira
+    \emph{objeto de aprendizado} --- e quase todos os problemas novos da aula
+    nascem exatamente daí.
   \end{ideiabox}
 \end{frame}
 
 %% ------------------------------------------------------------
-\begin{frame}[shrink]{Recapitulação da aula passada}
+\begin{frame}{Recapitulação da aula passada}
 
   \begin{quizbox}{}
     Quais afirmações sobre o \textbf{REINFORCE} são verdadeiras?
@@ -94,8 +94,8 @@
 
   \begin{respbox}
     \textbf{(a) e (d).} \;(b): o objetivo é não convexo em $\thv$. \;(c): uma
-    política determinística nunca amostra as demais ações → sem gradiente →
-    presa onde começou.
+    política determinística nunca amostra as demais ações, que nunca recebem
+    gradiente --- ela fica presa onde começou.
   \end{respbox}
 \end{frame}
 
@@ -106,11 +106,12 @@
   \begin{column}{0.49\textwidth}
     \begin{enumerate}\setlength{\itemsep}{0.5ex}
       \item \textbf{Imitação e erros compostos}\\
-        {\small por que clonar degrada como $T^2$; o que o DAGGER faz}
+        {\small por que clonar comportamento degrada como $T^2$, e o que o
+         DAGGER faz a respeito}
       \item \textbf{Aprendizado de recompensa}\\
-        {\small RL inverso, não unicidade de $\rec$, máxima entropia}
+        {\small RL inverso, a não unicidade de $\rec$, máxima entropia}
       \item \textbf{Humanos no laço}\\
-        {\small espectro de esforço humano; comparações baratas}
+        {\small o espectro de esforço humano e por que comparações são baratas}
     \end{enumerate}
   \end{column}
   \begin{column}{0.49\textwidth}
@@ -121,13 +122,14 @@
       \item \textbf{RLHF}\\
         {\small o \emph{pipeline} de três etapas e a penalidade KL}
       \item \textbf{DPO}\\
-        {\small eliminar o modelo de recompensa por álgebra}
+        {\small como eliminar o modelo de recompensa por álgebra}
     \end{enumerate}
   \end{column}
   \end{columns}
 
   \begin{ideiabox}
-    Fio condutor: ``de onde vem o sinal de recompensa quando não há placar?''
+    O fio condutor: a aula toda responde à mesma pergunta --- ``de onde vem o
+    sinal de recompensa quando não há placar?''
   \end{ideiabox}
 \end{frame}
 
@@ -157,10 +159,10 @@
   \end{center}
 
   \begin{itemize}\setlength{\itemsep}{0.3ex}
-    \item Duas primeiras etapas: supervisionadas. Terceira: RL --- e é a que
-      exige que exista uma \emph{recompensa}.
+    \item As duas primeiras etapas são supervisionadas; a terceira é RL --- e é
+      a que exige que exista uma \emph{recompensa}.
     \item Ninguém sabe escrever ``responda de forma útil e honesta'' como uma
-      $\rec(s,a)$; todos sabem dizer \emph{qual de duas respostas é melhor}.
+      $\rec(s,a)$. Mas todos sabem dizer \emph{qual de duas respostas é melhor}.
   \end{itemize}
 \end{frame}
 
@@ -183,16 +185,16 @@
   \end{defbox}
 
   \begin{itemize}\setlength{\itemsep}{0.3ex}
-    \item \textbf{Clonagem de comportamento} (Aula 7): classificação ---
-      aprenda $\pol(a\mid s)$ por perda supervisionada sobre os pares
-      $(s,a)$.
-    \item Simples, rápido, sem interação com o ambiente --- resultados
-      históricos (ALVINN, 1989) e atuais (o ``SFT'' dos LLMs).
+    \item \textbf{Clonagem de comportamento} (Aula 7): trate isso como
+      classificação --- aprenda $\pol(a\mid s)$ minimizando a perda
+      supervisionada sobre os pares $(s,a)$ do especialista.
+    \item Simples, rápido, sem interação com o ambiente --- e responsável por
+      resultados históricos (ALVINN, 1989) e atuais (o ``SFT'' dos LLMs).
   \end{itemize}
 \end{frame}
 
 %% ------------------------------------------------------------
-\begin{frame}[shrink]{O que a clonagem de comportamento supõe --- e o que ela ignora}
+\begin{frame}{O que a clonagem de comportamento supõe --- e o que ela ignora}
 
   \begin{columns}[T]
   \begin{column}{0.5\textwidth}
@@ -201,8 +203,9 @@
       extraídos da \emph{mesma} distribuição no treino e no teste.
     \end{defbox}
     \smallskip
-    No MDP, falso duas vezes: estados de uma trajetória \textbf{dependentes}
-    no tempo; a distribuição deles depende da \textbf{política} que os gera.
+    Em um MDP isso é falso duas vezes: os estados de uma trajetória são
+    \textbf{dependentes} no tempo, e a distribuição deles depende da
+    \textbf{política que os gera}.
   \end{column}
   \begin{column}{0.48\textwidth}
     \begin{alertabox}
@@ -214,15 +217,16 @@
   \end{columns}
 
   \begin{ideiabox}
-    O problema estrutural da imitação: as ações do aluno mudam as perguntas da
-    prova. {\scriptsize\color{rlCinza}\;(Ross \& Bagnell, 2011.)}
+    O problema estrutural da imitação, e a razão de ela não ser ``só
+    classificação'': as ações do aluno mudam as perguntas da prova.
+    {\scriptsize\color{rlCinza}\;(Ross \& Bagnell, 2011.)}
   \end{ideiabox}
 \end{frame}
 
 %% ------------------------------------------------------------
 \begin{frame}{Erros independentes no tempo: o caso benigno}
 
-  Suponha que, a cada passo, a política clonada erre com probabilidade
+  Suponha que, em cada passo, a política clonada erre com probabilidade
   $\varepsilon$, e que \emph{um erro não afete os estados seguintes}:
   \[
     \E[\text{total de erros}] \;\le\; \varepsilon\,T .
@@ -242,11 +246,12 @@
   \end{center}
 
   \begin{ideiabox}
-    Agente ``volta ao trilho'' sozinho após cada erro: custo \textbf{linear}
-    no horizonte --- a intuição do supervisionado.
+    Neste mundo idealizado o agente ``volta ao trilho'' sozinho depois de cada
+    erro. O custo é \textbf{linear} no horizonte --- exatamente o que a intuição
+    de aprendizado supervisionado prevê.
   \end{ideiabox}
 
-  Pergunta da aula: \emph{o que muda quando um erro desloca a trajetória?}
+  A pergunta da aula: \emph{o que muda quando um erro desloca a trajetória?}
 \end{frame}
 
 %% ------------------------------------------------------------
@@ -255,8 +260,8 @@
   \begin{columns}[T]
   \begin{column}{0.53\textwidth}
     Um erro em $t$ leva o agente a um estado que o especialista nunca visitou.
-    Sem garantia --- pessimismo: \emph{todos} os $T-t$ passos restantes
-    comprometidos:
+    Ali a política não tem garantia --- e a suposição pessimista é que
+    \emph{todos} os $T-t$ passos restantes fiquem comprometidos:
     \begin{align*}
       \E[\text{erros}] &\lesssim
         \varepsilon\bigl(T + (T-1) + \dots + 1\bigr)\\[0.2em]
@@ -284,8 +289,8 @@
     \end{tikzpicture}}
     \end{center}
     \begin{alertabox}
-      Com $\varepsilon = 1\%$ e $T = 1000$: $10$ vs.\ $\sim\!10^{4}$ erros. A
-      política ``com 99\% de acerto'' é inutilizável.
+      Com $\varepsilon = 1\%$ e $T = 1000$: $10$ contra $\sim\!10^{4}$ erros
+      esperados. A política ``com 99\% de acerto'' é inutilizável.
     \end{alertabox}
   \end{column}
   \end{columns}
@@ -318,9 +323,9 @@
   \end{center}
 
   \begin{ideiabox}
-    O erro não é ``ruído em torno da resposta certa'': é \textbf{desvio que se
-    realimenta} --- longe do suporte dos dados, pior a política; pior a
-    política, mais longe ela vai.
+    O erro não é ``ruído em torno da resposta certa''. É um \textbf{desvio que se
+    realimenta}: quanto mais longe do suporte dos dados, pior a política, e pior
+    a política, mais longe ela vai.
   \end{ideiabox}
 \end{frame}
 
@@ -341,10 +346,10 @@
   \pause
 
   \begin{respbox}
-    Reduz $\varepsilon$, mas \textbf{não muda o expoente}. Mais dados do
-    motorista são mais dados da região \emph{onde ele dirige bem} --- e o
-    problema está fora dela. Ataca a causa obter rótulos \textbf{nos estados
-    que a política aprendida visita}.
+    Ajuda a reduzir $\varepsilon$, mas \textbf{não muda o expoente}. Mais dados
+    do motorista são mais dados da região \emph{onde ele dirige bem} --- e o
+    problema está fora dela. Ataca a causa obter rótulos \textbf{nos estados que
+    a política aprendida visita}.
   \end{respbox}
 \end{frame}
 
@@ -373,17 +378,17 @@
   \end{center}
 
   \begin{itemize}\setlength{\itemsep}{0.3ex}
-    \item Ideia: \emph{rótulos do especialista ao longo do caminho que a
+    \item A ideia: \emph{obter rótulos do especialista ao longo do caminho que a
       política aprendida percorre}.
-    \item Política determinística com bom desempenho \textbf{sob a
-      distribuição de estados que ela mesma induz}.
-    \item Redução a aprendizado \emph{online} sem arrependimento --- o custo
-      volta a ser $O(\varepsilon T)$.
+    \item Resultado: uma política determinística com bom desempenho \textbf{sob
+      a distribuição de estados que ela mesma induz}.
+    \item É uma redução a aprendizado \emph{online} sem arrependimento --- o
+      custo volta a ser $O(\varepsilon T)$.
   \end{itemize}
 \end{frame}
 
 %% ------------------------------------------------------------
-\begin{frame}[shrink]{DAGGER: o algoritmo}
+\begin{frame}{DAGGER: o algoritmo}
 
   \begin{algbox}{DAGGER (Ross et al., 2011)}
     {\footnotesize
@@ -406,8 +411,9 @@
   \end{algbox}
 
   \begin{ideiabox}
-    A mistura $\beta_i$ evita tempo demais em estados catastróficos no início,
-    quando $\pol_i$ ainda é ruim --- o instrutor que segura o volante.
+    A mistura $\beta_i$ evita que as primeiras iterações passem tempo demais em
+    estados catastróficos, quando $\pol_i$ ainda é ruim --- a lógica do
+    instrutor de direção que segura o volante no início.
   \end{ideiabox}
 \end{frame}
 
@@ -429,8 +435,8 @@
     \begin{itemize}\setlength{\itemsep}{0.1ex}
       \item \textbf{Custo}: a supervisão escala com estados visitados, não com
         demonstrações.
-      \item \textbf{Contexto}: ``o que você faria \emph{agora}?'' num quadro
-        congelado produz rótulos ruins.
+      \item \textbf{Contexto}: perguntar ``o que você faria \emph{agora}?'' num
+        quadro congelado produz rótulos ruins.
       \item \textbf{Segurança}: para rotular um estado é preciso chegar até ele
         --- e alguns não devem ser visitados.
     \end{itemize}
@@ -456,9 +462,10 @@
   \end{center}
 
   \begin{ideiabox}
-    Última linha: a \emph{recompensa} é a descrição mais \textbf{compacta e
-    transferível} da tarefa. Mude o carro ou a estrada: a política se refaz;
-    a intenção, não.
+    A última linha é o argumento a favor de aprender a \emph{recompensa} em vez
+    da política: ela é a descrição mais \textbf{compacta e transferível} da
+    tarefa. Mude o carro ou a estrada e a política precisa ser refeita --- a
+    intenção, não.
   \end{ideiabox}
 \end{frame}
 
@@ -491,14 +498,14 @@
   \end{center}
 
   \begin{itemize}\setlength{\itemsep}{0.25ex}
-    \item Recompensa: descrição \textbf{mais sucinta} da tarefa (Ng \&
-      Russell, 2000); recuperada, replaneja-se em outra dinâmica.
-    \item Antes de qualquer algoritmo: uma pergunta de identificabilidade.
+    \item A recompensa é a descrição \textbf{mais sucinta} da tarefa (Ng \&
+      Russell, 2000). Uma vez recuperada, pode-se replanejar em outra dinâmica.
+    \item Antes de qualquer algoritmo, uma pergunta de identificabilidade.
   \end{itemize}
 \end{frame}
 
 %% ------------------------------------------------------------
-\begin{frame}[shrink]{Teste sua compreensão}
+\begin{frame}{Teste sua compreensão}
 
   \begin{quizbox}{}
     Suponha que a política do especialista $\polE$ seja \emph{ótima}. Sobre a
@@ -517,13 +524,13 @@
   \begin{respbox}
     \textbf{Existe um conjunto infinito de $\rec$ compatíveis.} O caso mais
     brutal: $\rec \equiv 0$ torna \emph{toda} política ótima. Sem restrições, o
-    problema é mal posto --- e o RL inverso consiste em escolher \emph{qual}
-    solução preferir.
+    problema é mal posto --- e todo o RL inverso consiste em escolher
+    \emph{qual} solução preferir.
   \end{respbox}
 \end{frame}
 
 %% ------------------------------------------------------------
-\begin{frame}[shrink]{As três fontes de ambiguidade}
+\begin{frame}{As três fontes de ambiguidade}
 
   \begin{columns}[T]
   \begin{column}{0.5\textwidth}
@@ -532,7 +539,7 @@
       explica qualquer comportamento.
     \end{alertabox}
     \begin{alertabox}
-      \textbf{2. Escala.} Se $\rec$ explica $\polE$, $c\,\rec$ com
+      \textbf{2. Escala.} Se $\rec$ explica $\polE$, então $c\,\rec$ com
       $c>0$ também: $\argmax$ não muda.
     \end{alertabox}
   \end{column}
@@ -542,21 +549,22 @@
       \[
         \rec'(s,a,s') = \rec(s,a,s') + \gamma\Phi(s') - \Phi(s)
       \]
-      preserva \emph{exatamente} as políticas ótimas
+      preserva \emph{exatamente} o conjunto de políticas ótimas
       {\scriptsize(Ng, Harada \& Russell, 1999)}.
     \end{alertabox}
   \end{column}
   \end{columns}
 
   \begin{ideiabox}
-    Invariância 2 reaparece em Bradley--Terry: recompensa de LLM sem escala
-    absoluta. Escolher entre infinitas soluções: \textbf{estrutura} +
+    Guarde a invariância 2: ela reaparece no modelo de Bradley--Terry e é a razão
+    de o modelo de recompensa de um LLM não ter escala absoluta interpretável.
+    Como escolher entre infinitas soluções? Impondo uma \textbf{estrutura} e um
     \textbf{critério de desempate}.
   \end{ideiabox}
 \end{frame}
 
 %% ------------------------------------------------------------
-\begin{frame}[shrink]{Estrutura: recompensa linear em atributos}
+\begin{frame}{Estrutura: recompensa linear em atributos}
 
   Suponha $\rec(s) = w^{\!\top}\!x(s)$, com atributos $x(s)\in\R^{n}$ conhecidos.
   O valor vira o produto interno com a \textbf{esperança de atributos}:
@@ -601,8 +609,10 @@
   \]
 
   \begin{ideiabox}
-    Leitura: especialista \textbf{aproximadamente} ótimo --- trajetórias
-    melhores exponencialmente mais prováveis, mas erros possíveis.
+    Leitura: o especialista é \textbf{aproximadamente} ótimo. Trajetórias
+    melhores são exponencialmente mais prováveis, mas erros não são impossíveis
+    --- o que descreve muito melhor uma pessoa do que a hipótese de otimalidade
+    exata.
   \end{ideiabox}
 
   {\scriptsize\color{rlCinza}Ziebart et al., \emph{Maximum Entropy Inverse
@@ -627,9 +637,10 @@
   \end{algbox}
 
   \begin{alertabox}
-    Laço interno: \emph{resolver um MDP inteiro a cada passo de gradiente}.
-    Guided Cost Learning (Finn et al., 2016) troca por amostragem por
-    importância --- equivalência com GANs: a recompensa é o discriminador.
+    O laço interno é \emph{resolver um MDP inteiro a cada passo de gradiente}.
+    Guided Cost Learning (Finn et al., 2016) o troca por amostragem por
+    importância --- e revela a equivalência com GANs: a recompensa é o
+    discriminador.
   \end{alertabox}
 \end{frame}
 
@@ -637,19 +648,21 @@
 \begin{frame}{Balanço: aprendizagem por imitação}
 
   \begin{itemize}\setlength{\itemsep}{0.4ex}
-    \item \textbf{É poderosa.} Demonstrações: a forma mais natural de
+    \item \textbf{É poderosa.} Demonstrações são a forma mais natural de
       comunicar uma tarefa a uma máquina, e existem em abundância.
-    \item \textbf{Muitas extensões}: imitação a partir de observação (sem
-      ações), com um único exemplo, a partir de vídeo humano.
-    \item \textbf{Máxima entropia é a ideia central}: transformar
-      ``explicar comportamento'' em verossimilhança bem posta.
-    \item \textbf{Mas} pressupõe um especialista que \emph{sabe fazer} a
-      tarefa. E se as pessoas só souberem \emph{reconhecer} uma execução boa?
+    \item \textbf{Tem muitas extensões}: imitação a partir de observação (sem
+      ações), imitação com um único exemplo, imitação a partir de vídeo humano.
+    \item \textbf{Máxima entropia é a ideia central} a reter: transformar
+      ``explicar comportamento'' em um problema de verossimilhança bem posto.
+    \item \textbf{Mas} pressupõe um especialista que \emph{sabe fazer} a tarefa.
+      E se ninguém souber --- se as pessoas só souberem \emph{reconhecer} uma
+      execução boa?
   \end{itemize}
 
   \begin{ideiabox}
-    Ponte: escrever um soneto é difícil; dizer qual de dois é melhor, nem
-    tanto --- o RLHF é construído sobre essa assimetria.
+    Essa última pergunta é a ponte para o resto da aula. Escrever um soneto é
+    difícil; dizer qual de dois sonetos é melhor, nem tanto. O RLHF é construído
+    inteiramente sobre essa assimetria.
   \end{ideiabox}
 \end{frame}
 
@@ -685,10 +698,10 @@
   \end{center}
 
   \begin{itemize}\setlength{\itemsep}{0.25ex}
-    \item Formas: demonstrar, corrigir, pontuar, comparar, restringir,
-      interromper.
-    \item A escolha importa: agentes que igualem o desempenho humano
-      \textbf{e} respeitem valores humanos.
+    \item Há muitas formas de uma pessoa treinar um agente: demonstrar, corrigir,
+      pontuar, comparar, restringir, interromper.
+    \item A escolha importa quando queremos agentes que igualem o desempenho
+      humano \textbf{e} respeitem valores humanos.
   \end{itemize}
 \end{frame}
 
@@ -696,22 +709,23 @@
 \begin{frame}{Recompensa dada por pessoas: o caminho ingênuo}
 
   \begin{itemize}\setlength{\itemsep}{0.35ex}
-    \item \textbf{TAMER} (Knox \& Stone, 2008): ``bom'' ou ``ruim'' enquanto o
-      agente age; treina-se um modelo do reforço humano.
+    \item \textbf{TAMER} (Knox \& Stone, 2008): a pessoa aperta ``bom'' ou
+      ``ruim'' enquanto o agente age; treina-se um modelo do reforço humano.
     \item \textbf{Robôs ensináveis} (Thomaz \& Breazeal, 2008): pessoas
-      \emph{não} dão reforço como a teoria supõe --- antecipam, premiam
-      intenção e \emph{orientam}, não só avaliam.
+      \emph{não} dão reforço como a teoria supõe --- elas antecipam, premiam
+      intenção e usam o canal para \emph{orientar}, não só para avaliar.
   \end{itemize}
 
   \begin{alertabox}
-    Pedir números falha por \textbf{calibração} (o ``7'' de uma pessoa não é o
-    de outra, nem o dela na semana seguinte), \textbf{ruído} (variância alta) e
-    \textbf{esforço} (atenção contínua).
+    Pedir números diretamente falha por três razões: \textbf{calibração} (o
+    ``7'' de uma pessoa não é o de outra, nem o dela na semana seguinte),
+    \textbf{ruído} (julgamentos absolutos têm variância alta) e \textbf{esforço}
+    (exige atenção contínua).
   \end{alertabox}
 
   \begin{ideiabox}
-    Saída (psicometria, pré-RL): não pergunte \emph{quanto}; pergunte
-    \emph{qual dos dois}.
+    A saída, usada em psicometria muito antes de existir RL: não pergunte
+    \emph{quanto}; pergunte \emph{qual dos dois}.
   \end{ideiabox}
 \end{frame}
 
@@ -731,8 +745,8 @@
   \end{column}
   \begin{column}{0.49\textwidth}
     \begin{itemize}\setlength{\itemsep}{0.3ex}
-      \item Recomendação há décadas: \emph{interleaving} mais sensível que
-        medir cada ordenação.
+      \item Recomendação usa isso há décadas: comparar duas ordenações por
+        \emph{interleaving} é mais sensível que medir cada uma.
       \item Pode-se \textbf{escolher quais pares perguntar}: aprendizado ativo
         de preferências {\scriptsize(Sadigh et al., 2017)}.
     \end{itemize}
@@ -740,8 +754,9 @@
   \end{columns}
 
   \begin{alertabox}
-    Perda: comparações dão apenas uma \textbf{ordem}, e RL precisa de um
-    \emph{número}. Reconstruir a escala é o papel do modelo de Bradley--Terry.
+    O que se perde: comparações dão apenas uma \textbf{ordem}, e RL precisa de um
+    \emph{número}. Reconstruir a escala a partir da ordem é o papel do modelo de
+    Bradley--Terry.
   \end{alertabox}
 \end{frame}
 
@@ -752,9 +767,10 @@
 %% ------------------------------------------------------------
 \begin{frame}{O modelo de Bradley--Terry (1952)}
 
-  Caso simples: $k$ ações $b_1,\dots,b_k$, sem estado nem contexto (um
-  \emph{bandido} de $k$ braços). Comparações \textbf{ruidosas}, recompensa
-  latente $r(\cdot)$:
+  Comece pelo caso mais simples: $k$ ações $b_1,\dots,b_k$, sem estado nem
+  contexto (um \emph{bandido} de $k$ braços). Suponha que a pessoa faça
+  comparações \textbf{ruidosas} e que exista uma recompensa latente
+  $r(\cdot)$ com
   \[
     \mdestaque{rlLaranja}{\Prob(b_i \succ b_j)
       = \frac{\exp\bigl(r(b_i)\bigr)}{\exp\bigl(r(b_i)\bigr) + \exp\bigl(r(b_j)\bigr)}
@@ -764,10 +780,10 @@
   \begin{columns}[T]
   \begin{column}{0.52\textwidth}
     \begin{itemize}\setlength{\itemsep}{0.2ex}
-      \item \emph{Softmax} entre dois itens --- ou regressão logística sobre a
-        \textbf{diferença} de recompensas.
+      \item É uma \emph{softmax} entre dois itens --- ou, de forma equivalente,
+        uma regressão logística sobre a \textbf{diferença} de recompensas.
       \item \textbf{Transitividade estocástica}: $p_{ik}$ fica determinado por
-        $p_{ij}$ e $p_{jk}$ --- hipótese forte, testável.
+        $p_{ij}$ e $p_{jk}$. Uma hipótese forte, e testável.
     \end{itemize}
   \end{column}
   \begin{column}{0.46\textwidth}
@@ -796,9 +812,9 @@
   \end{teobox}
 
   \begin{itemize}\setlength{\itemsep}{0.3ex}
-    \item Sem hipóteses adicionais, o modelo latente de recompensa não é
-      identificável (mesma lição do RL inverso).
-    \item Bradley--Terry: a \textbf{hipótese estrutural} que reduz a
+    \item Já sabíamos: sem hipóteses adicionais, o modelo latente de recompensa
+      não é identificável (mesma lição do RL inverso).
+    \item Bradley--Terry é justamente a \textbf{hipótese estrutural} que reduz a
       indeterminação a uma única constante --- normalizável fixando, por
       exemplo, $\sum_i r(b_i) = 0$.
   \end{itemize}
@@ -806,13 +822,13 @@
   \begin{alertabox}
     Consequência prática: o valor absoluto que um modelo de recompensa de LLM
     devolve \textbf{não significa nada}. Só diferenças entre respostas ao
-    \emph{mesmo} prompt são interpretáveis --- por isso a normalização por
+    \emph{mesmo} prompt são interpretáveis --- e por isso a normalização por
     prompt é padrão na implementação.
   \end{alertabox}
 \end{frame}
 
 %% ------------------------------------------------------------
-\begin{frame}[shrink]{Que item é ``o melhor''? Três respostas}
+\begin{frame}{Que item é ``o melhor''? Três respostas}
 
   \begin{defbox}{Vencedor de Condorcet}
     $b_i$ tal que $\Prob(b_i \succ b_j) > 0{,}5$ para \emph{todo} $j \ne i$.
@@ -835,27 +851,27 @@
   \end{columns}
 
   \begin{ideiabox}
-    Bandidos ``em duelo'' buscavam o vencedor de Copeland. \textbf{Sob
-    Bradley--Terry os três critérios coincidem} (transitividade estocástica
-    elimina ciclos) --- quando o modelo \emph{falha}, a escolha importa.
-    {\scriptsize\color{rlCinza}(Yue et al., JCSS 2012.)}
+    Os algoritmos de bandidos ``em duelo'' historicamente buscavam o vencedor de
+    Copeland. \textbf{Sob Bradley--Terry os três critérios coincidem}, pois a
+    transitividade estocástica elimina ciclos --- é quando o modelo \emph{falha}
+    que a escolha importa. {\scriptsize\color{rlCinza}(Yue et al., JCSS 2012.)}
   \end{ideiabox}
 \end{frame}
 
 %% ------------------------------------------------------------
 \begin{frame}{Ajustando os parâmetros: entropia cruzada}
 
-  Suponha $N$ tuplas $(b_i, b_j, \mu)$: $\mu = 1$ se a pessoa marcou
-  $b_i \succ b_j$, $0{,}5$ em caso de empate, $0$ caso contrário. Maximizar a
-  verossimilhança = minimizar a entropia cruzada:
+  Suponha $N$ tuplas $(b_i, b_j, \mu)$, com $\mu = 1$ se a pessoa marcou
+  $b_i \succ b_j$, $\mu = 0{,}5$ se houve empate e $\mu = 0$ caso contrário.
+  Maximizar a verossimilhança equivale a minimizar a entropia cruzada:
   \[
     \mathcal{L}(r) = -\!\!\sum_{(b_i,b_j,\mu)\in\Dset}\!\!
       \Bigl[\mu \log \Prob(b_i \succ b_j) + (1-\mu)\log \Prob(b_j \succ b_i)\Bigr].
   \]
 
   \begin{ideiabox}
-    Isto é \textbf{regressão logística} com atributos $e_i - e_j$ e
-    coeficientes $r$ --- convexa, solução única dada a normalização.
+    Note o que isto é: \textbf{regressão logística} com atributos $e_i - e_j$ e
+    coeficientes $r$ --- convexa, com solução única dada a normalização.
   \end{ideiabox}
 
   \begin{alertabox}
@@ -867,9 +883,9 @@
 %% ------------------------------------------------------------
 \begin{frame}{De itens para trajetórias}
 
-  Mesma construção trocando ``item'' por \emph{trajetória}: $\traj^1 =
-  (s_0, a_7, s_{14},\dots)$ e $\traj^2 = (s_0, a_6, s_{12},\dots)$, somas de
-  recompensas latentes $R^1 = \sum_{i} r^1_i$ e $R^2 = \sum_i r^2_i$:
+  A mesma construção vale trocando ``item'' por \emph{trajetória}. Sejam
+  $\traj^1 = (s_0, a_7, s_{14},\dots)$ e $\traj^2 = (s_0, a_6, s_{12},\dots)$, com
+  somas de recompensas latentes $R^1 = \sum_{i} r^1_i$ e $R^2 = \sum_i r^2_i$:
   \[
     \hat{\Prob}\bigl(\traj^1 \succ \traj^2\bigr)
       = \frac{\exp\bigl(\sum_i r^1_i\bigr)}
@@ -878,16 +894,17 @@
   \]
 
   \begin{itemize}\setlength{\itemsep}{0.3ex}
-    \item Agora $r$ é uma \textbf{rede neural} $\rphi(s,a)$, treinada pela
-      mesma perda de entropia cruzada.
-    \item Com $\rphi$ em mãos: RL comum --- rode PPO com a recompensa
-      aprendida.
+    \item Agora $r$ é uma \textbf{rede neural} $\rphi(s,a)$, treinada pela mesma
+      perda de entropia cruzada.
+    \item Com $\rphi$ em mãos, o problema volta a ser RL comum: rode PPO com a
+      recompensa aprendida.
   \end{itemize}
 
   \begin{alertabox}
-    O que a soma implica: a preferência é atribuída à trajetória \emph{inteira},
-    mas o modelo aprende uma recompensa \emph{por passo} --- \textbf{atribuição
-    de crédito}, agora dentro do sinal de supervisão.
+    Repare no que a soma implica: a preferência é atribuída à trajetória
+    \emph{inteira}, mas o modelo aprende uma recompensa \emph{por passo}. Este é
+    um problema de \textbf{atribuição de crédito} --- o mesmo que já vimos, agora
+    dentro do sinal de supervisão.
   \end{alertabox}
 \end{frame}
 
@@ -898,24 +915,25 @@
   \begin{column}{0.55\textwidth}
     \textbf{Christiano et al. (2017)}, \emph{Deep RL from Human Preferences}:
     \begin{itemize}\setlength{\itemsep}{0.3ex}
-      \item Tarefa: agente simulado executa um \emph{backflip} --- sem
-        recompensa escrita possível.
-      \item Interface: dois clipes curtos; qual está mais próximo do desejado.
+      \item Tarefa: fazer um agente simulado executar um \emph{backflip} ---
+        comportamento para o qual ninguém sabe escrever uma recompensa.
+      \item Interface: mostrar dois clipes curtos, perguntar qual está mais
+        próximo do desejado.
       \item Custo total: cerca de \textbf{900 comparações} de um avaliador
         humano.
-      \item Recompensa treinada \emph{em paralelo} com a política; consultas
-        onde ele está mais incerto.
+      \item O modelo de recompensa é treinado \emph{em paralelo} com a política,
+        e as consultas se concentram onde ele está mais incerto.
     \end{itemize}
   \end{column}
   \begin{column}{0.43\textwidth}
     \begin{ideiabox}
-      Novecentos bits de feedback compraram o que nenhuma recompensa escrita à
-      mão havia produzido: \emph{avaliar} é muito mais barato que
-      \emph{especificar}.
+      Novecentos bits de feedback humano compraram um comportamento que nenhuma
+      função de recompensa escrita à mão havia produzido. É a demonstração de
+      que \emph{avaliar} pode ser muito mais barato que \emph{especificar}.
     \end{ideiabox}
     \begin{alertabox}
-      O mesmo algoritmo, sem mudança conceitual, cinco anos depois alinharia
-      modelos de linguagem.
+      E é o mesmo algoritmo, sem mudança conceitual, que cinco anos depois
+      alinharia modelos de linguagem.
     \end{alertabox}
   \end{column}
   \end{columns}
@@ -953,17 +971,18 @@
   \end{center}
 
   \begin{itemize}\setlength{\itemsep}{0.25ex}
-    \item Etapa 1: exatamente a clonagem de comportamento da Aula 7.
-    \item Etapas 2 e 3: as duas metades de ``como maximizar algo que não
-      sabemos escrever?''
+    \item A etapa 1 é exatamente a clonagem de comportamento da Aula 7.
+    \item As etapas 2 e 3 são as duas metades da pergunta ``como maximizar algo
+      que não sabemos escrever?''
   \end{itemize}
 \end{frame}
 
 %% ------------------------------------------------------------
 \begin{frame}{Etapa 2: aprender o modelo de recompensa}
 
-  Coleta: prompt $x$, várias respostas com $\psft$, pessoa ordena um par.
-  $\yw$ preferida (\emph{winning}), $\yl$ preterida (\emph{losing}).
+  Coleta: para um prompt $x$, gerar várias respostas com $\psft$ e pedir que uma
+  pessoa ordene um par. Notação: $\yw$ preferida (\emph{winning}), $\yl$
+  preterida (\emph{losing}).
 
   \[
     \mathcal{L}(\phi) = -\,\E_{(x,\yw,\yl)\sim\Dset}
@@ -973,19 +992,18 @@
   \begin{columns}[T]
   \begin{column}{0.52\textwidth}
     \begin{itemize}\setlength{\itemsep}{0.2ex}
-      \item $\rphi$: o próprio LLM com a camada final trocada por uma saída
-        escalar.
-      \item Uma resposta inteira recebe \textbf{um} número: a soma de
-        recompensas por token do slide anterior colapsa numa recompensa
-        terminal.
+      \item $\rphi$ costuma ser o próprio LLM com a camada final trocada por uma
+        saída escalar.
+      \item Uma resposta inteira recebe \textbf{um} número: a soma de recompensas
+        por token do slide anterior colapsa numa recompensa terminal.
     \end{itemize}
   \end{column}
   \begin{column}{0.46\textwidth}
     \begin{ideiabox}
       \textbf{Valide o modelo de recompensa antes de otimizar contra ele.}
-      Acurácia em julgamentos humanos retidos; modelos grandes com dados
-      suficientes se aproximam da concordância entre dois humanos --- o teto
-      real.
+      Métrica: acurácia em prever julgamentos humanos retidos. Modelos grandes
+      treinados com dados suficientes se aproximam da concordância entre dois
+      humanos --- que é o teto real.
     \end{ideiabox}
   \end{column}
   \end{columns}
@@ -1014,10 +1032,10 @@
 
   \begin{alertabox}
     \textbf{Por que a penalidade é indispensável.} $\rphi$ é um modelo ajustado a
-    dados finitos, válido apenas onde $\psft$ gera texto. Maximizá-la sem
-    restrição leva o modelo a \emph{explorar as falhas do avaliador} --- o
-    fenômeno de \emph{reward hacking}. A KL mantém a política dentro do domínio
-    onde $\rphi$ ainda é confiável.
+    dados finitos, válido apenas na região onde $\psft$ gera texto. Maximizá-la
+    sem restrição leva o modelo a \emph{explorar as falhas do avaliador} ---
+    o fenômeno de \emph{reward hacking}. A KL mantém a política dentro do
+    domínio onde $\rphi$ ainda é confiável.
   \end{alertabox}
 \end{frame}
 
@@ -1051,7 +1069,7 @@
       melhora o substituto e piora o objeto.
     \end{ideiabox}
     \begin{itemize}\setlength{\itemsep}{0.2ex}
-      \item $\beta$: o controle desse compromisso.
+      \item O coeficiente $\beta$ é, na prática, o controle desse compromisso.
       \item A distância KL entre política e referência é a variável natural do
         eixo horizontal --- não o número de passos de otimização.
     \end{itemize}
@@ -1064,21 +1082,21 @@
 
   \begin{itemize}\setlength{\itemsep}{0.4ex}
     \item \textbf{RLHF supera pré-treino $+$ ajuste supervisionado} em avaliação
-      humana --- vantagem cresce com a escala
+      humana --- e a vantagem cresce com a escala do modelo
       {\scriptsize(Stiennon et al., 2020)}.
-    \item \textbf{InstructGPT} (Ouyang et al., 2022): o \emph{pipeline} em
-      dezenas de milhares de tarefas; modelo muito menor, alinhado, foi
-      preferido a um bem maior sem alinhamento.
-    \item \textbf{Comparações controladas} (Dubois et al., 2023), GPT-4 como
-      avaliador substituto: PPO funciona, mas linhas de base simples ---
+    \item \textbf{InstructGPT} (Ouyang et al., 2022) levou o \emph{pipeline} a
+      dezenas de milhares de tarefas; um modelo muito menor, alinhado, foi
+      preferido a um modelo bem maior sem alinhamento.
+    \item \textbf{Comparações controladas} (Dubois et al., 2023), usando GPT-4
+      como avaliador substituto: PPO funciona, mas linhas de base simples ---
       \emph{best-of-$n$} e treinar sobre as saídas ``boas'' --- vão
       surpreendentemente longe.
   \end{itemize}
 
   \begin{ideiabox}
-    Lição de engenharia: boa parte do ganho vem de \textbf{ter um bom modelo de
-    recompensa}, não da sofisticação do otimizador. RL é a parte cara e frágil:
-    dá para eliminá-la?
+    A lição de engenharia: boa parte do ganho do RLHF vem de \textbf{ter um bom
+    modelo de recompensa}, não da sofisticação do otimizador. Isso levanta uma
+    pergunta natural --- se o RL é a parte cara e frágil, dá para eliminá-la?
   \end{ideiabox}
 \end{frame}
 
@@ -1087,7 +1105,7 @@
 %% ============================================================
 
 %% ------------------------------------------------------------
-\begin{frame}[shrink]{O que incomoda no RLHF}
+\begin{frame}{O que incomoda no RLHF}
 
   \begin{columns}[T]
   \begin{column}{0.49\textwidth}
@@ -1104,10 +1122,10 @@
   \end{column}
   \begin{column}{0.49\textwidth}
     \begin{ideiabox}
-      A recompensa é só um \emph{intermediário} entre preferências e política.
-      Relação em forma fechada → \textbf{substituir uma pela outra} e treinar a
-      política direto sobre os pares. {\scriptsize\color{rlCinza}(Rafailov et
-      al., 2023.)}
+      O modelo de recompensa é só um \emph{intermediário} entre preferências e
+      política. Se houver relação em forma fechada entre recompensa e política
+      ótima, dá para \textbf{substituir uma pela outra} e treinar a política
+      direto sobre os pares. {\scriptsize\color{rlCinza}(Rafailov et al., 2023.)}
     \end{ideiabox}
   \end{column}
   \end{columns}
@@ -1171,9 +1189,9 @@
 
   \begin{ideiabox}
     Leitura: \emph{toda} função de recompensa pode ser escrita como uma razão
-    logarítmica entre uma política e a referência --- positiva se a política
-    gosta da resposta \emph{mais} que o modelo de referência, negativa se gosta
-    menos.
+    logarítmica entre uma política e a referência. A razão é positiva se a
+    política gosta da resposta \emph{mais} que o modelo de referência, e negativa
+    se gosta menos.
   \end{ideiabox}
 
   \begin{itemize}\setlength{\itemsep}{0.25ex}
@@ -1208,8 +1226,8 @@
     \]
   \end{teobox}
 
-  Perda \textbf{supervisionada} sobre um conjunto \emph{fixo} de pares --- sem
-  amostragem, sem crítico, sem modelo de recompensa explícito.
+  Uma perda \textbf{supervisionada}, sobre um conjunto \emph{fixo} de pares.
+  Nenhuma amostragem, nenhum crítico, nenhum modelo de recompensa explícito.
 \end{frame}
 
 %% ------------------------------------------------------------
@@ -1230,10 +1248,11 @@
   a \textbf{recompensa implícita} definida pela própria política.
 
   \begin{ideiabox}
-    Gradiente de política ``suba o que deu certo, desça o que deu errado'' ---
-    com \textbf{peso adaptativo}: quase zero nos pares que o modelo já ordena
-    corretamente, esforço nos que ele ainda erra. É o que impede o colapso da
-    máxima verossimilhança ingênua sobre $\yw$.
+    Estrutura familiar: é o gradiente de política ``suba o que deu certo, desça o
+    que deu errado'' --- mas com um \textbf{peso adaptativo} que quase zera nos
+    pares que o modelo já ordena corretamente e concentra o esforço nos que ele
+    ainda erra. Esse peso é exatamente o que impede o colapso que ocorreria se
+    treinássemos ingenuamente por máxima verossimilhança sobre $\yw$.
   \end{ideiabox}
 \end{frame}
 
@@ -1281,9 +1300,10 @@
   \end{center}
 
   \begin{alertabox}
-    A última linha é a limitação real: o DPO só pode reordenar o que já está no
+    A última linha é a limitação real. O DPO só pode reordenar o que já está no
     conjunto de dados; ele nunca descobre uma resposta melhor que ninguém
-    escreveu. Daí as variantes \emph{iterativas} (geração, rotulagem, DPO).
+    escreveu. Daí as variantes \emph{iterativas}, que alternam geração,
+    rotulagem e DPO.
   \end{alertabox}
 \end{frame}
 
@@ -1305,12 +1325,13 @@
   \end{column}
   \begin{column}{0.49\textwidth}
     \begin{itemize}\setlength{\itemsep}{0.3ex}
-      \item Com recompensa de ouro conhecida, a comparação é limpa: sem dúvida
-        sobre a qualidade do modelo de recompensa.
-      \item Em escala, DPO e variantes: padrão em famílias abertas (Zephyr,
-        Mistral, Llama 3).
-      \item Extensões próximas: \textbf{CPL}, mesma ideia para preferências
-        sobre \emph{trajetórias} de controle, fora da linguagem.
+      \item Com recompensa de ouro conhecida, a comparação é limpa: não há
+        dúvida sobre a qualidade do modelo de recompensa.
+      \item Em escala, o DPO e suas variantes passaram a ser padrão em famílias
+        abertas de modelos (Zephyr, Mistral, Llama 3).
+      \item Extensões próximas: \textbf{CPL}, que leva a mesma ideia para
+        preferências sobre \emph{trajetórias} de controle, fora do domínio de
+        linguagem.
     \end{itemize}
   \end{column}
   \end{columns}
@@ -1344,9 +1365,10 @@
   \end{center}
 
   \begin{ideiabox}
-    Ramo de cima move o estado da arte em raciocínio: correção \emph{verificável}
-    (uma prova, um teste unitário, uma resposta numérica) → recompensa dada de
-    novo --- a sobre-otimização desta aula desaparece.
+    O ramo de cima move o estado da arte em raciocínio: quando a correção pode
+    ser \emph{verificada} (uma prova, um teste unitário, uma resposta numérica),
+    a recompensa volta a ser dada --- e os problemas de sobre-otimização desta
+    aula desaparecem.
   \end{ideiabox}
 \end{frame}
 
@@ -1372,8 +1394,9 @@
   \end{defbox}
 
   \begin{ideiabox}
-    Moral: sem placar, alguém precisa fornecê-lo --- \emph{quem} fornece,
-    \emph{a que custo}, \emph{quanto confiar}.
+    A moral: quando não há placar, alguém precisa fornecê-lo. A aula toda foi
+    sobre \emph{quem} fornece, \emph{a que custo} e \emph{quanto se pode
+    confiar} no que veio.
   \end{ideiabox}
 \end{frame}
 
@@ -1395,18 +1418,18 @@
   \begin{column}{0.49\textwidth}
     \textbf{Contexto mais amplo}
     \begin{itemize}\setlength{\itemsep}{0ex}
-      \item Preferências humanas: interseção de \textbf{escolha social},
-        \textbf{economia computacional} e IA --- literatura anterior ao
-        aprendizado de máquina.
-      \item Teoremas de impossibilidade (Arrow) afetam ``alinhar'' um modelo a
-        um \emph{grupo} com preferências conflitantes.
+      \item Decidir a partir de preferências humanas fica na interseção de
+        \textbf{escolha social}, \textbf{economia computacional} e IA, com
+        literatura anterior ao aprendizado de máquina.
+      \item Teoremas de impossibilidade (Arrow) afetam o que significa
+        ``alinhar'' um modelo a um \emph{grupo} com preferências conflitantes.
     \end{itemize}
   \end{column}
   \end{columns}
 
   \begin{alertabox}
-    Pergunta que a técnica não responde: \emph{de quem} são as preferências
-    usadas para rotular os pares. Escolha de projeto, não detalhe de
+    Uma pergunta que a técnica não responde: \emph{de quem} são as preferências
+    usadas para rotular os pares. É escolha de projeto, não detalhe de
     implementação.
   \end{alertabox}
 \end{frame}

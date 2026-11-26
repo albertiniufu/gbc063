@@ -1,24 +1,24 @@
 # Compilação XeLaTeX: latexmk resolve as múltiplas passadas sozinho;
-# -cd compila a partir do diretório do .tex (PDF e temporários ficam em aulaNN/)
+# -cd compila a partir do diretório do .tex (PDF e temporários ficam na pasta da aula)
 LATEXMK = latexmk -cd -xelatex -interaction=nonstopmode
 
 # Regra genérica: .tex -> .pdf (slides, handouts e documentos avulsos)
 %.pdf: %.tex
 	$(LATEXMK) $<
 
-# Aulas descobertas a partir dos diretórios aulaNN
-AULAS   := $(patsubst aula%,%,$(notdir $(wildcard aula*)))
-TARGETS := $(addprefix aula,$(AULAS))
+# Aulas descobertas nos diretórios aulaNN (curso) e conteudo_extra/aulaNN (extras)
+AULA_DIRS := $(wildcard aula*) $(wildcard conteudo_extra/aula*)
+AULAS     := $(notdir $(AULA_DIRS))
 
 # make aulaNN recompila slides + handout da aula NN (make -B aulaNN força)
 # Regras explícitas geradas (make 4.4 não aceita dois % num pré-requisito padrão)
 define AULA_RULE
-aula$(1): aula$(1)/aula$(1).pdf aula$(1)/handout-aula$(1).pdf
+$(notdir $(1)): $(1)/$(notdir $(1)).pdf $(1)/handout-$(notdir $(1)).pdf
 endef
-$(foreach n,$(AULAS),$(eval $(call AULA_RULE,$(n))))
+$(foreach d,$(AULA_DIRS),$(eval $(call AULA_RULE,$(d))))
 
 # Compila todas as aulas
-all: $(TARGETS)
+all: $(AULAS)
 
 # Extensões de arquivos temporários gerados pela compilação LaTeX (beamer)
 clean:
@@ -30,4 +30,4 @@ clean:
 		 -o -name '*.synctex.gz' -o -name '*.xdv' -o -name '*.dvi' \) \
 		-delete
 
-.PHONY: clean all $(TARGETS)
+.PHONY: clean all $(AULAS)

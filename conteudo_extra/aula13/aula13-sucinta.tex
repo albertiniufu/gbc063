@@ -1,13 +1,14 @@
 %% ============================================================
 %%  Aula 13 — Busca em árvore de Monte Carlo (MCTS) e AlphaZero
+%%  Versão sucinta: roteiro do apresentador (poucas palavras,
+%%  mesmas definições e figuras do aula13.tex)
 %%  Adaptação em pt-BR do CS234 (Stanford, Emma Brunskill), Lecture 13
-%%  Prof. Marcelo Keese Albertini — UFU
 %%  Compilar: latexmk -xelatex aula13.tex
 %% ============================================================
 \documentclass[aspectratio=169, 11pt]{beamer}
 %% .sty do projeto na raiz do repositório (../)
 \makeatletter
-\def\input@path{{./}{../}}
+\def\input@path{{./}{../}{../../}}
 \makeatother
 
 
@@ -65,22 +66,18 @@
 %% ------------------------------------------------------------
 \begin{frame}{Plano de hoje}
   \begin{enumerate}
-    \item \textbf{Busca baseada em simulação} — a mudança de perspectiva:
-          em vez de calcular uma política para \emph{todo} o espaço de estados,
-          gastar computação para decidir bem \emph{agora}.
-    \item \textbf{Busca de Monte Carlo simples e árvores expectimax} — o que
-          se ganha e por que a enumeração explode.
-    \item \textbf{MCTS e UCT} — as quatro fases, o bandit em cada nó,
+    \item \textbf{Busca baseada em simulação} — decidir bem \emph{agora}, em vez
+          de calcular política para \emph{todo} o espaço de estados.
+    \item \textbf{Busca de Monte Carlo simples e árvores expectimax} — o que se
+          ganha; enumeração explode.
+    \item \textbf{MCTS e UCT} — quatro fases, o bandit em cada nó,
           garantias e limitações.
-    \item \textbf{AlphaGo $\to$ AlphaGo Zero $\to$ AlphaZero $\to$ MuZero} — a
-          leitura moderna: \emph{a busca é um operador de melhoria de política}.
+    \item \textbf{AlphaGo $\to$ AlphaGo Zero $\to$ AlphaZero $\to$ MuZero} — \emph{a busca é um operador de melhoria de política}.
   \end{enumerate}
 
   \vfill
   \begin{ideiabox}
-    A pergunta de fundo da aula: se eu tenho um simulador do mundo, quanto
-    vale \emph{pensar mais} antes de agir --- e como converter esse
-    pensamento em aprendizado permanente?
+    Pergunta de fundo: com um simulador do mundo, quanto vale \emph{pensar mais} antes de agir --- e como converter isso em aprendizado permanente?
   \end{ideiabox}
 \end{frame}
 
@@ -109,10 +106,8 @@
 
   \vfill
   \begin{itemize}
-    \item Hoje aparece um recurso que ainda não tínhamos usado de forma séria:
-          \textbf{um modelo do qual se pode amostrar}.
-    \item E uma ideia que reaparece hoje em contextos muito além de jogos:
-          \textbf{gastar computação em tempo de decisão} (\emph{test-time compute}).
+    \item Recurso novo: \textbf{um modelo do qual se pode amostrar}.
+    \item Além de jogos: \textbf{gastar computação em tempo de decisão} (\emph{test-time compute}).
   \end{itemize}
 \end{frame}
 
@@ -120,25 +115,18 @@
 
 %% ------------------------------------------------------------
 \begin{frame}{Calcular a ação apenas para o estado atual}
-  Até aqui, quase tudo que fizemos calcula um objeto \emph{global}:
-  $\Vstar(s)$ para todo $s$, ou $\pol_\theta(a\mid s)$ para toda entrada.
+  Até aqui: objetos \emph{globais} — $\Vstar(s)$ para todo $s$, ou $\pol_\theta(a\mid s)$ para toda entrada.
 
   \pause
   \begin{ideiabox}
-    \textbf{Ideia central da aula.} Eu não preciso de uma boa política em
-    todo lugar. Preciso de uma boa ação \emph{no estado em que estou}.
-    Se sobra computação, gaste-a localmente, no subproblema que começa agora.
+    \textbf{Ideia central da aula.} Basta uma boa ação \emph{no estado em que estou}. Se sobra computação, gaste-a localmente, no subproblema que começa agora.
   \end{ideiabox}
 
   \pause
   \begin{itemize}
-    \item O agente está em $s_t$ (o estado \emph{real}). Antes de agir, ele roda
-          simulações internas a partir de $s_t$ usando um modelo $\Mmod$.
-    \item Só a raiz importa: a busca produz $a_t$, o agente executa $a_t$ no
-          mundo real, observa $s_{t+1}$, e recomeça.
-    \item Isso é \textbf{planejamento em tempo de decisão} --- oposto de
-          \emph{planejamento em segundo plano}, que era o que a iteração
-          de valor fazia.
+    \item Agente em $s_t$ (estado \emph{real}); simulações internas a partir de $s_t$ com um modelo $\Mmod$.
+    \item Só a raiz importa: busca produz $a_t$; executa no mundo real, observa $s_{t+1}$, recomeça.
+    \item \textbf{Planejamento em tempo de decisão} --- oposto do \emph{em segundo plano} (iteração de valor).
   \end{itemize}
 \end{frame}
 
@@ -152,18 +140,14 @@
 
   \pause
   \begin{itemize}
-    \item Em jogos de tabuleiro o simulador é \emph{perfeito e gratuito}:
-          as regras são o modelo.
-    \item Em robótica e saúde ele é aprendido e imperfeito --- e o erro se
-          acumula ao longo do horizonte simulado.
-    \item MCTS é agnóstico: exige apenas amostras. Por isso funciona com
-          simuladores que ninguém sabe escrever em forma fechada.
+    \item Jogos de tabuleiro: simulador \emph{perfeito e gratuito} — as regras são o modelo.
+    \item Robótica e saúde: aprendido e imperfeito --- o erro acumula ao longo do horizonte simulado.
+    \item MCTS é agnóstico: exige apenas amostras.
   \end{itemize}
 
   \pause
   \begin{alertabox}
-    Um modelo bom para \emph{um passo} pode ser inútil para \emph{cinquenta}.
-    A busca vale até onde o modelo ainda é fiel.
+    Bom para \emph{um passo} pode ser inútil para \emph{cinquenta}. A busca vale até onde o modelo é fiel.
   \end{alertabox}
 \end{frame}
 
@@ -171,6 +155,7 @@
 \begin{frame}{Busca de Monte Carlo simples}
   Dados um modelo $\Mmod$ e uma \emph{política de simulação} $\pol$:
 
+  \vspace{-10pt}
   \begin{algbox}{Busca de Monte Carlo simples}
     \begin{itemize}\setlength{\itemsep}{0.1ex}
       \item Para cada ação $a \in \gA$, simule $K$ episódios a partir do estado
@@ -187,8 +172,7 @@
 
   \pause
   \begin{ideiabox}
-    Isso é \textbf{um passo de melhoria de política} sobre $\pol$, feito por
-    amostragem, apenas no estado $s_t$.
+    Isso é \textbf{um passo de melhoria de política} sobre $\pol$, feito por amostragem, apenas no estado $s_t$.
   \end{ideiabox}
 \end{frame}
 
@@ -202,30 +186,22 @@
 
   \pause
   \begin{itemize}
-    \item A busca de Monte Carlo simples \emph{estima} esse $\max_a \Qpi(s_t,a)$
-          por amostragem: com $K\to\infty$ recuperamos $\pol'$ exatamente.
-    \item O teto é claro: o resultado nunca é melhor que $\pol'$. Se $\pol$
-          é ruim, um passo de melhoria continua sendo pouco.
-    \item Os episódios abaixo do primeiro nível são \emph{desperdiçados} como
-          fonte de decisão: só servem para avaliar $\pol$.
+    \item A busca \emph{estima} o $\max_a \Qpi(s_t,a)$ por amostragem: com $K\to\infty$ recuperamos $\pol'$ exatamente.
+    \item Teto: nunca melhor que $\pol'$. Se $\pol$ é ruim, um passo continua sendo pouco.
+    \item Episódios abaixo do primeiro nível: \emph{desperdiçados} como decisão — só avaliam $\pol$.
   \end{itemize}
 
   \pause
   \begin{alertabox}
-    Além disso $\Qh$ é média de retornos --- variância alta. O $\argmax$ de
-    estimativas ruidosas introduz \textbf{viés de maximização}: escolhe-se a
-    ação \emph{com mais sorte}, não a melhor.
+    $\Qh$ é média de retornos --- variância alta. $\argmax$ de estimativas ruidosas: \textbf{viés de maximização} — escolhe-se a ação \emph{com mais sorte}.
   \end{alertabox}
 \end{frame}
 
 %% ------------------------------------------------------------
 \begin{frame}{Podemos fazer melhor que um passo?}
   \begin{itemize}
-    \item Sim: se temos o modelo, podemos aplicar \emph{repetidamente} o backup
-          de Bellman ao longo da simulação --- ou seja, buscar em profundidade,
-          maximizando em cada nível.
-    \item O objeto ideal é a \textbf{árvore expectimax}: alterna níveis de
-          $\max$ sobre ações e de $\E$ sobre transições.
+    \item Sim: \emph{repetidamente} o backup de Bellman ao longo da simulação --- buscar em profundidade, maximizando em cada nível.
+    \item Objeto ideal: \textbf{árvore expectimax} — alterna $\max$ sobre ações e $\E$ sobre transições.
   \end{itemize}
 
   \pause
@@ -241,7 +217,6 @@
 
   \pause
   Não é preciso resolver o MDP inteiro --- basta o \emph{sub-MDP} que começa agora.
-  Essa é a economia conceitual da busca dirigida para frente.
 \end{frame}
 
 %% ------------------------------------------------------------
@@ -268,8 +243,7 @@
   \begin{itemize}
     \item Nós circulares: estados (\emph{esperança} sobre a dinâmica).
     \item Nós sólidos: ações (\emph{maximização}).
-    \item Em jogos de dois jogadores de soma zero, o nível do oponente vira
-          um $\min$: a árvore expectimax degenera em \emph{minimax}.
+    \item Soma zero: nível do oponente vira $\min$ — \emph{minimax}.
   \end{itemize}
 \end{frame}
 
@@ -282,24 +256,14 @@
 
   \pause
   \begin{itemize}
-    \item Xadrez: fator de ramificação $b \approx 35$, partida típica
-          $d \approx 80$.
-    \item \emph{Go} $19\times19$: $b \approx 250$, $d \approx 150$.
-          $250^{150}$ é maior que qualquer número físico relevante.
-    \item Com poda alfa-beta (só válida em minimax determinístico) o expoente
-          cai pela metade --- ainda impossível.
+    \item Xadrez: fator de ramificação $b \approx 35$, partida típica $d \approx 80$.
+    \item \emph{Go} $19\times19$: $b \approx 250$, $d \approx 150$. $250^{150}$ é maior que qualquer número físico relevante.
+    \item Poda alfa-beta (minimax determinístico): expoente cai pela metade --- ainda impossível.
   \end{itemize}
 
   \pause
   \begin{ideiabox}
-    Duas saídas clássicas --- e o MCTS usa \textbf{as duas}:
-    \begin{itemize}\setlength{\itemsep}{0.2ex}
-      \item \textbf{Amostrar em vez de enumerar} --- troca a soma sobre $s'$ por
-            amostras (quebra a maldição da dimensionalidade da \emph{largura}).
-      \item \textbf{Truncar em vez de ir até o fim} --- troca a subárvore abaixo
-            de uma folha por uma \emph{estimativa} de valor (maldição da
-            \emph{profundidade}).
-    \end{itemize}
+    Duas saídas --- o MCTS usa \textbf{as duas}: \textbf{amostrar} em vez de enumerar (largura) e \textbf{truncar} com estimativa de valor (profundidade).
   \end{ideiabox}
 \end{frame}
 
@@ -340,10 +304,8 @@
 
   \pause
   \begin{itemize}
-    \item A árvore é \textbf{assimétrica}: cresce fundo onde parece promissor e
-          raso onde não parece. Isso é o oposto da busca em largura.
-    \item É \textbf{\emph{anytime}}: pode ser interrompida a qualquer momento e
-          devolve a melhor decisão encontrada até ali.
+    \item Árvore \textbf{assimétrica}: fundo onde promissor, raso onde não — o oposto da busca em largura.
+    \item \textbf{\emph{Anytime}}: interrompida a qualquer momento, devolve a melhor decisão até ali.
   \end{itemize}
 \end{frame}
 
@@ -388,10 +350,9 @@
       as arestas do caminho}}
   \end{tabular}
 
-  \vspace{0.2em}
+  \vspace{-3pt}
   \begin{ideiabox}
-    Dentro da árvore a política \emph{muda a cada simulação}. Fora dela, o
-    \emph{rollout} usa uma política fixa e barata.
+    Dentro da árvore a política \emph{muda a cada simulação}. Fora dela, o \emph{rollout} usa uma política fixa e barata.
   \end{ideiabox}
 \end{frame}
 
@@ -415,10 +376,8 @@
   \vfill
   \raggedright
   \begin{itemize}
-    \item São \emph{médias de amostras} --- nada de matriz de transição, nada de
-          varredura sobre $\gS$.
-    \item A memória cresce com o número de nós \emph{visitados}, não com
-          $\abs{\gS}$. É por isso que MCTS roda em jogos com $10^{170}$ posições.
+    \item \emph{Médias de amostras} --- nada de matriz de transição, nada de varredura sobre $\gS$.
+    \item Memória cresce com nós \emph{visitados}, não com $\abs{\gS}$ — por isso MCTS roda em jogos com $10^{170}$ posições.
   \end{itemize}
 \end{frame}
 
@@ -429,8 +388,7 @@
   \begin{itemize}
     \item cada ação $a$ no nó $i$ é um \emph{braço};
     \item o ``ganho'' é o retorno $\ret$ da simulação que passa por ele;
-    \item queremos gastar simulações nos braços bons, sem descartar cedo demais
-          um braço que teve azar.
+    \item gastar nos braços bons, sem descartar cedo demais um braço que teve azar.
   \end{itemize}
 
   \pause
@@ -465,11 +423,9 @@
 
   \pause
   \begin{itemize}\setlength{\itemsep}{0.3ex}
-    \item Ação nunca tentada tem $\Nv{i,a}=0$: bônus infinito --- é visitada
-          primeiro (a \emph{expansão}).
+    \item Ação nunca tentada tem $\Nv{i,a}=0$: bônus infinito --- visitada primeiro (a \emph{expansão}).
     \item $c$ depende da escala dos retornos: normalizar $\ret$ é padrão.
-    \item Como as estatísticas mudam, a política de árvore \textbf{muda a cada
-          simulação} --- há melhoria de política \emph{durante} a busca.
+    \item Política de árvore \textbf{muda a cada simulação} --- melhoria de política \emph{durante} a busca.
   \end{itemize}
 \end{frame}
 
@@ -498,11 +454,9 @@
   \vfill
   \raggedright
   \begin{itemize}
-    \item O bônus cai como $\Nv{i,a}^{-1/2}$ --- rápido no começo, lento depois.
-    \item Cresce como $\sqrt{\ln \Nv{i}}$: dobrar o orçamento total mal move a
-          curva. É por isso que MCTS \emph{concentra} o esforço.
-    \item Consequência prática: a distribuição de visitas na raiz é fortemente
-          desbalanceada, e é justamente isso que a torna informativa.
+    \item Cai como $\Nv{i,a}^{-1/2}$ --- rápido no começo, lento depois.
+    \item $\sqrt{\ln \Nv{i}}$: dobrar o orçamento mal move a curva. MCTS \emph{concentra} o esforço.
+    \item Visitas na raiz fortemente desbalanceadas --- é o que as torna informativas.
   \end{itemize}
 \end{frame}
 
@@ -539,21 +493,11 @@
 %% ------------------------------------------------------------
 \begin{frame}{Detalhes que decidem se funciona}
   \begin{itemize}
-    \item \textbf{Ação final: visitas ou valor?} A prática consagrada é
-          $\argmax_a \Nv{\raiz,a}$, não $\argmax_a \Qh(\raiz,a)$.
-          A contagem de visitas é uma média sobre todo o histórico da busca ---
-          muito mais robusta a um único retorno afortunado.
-    \item \textbf{Reaproveitamento da árvore.} Depois de agir, a subárvore
-          correspondente ao novo estado já está construída: mantenha-a e
-          descarte o resto.
-    \item \textbf{Dois jogadores.} O retorno deve trocar de sinal a cada nível
-          --- o que é bom para mim é ruim para o adversário. Um erro de sinal
-          aqui produz um agente que joga bem \emph{contra si mesmo} e mal contra
-          qualquer outro.
-    \item \textbf{Transposições.} Estados alcançáveis por ordens diferentes de
-          jogadas podem compartilhar estatísticas (grafo em vez de árvore).
-    \item \textbf{Normalização de $\ret$.} Sem ela, $c$ deixa de ter significado
-          e o bônus vira ruído ou tirania.
+    \item \textbf{Ação final:} $\argmax_a \Nv{\raiz,a}$, não $\argmax_a \Qh(\raiz,a)$ — visitas são média sobre o histórico inteiro, robustas a um retorno afortunado.
+    \item \textbf{Reaproveitamento da árvore.} Depois de agir, mantenha a subárvore do novo estado; descarte o resto.
+    \item \textbf{Dois jogadores.} Troque o sinal do retorno a cada nível — senão joga bem \emph{contra si mesmo}.
+    \item \textbf{Transposições.} Estados por ordens diferentes podem compartilhar estatísticas (grafo em vez de árvore).
+    \item \textbf{Normalização de $\ret$.} Sem ela, $c$ perde significado — o bônus vira ruído ou tirania.
   \end{itemize}
 \end{frame}
 
@@ -586,11 +530,8 @@
   \vfill
   \raggedright
   \begin{itemize}
-    \item Em laranja, o caminho principal (\emph{principal variation}) --- onde a
-          busca gastou quase todo o orçamento.
-    \item Ramos ruins são visitados uma ou duas vezes e abandonados; ramos
-          promissores são aprofundados. \textbf{Busca best-first altamente
-          seletiva.}
+    \item Laranja: o caminho principal (\emph{principal variation}) — onde a busca gastou quase todo o orçamento.
+    \item Ruins visitados uma ou duas vezes e abandonados; promissores aprofundados. \textbf{Busca best-first altamente seletiva.}
   \end{itemize}
 \end{frame}
 
@@ -605,17 +546,12 @@
 
   \pause
   \begin{alertabox}
-    Leia a letra miúda. A garantia é \emph{assintótica}, e a taxa de convergência
-    pode ser \textbf{duplamente exponencial na profundidade} no pior caso
-    (Coquelin e Munos, 2007). Em problemas com uma única sequência estreita de
-    ações boas --- uma ``agulha no palheiro'' --- o UCT é catastroficamente lento.
+    Leia a letra miúda. Garantia \emph{assintótica}; pior caso \textbf{duplamente exponencial na profundidade} (Coquelin e Munos, 2007) — ``agulha no palheiro'' é catastroficamente lento.
   \end{alertabox}
 
   \pause
   \begin{itemize}
-    \item Ou seja: a teoria diz que \emph{eventualmente} funciona; a prática
-          funciona porque o domínio costuma ser mais benigno que o pior caso
-          \emph{e} porque priors bons (Seção 3) encurtam drasticamente a busca.
+    \item Teoria: \emph{eventualmente} funciona. Prática: domínio benigno \emph{e} priors bons (Seção 3) encurtam drasticamente a busca.
   \end{itemize}
 \end{frame}
 
@@ -625,8 +561,7 @@
     \begin{column}{0.5\textwidth}
       \begin{itemize}
         \item \textbf{Best-first seletivo} --- gasta onde importa.
-        \item \textbf{Avaliação dinâmica} --- estima o valor do estado
-              \emph{atual}, não de todos.
+        \item \textbf{Avaliação dinâmica} --- valor do estado \emph{atual}, não de todos.
         \item \textbf{Amostragem} quebra a maldição da dimensionalidade.
         \item \textbf{Modelo caixa-preta} --- só precisa de amostras.
       \end{itemize}
@@ -634,21 +569,16 @@
     \begin{column}{0.5\textwidth}
       \begin{itemize}
         \item \textbf{\emph{Anytime}} --- interrompa quando quiser.
-        \item \textbf{Paralelizável} --- simulações são quase independentes
-              (com cuidado: \emph{virtual loss}).
-        \item \textbf{Sem heurística de domínio} --- dispensa a função de
-              avaliação à mão do alfa-beta.
-        \item \textbf{Melhora com computação} --- mais tempo, melhor jogada,
-              sem retreinar nada.
+        \item \textbf{Paralelizável} --- simulações quase independentes (\emph{virtual loss}).
+        \item \textbf{Sem heurística de domínio} --- dispensa a avaliação à mão do alfa-beta.
+        \item \textbf{Melhora com computação} --- mais tempo, melhor jogada, sem retreinar nada.
       \end{itemize}
     \end{column}
   \end{columns}
 
   \vspace{0.2em}
   \begin{ideiabox}
-    A última é a mais subestimada: MCTS converte \emph{computação em tempo de
-    decisão} em \emph{qualidade de decisão} --- a propriedade que hoje se busca
-    em modelos de raciocínio.
+    A última é a mais subestimada: computação em tempo de decisão → \emph{qualidade de decisão} — a propriedade buscada em modelos de raciocínio.
   \end{ideiabox}
 \end{frame}
 
@@ -674,12 +604,10 @@
     \bottomrule
   \end{tabular}}
 
-  \vspace{0.3em}
+  \vspace{-4pt}
   \raggedright
   \begin{alertabox}
-    MCTS pressupõe um simulador \emph{fiel} e \emph{barato}. Onde uma dessas
-    condições falha --- robótica, saúde, educação --- ele deixa de ser a
-    ferramenta óbvia.
+    MCTS pressupõe um simulador \emph{fiel} e \emph{barato}. Onde uma condição falha --- robótica, saúde, educação --- ele deixa de ser a ferramenta óbvia.
   \end{alertabox}
 \end{frame}
 
@@ -710,26 +638,18 @@
   \begin{columns}[T]
     \begin{column}{0.54\textwidth}
       \begin{itemize}
-        \item Tabuleiro $19\times19$; cerca de $10^{170}$ posições legais ---
-              mais que átomos no universo observável, por larga margem.
+        \item Tabuleiro $19\times19$; cerca de $10^{170}$ posições legais --- mais que átomos no universo observável.
         \item Ramificação $b\approx 250$ contra $b\approx 35$ do xadrez.
-        \item Não existe boa função de avaliação escrita à mão: o valor de uma
-              posição depende de padrões globais sutis (vida e morte, influência,
-              \emph{ko}).
-        \item Por isso o alfa-beta com heurística --- receita do Deep Blue,
-              1997 --- \textbf{não transferiu}.
+        \item Sem boa função de avaliação à mão: padrões globais sutis (vida e morte, influência, \emph{ko}).
+        \item Alfa-beta com heurística (Deep Blue, 1997) \textbf{não transferiu}.
       \end{itemize}
     \end{column}
     \begin{column}{0.44\textwidth}
       \begin{ideiabox}
-        A partir de 2006, MCTS levou os programas de \emph{Go} do nível
-        amador fraco ao amador forte. Faltava ainda uma \emph{avaliação de
-        posição} confiável --- e é exatamente isso que redes profundas
-        passaram a fornecer.
+        2006+: MCTS levou o \emph{Go} do amador fraco ao forte. Faltava \emph{avaliação de posição} — redes profundas forneceram.
       \end{ideiabox}
       \begin{alertabox}
-        Previsões de especialistas em 2014 colocavam o \emph{Go} em nível
-        profissional a ``uma década de distância''. Levou dois anos.
+        2014: especialistas previam nível profissional a ``uma década de distância''. Levou dois anos.
       \end{alertabox}
     \end{column}
   \end{columns}
@@ -754,11 +674,8 @@
 
   \vfill
   \begin{itemize}
-    \item O fio condutor é uma \textbf{remoção sucessiva de conhecimento humano}:
-          primeiro os jogos de mestres, depois as \emph{features} de domínio,
-          depois os \emph{rollouts}, por fim as próprias regras.
-    \item O que sobra em MuZero é: um simulador de si mesmo, uma busca e um
-          sinal de recompensa.
+    \item Fio condutor: \textbf{remoção sucessiva de conhecimento humano} — mestres, \emph{features}, \emph{rollouts}, regras.
+    \item MuZero: um simulador de si mesmo, uma busca e um sinal de recompensa.
   \end{itemize}
 \end{frame}
 
@@ -790,11 +707,8 @@
   \raggedright
   \begin{itemize}
     \item Avaliação de folha por \textbf{mistura}:
-          $\;\Vh(\folha) = (1-\lambda)\,v_\theta(\folha) + \lambda\,z_{\text{rollout}}$.
-          As duas fontes erram de maneiras diferentes; a média erra menos.
-    \item Curiosamente, a rede \emph{SL} funcionava melhor como \emph{prior} da
-          busca do que a rede RL --- ela é mais \emph{diversa}, e a busca precisa
-          de diversidade.
+          $\;\Vh(\folha) = (1-\lambda)\,v_\theta(\folha) + \lambda\,z_{\text{rollout}}$ — as fontes erram diferente; a média erra menos.
+    \item A rede \emph{SL} funcionava melhor como \emph{prior} da busca que a RL — é mais \emph{diversa}.
     \item Vitórias: Fan Hui 5--0 (2015) e Lee Sedol 4--1 (2016).
   \end{itemize}
 \end{frame}
@@ -824,15 +738,14 @@
 
   \vspace{-0.3em}
   \begin{itemize}\setlength{\itemsep}{0.2ex}
-    \item Compartilhar o tronco não é só economia: as tarefas \emph{regularizam}
-          uma à outra.
-    \item Derrotou por 100--0 a versão que venceu Lee Sedol, após três dias de
-          treino a partir de pesos aleatórios.
+    \item Tronco compartilhado: as tarefas \emph{regularizam} uma à outra.
+    \item 100--0 contra a versão que venceu Lee Sedol, após três dias de treino a partir de pesos aleatórios.
   \end{itemize}
 \end{frame}
 
 %% ------------------------------------------------------------
 \begin{frame}{PUCT: o \emph{prior} entra na regra de seleção}
+  \vspace{-7pt}
   \begin{teobox}{Regra de seleção do AlphaGo Zero / AlphaZero}
     \[
       a = \argmax_{a}\;
@@ -847,16 +760,14 @@
   \pause
   Três diferenças em relação ao UCT:
   \begin{itemize}
-    \item o bônus é \textbf{multiplicado pelo \emph{prior}} $P(s,a)$: ações
-          implausíveis para a rede quase não são exploradas;
+    \item o bônus é \textbf{multiplicado pelo \emph{prior}} $P(s,a)$: ações implausíveis quase não são exploradas;
     \item o decaimento $1/(1+\Nv{s,a})$ é mais agressivo que $1/\sqrt{\Nv{s,a}}$;
     \item não há $\ln$: cresce com $\sqrt{\cdot}$ no total de visitas.
   \end{itemize}
 
   \pause
   \begin{ideiabox}
-    Com $b\approx 250$, é o \emph{prior} que torna a busca viável: ela olha a
-    sério para meia dúzia de jogadas. A rede não substitui a busca --- poda-a.
+    Com $b\approx 250$, é o \emph{prior} que torna a busca viável: ela olha a sério para meia dúzia de jogadas. A rede não substitui a busca --- poda-a.
   \end{ideiabox}
 \end{frame}
 
@@ -880,11 +791,8 @@
 
   \pause
   \begin{itemize}
-    \item Isto é \textbf{iteração de política} (Aula 3), com a busca no papel do
-          passo de \emph{melhoria} e o auto-jogo no papel da \emph{avaliação}.
-    \item Também é chamado de \emph{expert iteration} (Anthony, Tian e Barber,
-          2017): a busca é o ``especialista lento'', a rede é o ``aprendiz
-          rápido'' que \emph{amortiza} o especialista.
+    \item \textbf{Iteração de política} (Aula 3): busca = passo de \emph{melhoria}; auto-jogo = \emph{avaliação}.
+    \item \emph{Expert iteration} (Anthony, Tian e Barber, 2017): busca = ``especialista lento''; rede = ``aprendiz rápido'' que \emph{amortiza}.
   \end{itemize}
 \end{frame}
 
@@ -935,18 +843,15 @@
 
   \pause
   \begin{itemize}
-    \item O segundo termo é \emph{entropia cruzada}: aprendizado supervisionado
-          puro, onde o rótulo foi fabricado pela própria busca.
-    \item O primeiro termo é o que fecha o ciclo: sem um $v$ bom, a busca degrada
-          e os rótulos pioram.
-    \item Note o que \emph{não} aparece: nenhum gradiente de política, razão de
-          importância ou região de confiança --- o problema difícil de RL foi
-          empurrado para dentro da busca.
+    \item 2º termo: \emph{entropia cruzada} — supervisionado, rótulo fabricado pela própria busca.
+    \item 1º termo fecha o ciclo: sem $v$ bom, a busca degrada e os rótulos pioram.
+    \item Sem gradiente de política, razão de importância ou região de confiança --- o problema difícil de RL foi empurrado para dentro da busca.
   \end{itemize}
 \end{frame}
 
 %% ------------------------------------------------------------
 \begin{frame}{Duas engenhocas indispensáveis}
+  \vspace{-9pt}
   \begin{defbox}{Ruído de Dirichlet na raiz}
     \[
       P(\raiz, a) \;=\; (1-\varepsilon)\, p_a \;+\; \varepsilon\, \eta_a,
@@ -966,37 +871,26 @@
 
   \pause
   \begin{alertabox}
-    As duas são a versão de auto-jogo do problema de \emph{exploração} das
-    Aulas 10--12: sem elas o sistema aprende a bater apenas em si mesmo.
+    As duas são a versão de auto-jogo do problema de \emph{exploração} das Aulas 10--12: sem elas o sistema aprende a bater apenas em si mesmo.
   \end{alertabox}
 \end{frame}
 
 %% ------------------------------------------------------------
 \begin{frame}{AlphaZero (2018): a mesma receita, três jogos}
   \begin{itemize}
-    \item Um único algoritmo, sem conhecimento específico de domínio além das
-          regras, treinado do zero por auto-jogo em \textbf{Go}, \textbf{xadrez}
-          e \textbf{shogi}.
-    \item Derrotou o Stockfish (xadrez), o elmo (shogi) e a versão anterior do
-          AlphaGo Zero.
-    \item Avaliava algo em torno de \emph{dezenas de milhares} de posições por
-          jogada, contra as \emph{dezenas de milhões} do Stockfish --- e ainda
-          assim jogava melhor.
+    \item Um único algoritmo, sem conhecimento de domínio além das regras, do zero por auto-jogo em \textbf{Go}, \textbf{xadrez} e \textbf{shogi}.
+    \item Derrotou o Stockfish (xadrez), o elmo (shogi) e a versão anterior do AlphaGo Zero.
+    \item Dezenas de milhares de posições por jogada vs.\ dezenas de milhões do Stockfish --- e ainda assim jogava melhor.
   \end{itemize}
 
   \pause
   \begin{ideiabox}
-    A lição não é ``busca'' nem ``rede'', é a \textbf{divisão de trabalho}:
-    a rede fornece julgamento posicional (largura), a busca fornece cálculo
-    concreto (profundidade). Um bom \emph{prior} vale por várias ordens de
-    grandeza de simulações.
+    A lição não é ``busca'' nem ``rede'', é a \textbf{divisão de trabalho}: rede = julgamento posicional (largura); busca = cálculo concreto (profundidade).
   \end{ideiabox}
 
   \pause
   \begin{alertabox}
-    Comparações de força entre AlphaZero e motores clássicos dependem de tempo
-    por jogada, \emph{hardware} e livro de aberturas: a conclusão qualitativa é
-    sólida, os números exatos nem tanto.
+    Força vs.\ motores: depende de tempo por jogada, \emph{hardware} e livro de aberturas — conclusão qualitativa sólida, números nem tanto.
   \end{alertabox}
 \end{frame}
 
@@ -1025,13 +919,9 @@
   \vfill
   \raggedright
   \begin{itemize}
-    \item Não há decodificador: $z_k$ \textbf{não} precisa reconstruir o estado
-          real. Basta que prediga \emph{recompensa}, \emph{valor} e
-          \emph{política} --- exatamente o que a busca consome.
-    \item A busca roda inteiramente no espaço latente. O modelo é aprendido
-          \emph{para servir ao planejamento}, não para ser fiel.
-    \item Igualou AlphaZero nos jogos de tabuleiro e estabeleceu o estado da arte
-          em Atari, onde ninguém tem as regras.
+    \item Sem decodificador: $z_k$ \textbf{não} reconstrói o estado real — basta prever \emph{recompensa}, \emph{valor} e \emph{política}, o que a busca consome.
+    \item Busca inteiramente no espaço latente; modelo aprendido \emph{para servir ao planejamento}, não para ser fiel.
+    \item Igualou AlphaZero nos jogos de tabuleiro; estado da arte em Atari, onde ninguém tem as regras.
   \end{itemize}
 \end{frame}
 
@@ -1046,6 +936,7 @@
 
   \pause
   \vfill
+  \vspace{-2.5pt}
   \begin{quizbox}{}
     O auto-jogo em jogos de dois jogadores de soma zero gera automaticamente um
     adversário do próprio nível --- um currículo. Que ingrediente equivalente
@@ -1077,32 +968,23 @@
     \end{column}
   \end{columns}
 
-  \vspace{0.2em}
+  \vspace{-2pt}
   \begin{alertabox}
-    Fora de jogos o gargalo raramente é a busca: é ter um modelo confiável por
-    vinte passos e uma recompensa que signifique o que queremos.
+    Fora de jogos o gargalo raramente é a busca: é um modelo confiável por vinte passos e uma recompensa que signifique o que queremos.
   \end{alertabox}
 \end{frame}
 
 %% ------------------------------------------------------------
 \begin{frame}{MCTS além de jogos}
   \begin{itemize}
-    \item \textbf{Planejamento e controle} --- MPC amostral, POMDPs (POMCP,
-          DESPOT), escalonamento, roteamento, síntese de programas.
-    \item \textbf{Química e matemática} --- retrossíntese, descoberta de
-          algoritmos (AlphaTensor), demonstração de teoremas (AlphaProof).
-    \item \textbf{Modelos de linguagem} --- busca em árvore sobre passos de
-          raciocínio, com o próprio modelo como \emph{prior} e um verificador
-          no papel da rede de valor. O laço ``gerar candidatos, avaliar,
-          destilar de volta no modelo'' é o laço de AlphaZero.
+    \item \textbf{Planejamento e controle} --- MPC amostral, POMDPs (POMCP, DESPOT), escalonamento, roteamento, síntese de programas.
+    \item \textbf{Química e matemática} --- retrossíntese, descoberta de algoritmos (AlphaTensor), demonstração de teoremas (AlphaProof).
+    \item \textbf{Modelos de linguagem} --- busca sobre passos de raciocínio; modelo como \emph{prior}, verificador no papel da rede de valor. ``Gerar, avaliar, destilar de volta'' é o laço de AlphaZero.
   \end{itemize}
 
   \pause
   \begin{alertabox}
-    A analogia tem limite: em texto, o ``estado'' não é markoviano de forma
-    óbvia, o ramo é essencialmente infinito e não existe uma regra que declare
-    vitória. É por isso que a peça mais difícil dessas construções é o
-    \emph{verificador}, não a busca.
+    A analogia tem limite: ``estado'' não-markoviano, ramo essencialmente infinito, sem regra de vitória. A peça mais difícil é o \emph{verificador}, não a busca.
   \end{alertabox}
 \end{frame}
 
@@ -1111,21 +993,12 @@
 %% ------------------------------------------------------------
 \begin{frame}{Resumo da aula}
   \begin{enumerate}
-    \item \textbf{Planejamento em tempo de decisão.} Com um simulador, vale a
-          pena gastar computação local para decidir melhor \emph{agora}.
-    \item \textbf{Busca de Monte Carlo simples} $=$ um passo de melhoria de
-          política. A árvore expectimax faria melhor, mas custa
-          $(\abs{\gS}\abs{\gA})^H$.
-    \item \textbf{MCTS} escapa amostrando (largura) e truncando (profundidade),
-          e constrói uma árvore assimétrica, \emph{anytime}.
-    \item \textbf{UCT} trata cada nó como um bandit; converge, mas com garantias
-          fracas no pior caso.
-    \item \textbf{AlphaZero} substitui \emph{rollouts} por $v_\theta$, guia a
-          busca com $\bm{p}_\theta$ via PUCT, e treina a rede nos alvos que a
-          própria busca produz --- iteração de política com a busca no lugar do
-          $\max$.
-    \item \textbf{MuZero} aprende também o modelo, no espaço do que o
-          planejador consome.
+    \item \textbf{Planejamento em tempo de decisão.} Com um simulador, vale gastar computação local para decidir melhor \emph{agora}.
+    \item \textbf{Busca de Monte Carlo simples} $=$ um passo de melhoria de política; expectimax custaria $(\abs{\gS}\abs{\gA})^H$.
+    \item \textbf{MCTS} escapa amostrando (largura) e truncando (profundidade); árvore assimétrica, \emph{anytime}.
+    \item \textbf{UCT} trata cada nó como um bandit; converge, com garantias fracas no pior caso.
+    \item \textbf{AlphaZero}: \emph{rollouts} $\to$ $v_\theta$; busca guiada por $\bm{p}_\theta$ via PUCT; treino nos alvos que a própria busca produz — iteração de política.
+    \item \textbf{MuZero} aprende também o modelo, no espaço do que o planejador consome.
   \end{enumerate}
 \end{frame}
 
@@ -1159,16 +1032,12 @@
 \begin{frame}{Erros comuns}
   \begin{alertabox}
     \begin{itemize}\setlength{\itemsep}{0.3ex}
-      \item Devolver $\argmax_a \Qh$ em vez de $\argmax_a \Nv{\cdot,a}$ --- e
-            ser traído por um único \emph{rollout} sortudo.
-      \item Esquecer de inverter o sinal do retorno a cada nível em jogos de dois
-            jogadores.
+      \item Devolver $\argmax_a \Qh$ em vez de $\argmax_a \Nv{\cdot,a}$ --- traído por um único \emph{rollout} sortudo.
+      \item Esquecer de inverter o sinal do retorno a cada nível em jogos de dois jogadores.
       \item Usar $c$ do UCT sem normalizar os retornos.
       \item Descartar a árvore inteira a cada jogada.
-      \item Treinar $\bm{p}$ contra o $\argmax$ da busca em vez da distribuição
-            de visitas --- perde-se toda a informação de incerteza.
-      \item Supor que um modelo com $1\%$ de erro por passo é utilizável em um
-            horizonte de $50$ passos.
+      \item Treinar $\bm{p}$ contra o $\argmax$ da busca em vez da distribuição de visitas --- perde-se a informação de incerteza.
+      \item Supor que um modelo com $1\%$ de erro por passo é utilizável em um horizonte de $50$ passos.
     \end{itemize}
   \end{alertabox}
 \end{frame}
@@ -1203,12 +1072,8 @@
 %% ------------------------------------------------------------
 \begin{frame}{Próxima aula}
   \begin{itemize}
-    \item \textbf{Recompensas em RL}: de onde vem $\rec$, o que acontece quando
-          ela está errada, e como especificá-la sem produzir comportamento
-          indesejado.
-    \item Guarde desta aula a pergunta que fica: MCTS otimiza \emph{muito bem}
-          o que lhe for dado como recompensa. Isso é uma virtude apenas se a
-          recompensa estiver certa.
+    \item \textbf{Recompensas em RL}: de onde vem $\rec$; o que acontece quando está errada; como especificá-la sem comportamento indesejado.
+    \item A pergunta que fica: MCTS otimiza \emph{muito bem} o que lhe for dado como recompensa — virtude apenas se a recompensa estiver certa.
   \end{itemize}
 
   \vfill
