@@ -61,11 +61,11 @@
       amostras.
     \item \textbf{Aulas 5--6:} parametrizar a política e subir o gradiente do
       retorno --- REINFORCE, ator--crítico, TRPO, PPO.
-    \item \textbf{Aula 7:} e se ninguém escrever a recompensa? Primeira resposta:
-      \emph{copie um especialista}.
-    \item \textbf{Hoje:} por que copiar não basta, como \emph{inferir} a
-      recompensa e como usar \emph{preferências humanas} --- o caminho até o
-      RLHF e o DPO.
+    \item \textbf{Aula 7:} PPO e GAE --- reaproveitar o lote e controlar o passo.
+    \item \textbf{Hoje:} e se ninguém escrever a recompensa? Primeira resposta:
+      \emph{copie um especialista}; depois, por que copiar não basta, como
+      \emph{inferir} a recompensa e como usar \emph{preferências humanas} --- o
+      caminho até o RLHF e o DPO.
   \end{itemize}
 
   \begin{ideiabox}
@@ -152,7 +152,7 @@
     \node[below=3mm of pt, text=rlCinza, text width=27mm, align=center]
       {aprendizado auto-supervisionado};
     \node[below=3mm of sft, text=rlCinza, text width=27mm, align=center]
-      {\textbf{clonagem de comportamento}\\ (Aula 7)};
+      {\textbf{clonagem de comportamento}\\ (nesta aula)};
     \node[below=3mm of rl, text=rlLaranja, text width=27mm, align=center]
       {\textbf{hoje}};
   \end{tikzpicture}}
@@ -185,7 +185,7 @@
   \end{defbox}
 
   \begin{itemize}\setlength{\itemsep}{0.3ex}
-    \item \textbf{Clonagem de comportamento} (Aula 7): trate isso como
+    \item \textbf{Clonagem de comportamento}: trate isso como
       classificação --- aprenda $\pol(a\mid s)$ minimizando a perda
       supervisionada sobre os pares $(s,a)$ do especialista.
     \item Simples, rápido, sem interação com o ambiente --- e responsável por
@@ -971,7 +971,7 @@
   \end{center}
 
   \begin{itemize}\setlength{\itemsep}{0.25ex}
-    \item A etapa 1 é exatamente a clonagem de comportamento da Aula 7.
+    \item A etapa 1 é exatamente a clonagem de comportamento vista nesta aula.
     \item As etapas 2 e 3 são as duas metades da pergunta ``como maximizar algo
       que não sabemos escrever?''
   \end{itemize}

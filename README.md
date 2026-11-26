@@ -22,7 +22,7 @@ Materiais da disciplina **GBC063 — Inteligência Artificial** (UFU/FACOM): sli
 | 4 — Controle sem modelo e aproximação de função valor | [PDF](aula04/aula04.pdf) | [PDF](aula04/handout-aula04.pdf) | [Demos](https://albertiniufu.github.io/gbc063/aula04/aula04-demos.html) · [Q-Learning](https://albertiniufu.github.io/gbc063/simuladores/q-learning-simulador.html) · [Crawler Bot](https://albertiniufu.github.io/gbc063/aula04/aula04-lab-crawler.html) · [DQN](https://albertiniufu.github.io/gbc063/simuladores/dqn.html) | [Q-Learning](atividades/0_qlearning.ipynb) · [DQN (Atari)](atividades/1_deep_qlearning.ipynb) | — |
 | 5 — Gradientes de política I | [PDF](aula05/aula05.pdf) | [PDF](aula05/handout-aula05.pdf) | [Lab. gradiente](https://albertiniufu.github.io/gbc063/aula05/aula05-laboratorio-gradiente-de-politica.html) · [Lab. gradiente — versão CartPole](https://albertiniufu.github.io/gbc063/aula05/aula05-laboratorio-gradiente-de-politica-v2.html) | [REINFORCE](atividades/2_reinforce.ipynb) | — |
 | 6 — Gradientes de política II: variância, confiança e PPO | [PDF](aula06/aula06.pdf) | [PDF](aula06/handout-aula06.pdf) | — | [A2C](atividades/3_a2c.ipynb) | — |
-| 7 — PPO, GAE e imitação | [PDF](aula07/aula07.pdf) · [HTML](https://albertiniufu.github.io/gbc063/aula07/aula07-ppo.html) | [PDF](aula07/handout-aula07.pdf) | — | [PPO](atividades/4_ppo.ipynb) | — |
+| 7 — PPO e GAE | [PDF](aula07/aula07.pdf) · [HTML](https://albertiniufu.github.io/gbc063/aula07/aula07-ppo.html) | [PDF](aula07/handout-aula07.pdf) | — | [PPO](atividades/4_ppo.ipynb) | — |
 
 ## Conteúdo extra
 
